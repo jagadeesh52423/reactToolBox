@@ -30,25 +30,6 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Grid Box Card */}
-          <Link href="/gridBox" className="group">
-            <div className="border rounded-lg p-6 hover:border-blue-500 transition-colors">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
-                  <Image
-                    src="/file.svg"
-                    alt="Grid Box icon"
-                    width={24}
-                    height={24}
-                    className="group-hover:scale-110 transition-transform"
-                  />
-                </div>
-                <h2 className="text-xl font-semibold">Grid Box</h2>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">Create and customize grid layouts with dynamic styling options.</p>
-            </div>
-          </Link>
-
           {/* JSON Visualizer Card */}
           <Link href="/jsonVisualizer" className="group">
             <div className="border rounded-lg p-6 hover:border-blue-500 transition-colors">
