@@ -1,27 +1,12 @@
 'use client';
 import { forwardRef, useImperativeHandle, useState, useRef, useEffect } from 'react';
-
-type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
-
-interface JsonViewProps {
-    data: JSONValue;
-    level?: number;
-    path?: string[];
-    onDelete: (path: string[]) => void;
-    onUpdate?: (path: string[], newValue: JSONValue) => void;
-}
-
-export interface JsonViewRef {
-    expandAll: () => void;
-    collapseAll: () => void;
-    searchNodes: (searchText: string, level?: number) => void;
-}
+import { JSONValue, JsonViewProps, JsonViewRef } from '../types';
+import { hasChildren, getTypeStyles } from '../utils/jsonHelpers';
+import PrimitiveValue from './PrimitiveValue';
 
 const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path = [], onDelete, onUpdate }, ref) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isHighlighted, setIsHighlighted] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editValue, setEditValue] = useState('');
     const childrenRefs = useRef<{ [key: string]: JsonViewRef }>({});
     const isFirstRender = useRef(true);
     const nodeRef = useRef<HTMLDivElement>(null);
@@ -33,32 +18,6 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
             childrenRefs.current = {};
         };
     }, [data]);
-
-    // Determine the type of value for styling and type indicators
-    const getValueType = (value: JSONValue): string => {
-        if (value === null) return 'null';
-        if (Array.isArray(value)) return 'array';
-        return typeof value;
-    }
-
-    // Get appropriate color and icon for value type
-    const getTypeStyles = (value: JSONValue): { color: string, icon: string } => {
-        const type = getValueType(value);
-        switch(type) {
-            case 'string': return { color: 'text-green-600 dark:text-green-400', icon: 'ABC' };
-            case 'number': return { color: 'text-blue-600 dark:text-blue-400', icon: '123' };
-            case 'boolean': return { color: 'text-purple-600 dark:text-purple-400', icon: '0/1' };
-            case 'null': return { color: 'text-gray-600 dark:text-gray-400', icon: 'Ø' };
-            case 'array': return { color: 'text-amber-600 dark:text-amber-400', icon: '[ ]' };
-            case 'object': return { color: 'text-cyan-600 dark:text-cyan-400', icon: '{ }' };
-            default: return { color: 'text-gray-600 dark:text-gray-400', icon: '?' };
-        }
-    }
-
-    // Function to check if node has children
-    const hasChildren = (node: JSONValue): boolean => {
-        return typeof node === 'object' && node !== null && Object.keys(node).length > 0;
-    };
 
     // Expand subtree function
     const expandSubtree = async (): Promise<void> => {
@@ -102,26 +61,6 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
 
     const toggleCurrentLevel = () => {
         setIsExpanded(!isExpanded);
-    };
-
-    // Handle editing of primitive values
-    const startEditing = (value: JSONValue) => {
-        if (typeof value === 'object' && value !== null) return;
-        setIsEditing(true);
-        setEditValue(JSON.stringify(value));
-    };
-
-    const saveEdit = () => {
-        try {
-            // Parse the edited value back to appropriate JSON type
-            const parsedValue = JSON.parse(editValue);
-            if (onUpdate && path.length > 0) {
-                onUpdate(path, parsedValue);
-            }
-            setIsEditing(false);
-        } catch (err) {
-            alert('Invalid JSON value: ' + err);
-        }
     };
 
     // Function to copy subtree as JSON
@@ -189,38 +128,12 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
 
     // Render primitive values
     if (typeof data !== 'object' || data === null) {
-        const { color, icon } = getTypeStyles(data);
-        
-        if (isEditing) {
-            return (
-                <div className="flex items-center gap-2">
-                    <input 
-                        type="text" 
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="border rounded px-1 py-0.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                        autoFocus
-                    />
-                    <button onClick={saveEdit} className="text-sm bg-green-500 text-white px-2 py-0.5 rounded">Save</button>
-                    <button onClick={() => setIsEditing(false)} className="text-sm bg-gray-500 text-white px-2 py-0.5 rounded">Cancel</button>
-                </div>
-            );
-        }
-        
         return (
-            <div className="flex items-center gap-2">
-                <span
-                    className={`${color} ${isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800 px-1 rounded' : ''} cursor-pointer`}
-                    onClick={() => startEditing(data)}
-                    title="Click to edit"
-                >
-                    {JSON.stringify(data)}
-                </span>
-                <span className="text-xs opacity-50 bg-gray-100 dark:bg-gray-700 px-1 rounded" title="Value type">
-                    {icon}
-                </span>
-            </div>
+            <PrimitiveValue 
+                data={data}
+                isHighlighted={isHighlighted}
+                onUpdate={(newValue) => onUpdate && onUpdate(path, newValue)}
+            />
         );
     }
 
@@ -231,14 +144,19 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
     return (
         <div 
             ref={nodeRef}
-            style={{ marginLeft: level * 16 }} 
+            style={{ marginLeft: level * 8 }} 
             className={`relative ${isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800 rounded px-1' : ''}`}
         >
-            <div className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 py-1 px-2 rounded flex items-center gap-2">
-                <span onClick={toggleCurrentLevel} className="w-4 inline-block text-gray-500">
+            <div className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 py-1 px-1 rounded flex items-center gap-1">
+                <button 
+                    onClick={toggleCurrentLevel} 
+                    className="w-4 h-4 inline-flex items-center justify-center text-gray-500 hover:text-blue-500"
+                    title={isExpanded ? "Collapse" : "Expand"}
+                >
                     {isExpanded ? '▼' : '▶'}
-                </span>
-                <div className="flex items-center gap-1">
+                </button>
+                
+                <div className="flex-grow flex items-center gap-1">
                     <span className="font-mono">{isArray ? '[' : '{'}</span>
                     {!isExpanded && (
                         <>
@@ -253,42 +171,40 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
                     </span>
                 </div>
                 
-                <div className="flex items-center gap-1 ml-auto">
-                    {hasChildren(data) && (
-                        <>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    expandSubtree();
-                                }}
-                                className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                                title="Expand full subtree"
-                            >
-                                Expand All
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    collapseSubtree();
-                                }}
-                                className="px-2 py-0.5 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-                                title="Collapse full subtree"
-                            >
-                                Collapse
-                            </button>
-                        </>
-                    )}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            copySubtree();
-                        }}
-                        className="px-2 py-0.5 text-xs bg-cyan-500 text-white rounded hover:bg-cyan-600"
-                        title="Copy this subtree as JSON"
-                    >
-                        Copy
-                    </button>
-                </div>
+                {hasChildren(data) && (
+                    <div className="flex items-center space-x-1">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                expandSubtree();
+                            }}
+                            className="w-6 h-6 rounded flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-600"
+                            title="Expand all"
+                        >
+                            <span className="text-lg">⊞</span>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                collapseSubtree();
+                            }}
+                            className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600"
+                            title="Collapse all"
+                        >
+                            <span className="text-lg">⊟</span>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                copySubtree();
+                            }}
+                            className="px-2 py-0.5 text-xs bg-cyan-500 text-white rounded hover:bg-cyan-600"
+                            title="Copy this subtree as JSON"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                )}
             </div>
             
             {isExpanded && (
