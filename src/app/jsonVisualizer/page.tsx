@@ -31,6 +31,9 @@ export default function JsonVisualizer() {
     const [searchLevel, setSearchLevel] = useState<string>('');
     const jsonViewRef = useRef<JsonViewRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // Add state for indentation level and modal visibility
+    const [indentLevel, setIndentLevel] = useState<number>(2);
+    const [showPrettifyOptions, setShowPrettifyOptions] = useState<boolean>(false);
 
     // Initialize with sample JSON
     useState(() => {
@@ -133,14 +136,22 @@ export default function JsonVisualizer() {
         }
     };
 
+    // Modified prettify function to use selected indentation
     const handlePrettify = () => {
         try {
             const parsed = JSON.parse(jsonInput);
-            const formatted = JSON.stringify(parsed, null, 2);
+            const formatted = JSON.stringify(parsed, null, indentLevel);
             setJsonInput(formatted);
+            // Hide options after prettifying
+            setShowPrettifyOptions(false);
         } catch (error) {
             // If not valid JSON, don't try to prettify
         }
+    };
+
+    // Toggle prettify options modal/dropdown
+    const togglePrettifyOptions = () => {
+        setShowPrettifyOptions(prev => !prev);
     };
 
     const handleExpandAll = () => {
@@ -217,13 +228,42 @@ export default function JsonVisualizer() {
                         <div className="flex justify-between items-center mb-3">
                             <h2 className="text-lg font-medium">JSON Input</h2>
                             <div className="flex gap-2">
-                                <button
-                                    onClick={handlePrettify}
-                                    className="px-3 py-1.5 bg-indigo-500 text-white rounded hover:bg-indigo-600 text-sm"
-                                    title="Format JSON with proper indentation"
-                                >
-                                    Prettify
-                                </button>
+                                <div className="relative">
+                                    <button
+                                        onClick={togglePrettifyOptions}
+                                        className="px-3 py-1.5 bg-indigo-500 text-white rounded hover:bg-indigo-600 text-sm flex items-center gap-1"
+                                        title="Format JSON with proper indentation"
+                                    >
+                                        Prettify
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    
+                                    {showPrettifyOptions && (
+                                        <div className="absolute z-10 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-lg p-3">
+                                            <div className="mb-2 text-sm">Indentation spaces:</div>
+                                            <div className="flex gap-2">
+                                                {[2, 4, 6, 8].map((spaces) => (
+                                                    <button
+                                                        key={spaces}
+                                                        onClick={() => {
+                                                            setIndentLevel(spaces);
+                                                            handlePrettify();
+                                                        }}
+                                                        className={`px-3 py-1 rounded text-sm ${
+                                                            indentLevel === spaces 
+                                                            ? 'bg-indigo-500 text-white' 
+                                                            : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                                        }`}
+                                                    >
+                                                        {spaces}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     onClick={handleCopyAll}
                                     className="px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 text-sm"

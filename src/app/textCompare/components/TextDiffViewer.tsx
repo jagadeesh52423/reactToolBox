@@ -28,7 +28,7 @@ const TextDiffViewer: React.FC = () => {
     setShowDiff(true);
   };
 
-  const renderDiffLine = (line: string, type: string) => {
+  const renderDiffLine = (line: string, type: string, lineNumber: number) => {
     const bgColor = type === 'added' ? 'bg-green-100' 
                   : type === 'removed' ? 'bg-red-100'
                   : type === 'changed' ? 'bg-yellow-100'
@@ -39,8 +39,15 @@ const TextDiffViewer: React.FC = () => {
                     : '';
     
     return (
-      <div className={`py-1 ${bgColor} ${textColor} px-2 font-mono whitespace-pre-wrap break-all`}>
-        {line || ' '}
+      <div className={`py-1 ${bgColor} ${textColor} px-2 font-mono whitespace-pre-wrap break-all flex`}>
+        {lineNumber > 0 && (
+          <div className="w-8 flex-shrink-0 text-gray-500 text-xs mr-2 text-right pr-2 border-r border-gray-300">
+            {lineNumber}
+          </div>
+        )}
+        <div className="flex-grow">
+          {line || ' '}
+        </div>
       </div>
     );
   };
@@ -88,7 +95,7 @@ const TextDiffViewer: React.FC = () => {
               <div>
                 {diffResult.left.map((item, index) => (
                   <div key={`left-${index}`} className="border-b last:border-b-0">
-                    {renderDiffLine(item.text, item.type)}
+                    {renderDiffLine(item.text, item.type, item.lineNumber)}
                   </div>
                 ))}
               </div>
@@ -98,12 +105,13 @@ const TextDiffViewer: React.FC = () => {
               <div>
                 {diffResult.right.map((item, index) => (
                   <div key={`right-${index}`} className="border-b last:border-b-0">
-                    {renderDiffLine(item.text, item.type)}
+                    {renderDiffLine(item.text, item.type, item.lineNumber)}
                   </div>
                 ))}
               </div>
             </div>
           </div>
+          
           <div className="mt-4 flex flex-wrap gap-4">
             <div className="flex items-center gap-1">
               <div className="w-4 h-4 bg-red-100"></div>
