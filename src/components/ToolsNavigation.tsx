@@ -46,6 +46,12 @@ const tools: Tool[] = [
     path: '/textUtilities',
     description: 'Collection of text transformation tools',
     icon: 'Aa',
+  },
+  {
+    name: 'SVG Editor',
+    path: '/svgEditor',
+    description: 'Create and edit diagrams with Mermaid and download as SVG',
+    icon: '📊',
   }
 ];
 
