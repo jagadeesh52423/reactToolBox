@@ -59,6 +59,19 @@ const SAMPLE_DIAGRAMS = [
     Design     : a1, 2023-01-01, 10d
     section Development
     Coding     : a2, after a1, 15d`
+  },
+  {
+    name: "Colored Flowchart",
+    code: `graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Try Again]
+    D --> A
+    
+    style A fill:#93c5fd,stroke:#2563eb,stroke-width:2px
+    style B fill:#fde68a,stroke:#d97706,stroke-width:2px
+    style C fill:#86efac,stroke:#059669,stroke-width:2px
+    style D fill:#fca5a5,stroke:#dc2626,stroke-width:2px`
   }
 ];
 
