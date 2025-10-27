@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import DiffViewer from './DiffViewer';
+import StructuredDiffViewer from './StructuredDiffViewer';
 
 const DEFAULT_LEFT = { name: "John", age: 30, address: { city: "New York", zip: 10001 } };
 const DEFAULT_RIGHT = { name: "John", age: 31, address: { city: "Boston", zip: "02108" } };
@@ -10,6 +11,9 @@ const JsonComparer: React.FC = () => {
   const [rightJson, setRightJson] = useState<string>(JSON.stringify(DEFAULT_RIGHT, null, 2));
   const [error, setError] = useState<string>('');
   const [showDiff, setShowDiff] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'table' | 'structured'>('structured');
+  const [fixedLeftJson, setFixedLeftJson] = useState<string>('');
+  const [fixedRightJson, setFixedRightJson] = useState<string>('');
   
   const validateJson = (json: string): { isValid: boolean; error?: string } => {
     try {
@@ -83,18 +87,33 @@ const JsonComparer: React.FC = () => {
   };
 
   const handleCompare = () => {
-    const leftValidation = validateJson(leftJson);
+    // Try to fix and validate JSON first
+    let processedLeftJson = leftJson;
+    let processedRightJson = rightJson;
+
+    try {
+      // Attempt to fix common issues first
+      processedLeftJson = fixCommonJsonIssues(leftJson);
+      processedRightJson = fixCommonJsonIssues(rightJson);
+    } catch (e) {
+      // If fixing fails, use original
+    }
+
+    const leftValidation = validateJson(processedLeftJson);
     if (!leftValidation.isValid) {
       setError(`Left JSON: ${leftValidation.error}`);
       return;
     }
 
-    const rightValidation = validateJson(rightJson);
+    const rightValidation = validateJson(processedRightJson);
     if (!rightValidation.isValid) {
       setError(`Right JSON: ${rightValidation.error}`);
       return;
     }
 
+    // Store fixed versions for diff viewers without changing user input
+    setFixedLeftJson(processedLeftJson);
+    setFixedRightJson(processedRightJson);
     setError('');
     setShowDiff(true);
   };
@@ -203,8 +222,36 @@ const JsonComparer: React.FC = () => {
       
       {showDiff && (
         <div className="mt-6">
-          <h2 className="text-xl font-bold mb-4">Differences</h2>
-          <DiffViewer left={leftJson} right={rightJson} />
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Differences</h2>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'table'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Table View
+              </button>
+              <button
+                onClick={() => setViewMode('structured')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'structured'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Tree View
+              </button>
+            </div>
+          </div>
+          {viewMode === 'table' ? (
+            <DiffViewer left={fixedLeftJson} right={fixedRightJson} />
+          ) : (
+            <StructuredDiffViewer left={fixedLeftJson} right={fixedRightJson} />
+          )}
         </div>
       )}
     </div>
