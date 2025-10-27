@@ -329,7 +329,7 @@ const StructuredDiffViewer: React.FC<StructuredDiffViewerProps> = ({ left, right
     return (
       <div key={node.path || node.key}>
         <div
-          className={`p-2 mb-1 rounded ${getBackgroundColor(node.type, hasChildren)} ${getTextColor(node.type)}`}
+          className={`p-2 mb-1 rounded ${getBackgroundColor(node.type, hasChildren || false)} ${getTextColor(node.type)}`}
           style={{ marginLeft: `${indent}px` }}
         >
           <div className="flex items-center">

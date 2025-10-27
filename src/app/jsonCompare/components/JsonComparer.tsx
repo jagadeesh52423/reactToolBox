@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import DiffViewer from './DiffViewer';
 import StructuredDiffViewer from './StructuredDiffViewer';
+import JsonEditor from './JsonEditor';
 
 const DEFAULT_LEFT = { name: "John", age: 30, address: { city: "New York", zip: 10001 } };
 const DEFAULT_RIGHT = { name: "John", age: 31, address: { city: "Boston", zip: "02108" } };
@@ -33,7 +34,6 @@ const JsonComparer: React.FC = () => {
     const lines = json.split(/\r?\n/);
     let result = '';
     let inString = false;
-    let currentString = '';
     let escapeNext = false;
 
     for (let i = 0; i < lines.length; i++) {
@@ -95,7 +95,7 @@ const JsonComparer: React.FC = () => {
       // Attempt to fix common issues first
       processedLeftJson = fixCommonJsonIssues(leftJson);
       processedRightJson = fixCommonJsonIssues(rightJson);
-    } catch (e) {
+    } catch {
       // If fixing fails, use original
     }
 
@@ -161,10 +161,10 @@ const JsonComparer: React.FC = () => {
               Format & Fix
             </button>
           </div>
-          <textarea
-            className="w-full h-64 font-mono p-2 border rounded"
+          <JsonEditor
             value={leftJson}
-            onChange={(e) => setLeftJson(e.target.value)}
+            onChange={setLeftJson}
+            className="w-full"
           />
         </div>
 
@@ -203,10 +203,10 @@ const JsonComparer: React.FC = () => {
               Format & Fix
             </button>
           </div>
-          <textarea
-            className="w-full h-64 font-mono p-2 border rounded"
+          <JsonEditor
             value={rightJson}
-            onChange={(e) => setRightJson(e.target.value)}
+            onChange={setRightJson}
+            className="w-full"
           />
         </div>
       </div>

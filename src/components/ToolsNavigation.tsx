@@ -52,6 +52,12 @@ const tools: Tool[] = [
     path: '/svgEditor',
     description: 'Create and edit diagrams with Mermaid and download as SVG',
     icon: '📊',
+  },
+  {
+    name: 'Text Case',
+    path: '/textCase',
+    description: 'Convert text between different case formats',
+    icon: 'Tt',
   }
 ];
 

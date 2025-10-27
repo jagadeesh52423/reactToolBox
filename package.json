@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.34",
+    "@monaco-editor/react": "^4.7.0",
     "mermaid": "^10.6.1",
     "next": "^15.1.6",
     "react": "^19.0.0",

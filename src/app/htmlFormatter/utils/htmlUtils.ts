@@ -124,7 +124,7 @@ export function highlightHtml(code: string): string {
   result = result.replace(/=(".*?")/g, '=<span class="text-amber-600">$1</span>');
   
   // Style for comments
-  result = result.replace(/&lt;!--(.+?)--&gt;/gs, '<span class="text-gray-500">&lt;!--$1--&gt;</span>');
+  result = result.replace(/&lt;!--(.+?)--&gt;/g, '<span class="text-gray-500">&lt;!--$1--&gt;</span>');
   
   return result;
 }

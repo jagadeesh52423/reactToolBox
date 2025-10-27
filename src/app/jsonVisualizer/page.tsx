@@ -2,7 +2,8 @@
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import JsonView, { JsonViewRef } from './components/JsonView';
+import JsonView from './components/JsonView';
+import { JsonViewRef } from './types';
 
 type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
 
