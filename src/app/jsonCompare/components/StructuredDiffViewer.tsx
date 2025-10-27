@@ -427,7 +427,7 @@ const StructuredDiffViewer: React.FC<StructuredDiffViewerProps> = ({ left, right
   }
 
   return (
-    <div className="border rounded p-4 max-h-96 overflow-auto bg-white">
+    <div className="border rounded p-4 bg-white">
       <div className="space-y-1">
         {diffTree.map(node => renderNode(node))}
       </div>

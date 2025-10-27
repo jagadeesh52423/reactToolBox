@@ -73,7 +73,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ left, right }) => {
   }
 
   return (
-    <div className="border rounded overflow-auto">
+    <div className="border rounded">
       {differences.length === 0 ? (
         <div className="p-4 text-center text-green-600 bg-green-50">
           JSON objects are identical!
