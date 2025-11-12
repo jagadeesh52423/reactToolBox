@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import JsonView from './components/JsonView';
@@ -32,18 +32,28 @@ export default function JsonVisualizer() {
     const [searchLevel, setSearchLevel] = useState<string>('');
     const jsonViewRef = useRef<JsonViewRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const searchTimeoutRef = useRef<NodeJS.Timeout>();
     // Add state for indentation level and modal visibility
     const [indentLevel, setIndentLevel] = useState<number>(2);
     const [showPrettifyOptions, setShowPrettifyOptions] = useState<boolean>(false);
 
     // Initialize with sample JSON
-    useState(() => {
+    useEffect(() => {
         try {
             handleJsonChange(SAMPLE_JSON);
         } catch (error) {
             // If sample JSON fails, just start empty
         }
-    });
+    }, []);
+
+    // Cleanup search timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleDelete = (path: string[]) => {
         if (!parsedJson) return;
@@ -130,10 +140,35 @@ export default function JsonVisualizer() {
         }
     };
 
-    const handleSearch = () => {
+    const handleSearch = useCallback(() => {
         const level = searchLevel ? parseInt(searchLevel) : undefined;
         if (jsonViewRef.current) {
             jsonViewRef.current.searchNodes(searchText, level);
+        }
+    }, [searchText, searchLevel]);
+
+    const debouncedSearch = useCallback((text: string, level: string) => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        searchTimeoutRef.current = setTimeout(() => {
+            const levelNum = level ? parseInt(level) : undefined;
+            if (jsonViewRef.current && text) {
+                jsonViewRef.current.searchNodes(text, levelNum);
+            }
+        }, 300);
+    }, []);
+
+    const handleSearchTextChange = (text: string) => {
+        setSearchText(text);
+        if (text.trim()) {
+            debouncedSearch(text, searchLevel);
+        } else {
+            // Clear highlights when search is empty
+            if (jsonViewRef.current) {
+                jsonViewRef.current.searchNodes('');
+            }
         }
     };
 
@@ -334,7 +369,7 @@ export default function JsonVisualizer() {
                                 <input
                                     type="text"
                                     value={searchText}
-                                    onChange={(e) => setSearchText(e.target.value)}
+                                    onChange={(e) => handleSearchTextChange(e.target.value)}
                                     placeholder="Search keys and values..."
                                     className="border p-1.5 rounded flex-grow min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

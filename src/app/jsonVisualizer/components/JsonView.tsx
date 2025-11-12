@@ -87,7 +87,16 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
         expandAll: () => expandSubtree(),
         collapseAll: () => collapseSubtree(),
         searchNodes: (searchText: string, searchLevel?: number) => {
-            if (!searchText) return;
+            if (!searchText) {
+                // Clear highlights when search is empty
+                setIsHighlighted(false);
+                Object.values(childrenRefs.current).forEach(childRef => {
+                    if (childRef?.searchNodes) {
+                        childRef.searchNodes('', searchLevel);
+                    }
+                });
+                return;
+            }
 
             let currentMatches = false;
             
@@ -148,10 +157,17 @@ const JsonView = forwardRef<JsonViewRef, JsonViewProps>(({ data, level = 1, path
             className={`relative ${isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800 rounded px-1' : ''}`}
         >
             <div className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 py-1 px-1 rounded flex items-center gap-1">
-                <button 
-                    onClick={toggleCurrentLevel} 
-                    className="w-4 h-4 inline-flex items-center justify-center text-gray-500 hover:text-blue-500"
-                    title={isExpanded ? "Collapse" : "Expand"}
+                <button
+                    onClick={toggleCurrentLevel}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleCurrentLevel();
+                        }
+                    }}
+                    className="w-4 h-4 inline-flex items-center justify-center text-gray-500 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                    title={isExpanded ? "Collapse (Enter/Space)" : "Expand (Enter/Space)"}
+                    tabIndex={0}
                 >
                     {isExpanded ? '▼' : '▶'}
                 </button>

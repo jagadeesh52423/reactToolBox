@@ -332,19 +332,60 @@ const StructuredDiffViewer: React.FC<StructuredDiffViewerProps> = ({ left, right
           className={`p-2 mb-1 rounded ${getBackgroundColor(node.type, hasChildren || false)} ${getTextColor(node.type)}`}
           style={{ marginLeft: `${indent}px` }}
         >
-          <div className="flex items-center">
-            <span className="font-mono font-medium mr-2">
+          <div className="flex items-start">
+            <span className="font-mono font-medium mr-2 mt-1">
               {node.key}:
             </span>
 
             {node.type === 'changed' ? (
-              <div className="flex flex-col space-y-2">
+              <div className="flex-1">
                 {/* Render word-level diff for string values */}
                 {typeof node.leftValue === 'string' && typeof node.rightValue === 'string' ?
                   (() => {
                     const { oldSegments, newSegments } = computeWordDiff(node.leftValue, node.rightValue);
-                    return (
-                      <>
+                    const leftText = oldSegments.map(s => s.text).join('');
+                    const rightText = newSegments.map(s => s.text).join('');
+
+                    // Determine if values should be side by side or stacked
+                    const maxLineLength = 60; // Adjust this threshold as needed
+                    const canFitSideBySide = leftText.length <= maxLineLength && rightText.length <= maxLineLength;
+
+                    return canFitSideBySide ? (
+                      // Side by side layout
+                      <div className="flex gap-2 items-center">
+                        <div className="flex-1 bg-red-100 border border-red-300 rounded px-3 py-2">
+                          <div className="text-xs text-red-700 font-semibold mb-1">Before:</div>
+                          <div className="font-mono text-sm">
+                            {oldSegments.map((segment, idx) => (
+                              <span
+                                key={idx}
+                                className={segment.type === 'removed' ? 'bg-red-300 text-red-900 font-bold' : ''}
+                              >
+                                {segment.text}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 text-gray-400 text-lg">
+                          →
+                        </div>
+                        <div className="flex-1 bg-green-100 border border-green-300 rounded px-3 py-2">
+                          <div className="text-xs text-green-700 font-semibold mb-1">After:</div>
+                          <div className="font-mono text-sm">
+                            {newSegments.map((segment, idx) => (
+                              <span
+                                key={idx}
+                                className={segment.type === 'added' ? 'bg-green-300 text-green-900 font-bold' : ''}
+                              >
+                                {segment.text}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // Stacked layout for longer content
+                      <div className="flex flex-col space-y-2">
                         <div className="bg-red-100 border border-red-300 rounded px-3 py-2">
                           <div className="font-mono text-sm">
                             {oldSegments.map((segment, idx) => (
@@ -369,21 +410,44 @@ const StructuredDiffViewer: React.FC<StructuredDiffViewerProps> = ({ left, right
                             ))}
                           </div>
                         </div>
-                      </>
+                      </div>
                     );
                   })()
                   :
                   /* Fallback for non-string values */
-                  (
-                    <>
-                      <div className="bg-red-100 border border-red-300 rounded px-3 py-2">
-                        <span className="font-mono text-sm">{formatValue(node.leftValue)}</span>
+                  (() => {
+                    const leftFormatted = formatValue(node.leftValue);
+                    const rightFormatted = formatValue(node.rightValue);
+                    const maxLineLength = 60; // Adjust this threshold as needed
+                    const canFitSideBySide = leftFormatted.length <= maxLineLength && rightFormatted.length <= maxLineLength;
+
+                    return canFitSideBySide ? (
+                      // Side by side layout
+                      <div className="flex gap-2 items-center">
+                        <div className="flex-1 bg-red-100 border border-red-300 rounded px-3 py-2">
+                          <div className="text-xs text-red-700 font-semibold mb-1">Before:</div>
+                          <span className="font-mono text-sm">{leftFormatted}</span>
+                        </div>
+                        <div className="flex-shrink-0 text-gray-400 text-lg">
+                          →
+                        </div>
+                        <div className="flex-1 bg-green-100 border border-green-300 rounded px-3 py-2">
+                          <div className="text-xs text-green-700 font-semibold mb-1">After:</div>
+                          <span className="font-mono text-sm">{rightFormatted}</span>
+                        </div>
                       </div>
-                      <div className="bg-green-100 border border-green-300 rounded px-3 py-2">
-                        <span className="font-mono text-sm">{formatValue(node.rightValue)}</span>
+                    ) : (
+                      // Stacked layout for longer content
+                      <div className="flex flex-col space-y-2">
+                        <div className="bg-red-100 border border-red-300 rounded px-3 py-2">
+                          <span className="font-mono text-sm">{leftFormatted}</span>
+                        </div>
+                        <div className="bg-green-100 border border-green-300 rounded px-3 py-2">
+                          <span className="font-mono text-sm">{rightFormatted}</span>
+                        </div>
                       </div>
-                    </>
-                  )
+                    );
+                  })()
                 }
               </div>
             ) : (
