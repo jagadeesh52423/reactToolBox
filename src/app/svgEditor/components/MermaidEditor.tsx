@@ -1,8 +1,15 @@
 'use client';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import mermaid from 'mermaid';
 import SampleDiagrams from '../components/SampleDiagrams';
 import NodeStylePanel from './NodeStylePanel';
+
+// Dynamically import Monaco Editor to avoid SSR issues
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded">Loading editor...</div>
+});
 
 // Updated the default diagram with more spacing and simpler structure
 const DEFAULT_DIAGRAM = `graph TD
@@ -20,6 +27,7 @@ const MermaidEditor: React.FC = () => {
   const [showNodePanel, setShowNodePanel] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [diagramBgColor, setDiagramBgColor] = useState('#ffffff');
+  const [showEditor, setShowEditor] = useState(true);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const renderCounterRef = useRef(0);
@@ -419,7 +427,14 @@ const MermaidEditor: React.FC = () => {
             onClick={() => setShowNodePanel(!showNodePanel)}
             className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200"
           >
-            {showNodePanel ? 'Hide Node Panel' : 'Show Node Panel'}
+            {showNodePanel ? 'Hide Node Styles' : 'Show Node Styles'}
+          </button>
+
+          <button
+            onClick={() => setShowEditor(!showEditor)}
+            className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200"
+          >
+            {showEditor ? 'Hide Editor' : 'Show Editor'}
           </button>
 
           {/* Background Color Control */}
@@ -454,56 +469,123 @@ const MermaidEditor: React.FC = () => {
         </div>
       </div>
 
-      {/* Node Style Panel */}
-      {showNodePanel && svgContent && (
-        <NodeStylePanel 
-          nodes={nodes} 
-          onStyleChange={handleNodeStyleChange} 
-        />
-      )}
-
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* Editor Panel */}
-        <div className="w-full lg:w-1/2">
-          <div className="mb-2">
-            <h2 className="text-lg font-semibold">Mermaid Code</h2>
-          </div>
-          <textarea
-            ref={editorRef}
-            className="w-full h-[calc(100vh-280px)] p-4 border rounded font-mono text-sm"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="Enter Mermaid diagram code here..."
-            spellCheck="false"
+      <div className="flex flex-col space-y-4">
+        {/* Node Style Panel */}
+        {showNodePanel && svgContent && (
+          <NodeStylePanel
+            nodes={nodes}
+            onStyleChange={handleNodeStyleChange}
           />
-        </div>
-        
-        {/* SVG Output Panel */}
-        <div className="w-full lg:w-1/2">
-          <div className="mb-2">
-            <h2 className="text-lg font-semibold">Diagram Preview</h2>
-          </div>
-          <div className="border rounded bg-white p-4 h-[calc(100vh-240px)] overflow-auto">
-            {error && (
-              <div className="text-red-500 bg-red-50 p-4 rounded border border-red-200 mb-4">
-                <strong>Error:</strong> {error}
+        )}
+
+        <div className={`flex flex-col lg:flex-row gap-4 ${showEditor ? '' : 'lg:justify-center'}`}>
+          {/* Editor Panel */}
+          {showEditor && (
+            <div className="w-full lg:w-1/2 transition-all duration-300">
+              <div className="mb-2">
+                <h2 className="text-lg font-semibold">Mermaid Code</h2>
               </div>
-            )}
-            <div className="relative w-full h-full" style={{ minHeight: "calc(100vh - 280px)" }}>
-              {!svgContent && !error && !isRendering && (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                  Click "Render Diagram" to preview
+              <div className={`border rounded bg-white ${
+                showNodePanel && svgContent
+                  ? 'h-[calc(100vh-350px)]'
+                  : 'h-[calc(100vh-280px)]'
+              }`}>
+                {mounted && (
+                  <MonacoEditor
+                    height="100%"
+                    defaultLanguage="mermaid"
+                    language="mermaid"
+                    theme="vs"
+                    value={code}
+                    onChange={(value) => setCode(value || '')}
+                    options={{
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      fontSize: 14,
+                      lineNumbers: 'on',
+                      roundedSelection: false,
+                      selectOnLineNumbers: true,
+                      wordWrap: 'on',
+                      automaticLayout: true,
+                      tabSize: 2,
+                      insertSpaces: true,
+                      folding: true,
+                      foldingStrategy: 'indentation',
+                      renderLineHighlight: 'all',
+                      cursorBlinking: 'smooth',
+                      smoothScrolling: true,
+                      contextmenu: true,
+                      mouseWheelZoom: true,
+                      multiCursorModifier: 'ctrlCmd',
+                      bracketPairColorization: {
+                        enabled: true,
+                      },
+                    }}
+                  />
+                )}
+                {!mounted && (
+                  <div className="w-full h-full bg-gray-100 animate-pulse rounded flex items-center justify-center">
+                    <span className="text-gray-500">Loading editor...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* SVG Output Panel */}
+          <div className={`w-full transition-all duration-300 ${
+            showEditor
+              ? 'lg:w-1/2'
+              : 'lg:w-4/5 lg:max-w-6xl lg:mx-auto'
+          }`}>
+            <div className="mb-2">
+              <h2 className="text-lg font-semibold">Diagram Preview</h2>
+            </div>
+            <div className={`border rounded bg-white overflow-auto ${
+              // Dynamic height calculation based on both editor and node panel visibility
+              showEditor
+                ? (showNodePanel && svgContent ? 'h-[calc(100vh-310px)]' : 'h-[calc(100vh-240px)]')
+                : (showNodePanel && svgContent ? 'h-[calc(100vh-250px)]' : 'h-[calc(100vh-180px)]')
+            }`}>
+              {error && (
+                <div className="text-red-500 bg-red-50 p-4 rounded border border-red-200 mb-4">
+                  <strong>Error:</strong> {error}
                 </div>
               )}
-              {isRendering && (
-                <div className="absolute inset-0 flex items-center justify-center text-blue-500">
-                  Rendering diagram...
-                </div>
-              )}
-              <div 
-                ref={svgContainerRef}
-                className="w-full h-full flex items-center justify-center"
-              />
+              <div className={`relative w-full flex items-center justify-center ${
+                showEditor
+                  ? (showNodePanel && svgContent ? 'h-[calc(100vh-310px)]' : 'h-[calc(100vh-240px)]')
+                  : (showNodePanel && svgContent ? 'h-[calc(100vh-250px)]' : 'h-[calc(100vh-180px)]')
+              } ${error ? 'h-[calc(100%-4rem)]' : ''}`}>
+                {!svgContent && !error && !isRendering && (
+                  <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center px-4">
+                    {showEditor
+                      ? 'Click "Render Diagram" to preview'
+                      : (
+                          <div>
+                            <div className="text-lg mb-2">📊 Diagram Preview Mode</div>
+                            <div className="text-sm">Editor is hidden for better viewing experience</div>
+                            <div className="text-xs mt-2 opacity-75">
+                              {showNodePanel && svgContent ? 'Node styling panel available above' : 'Render a diagram to see styling options'}
+                            </div>
+                          </div>
+                        )
+                    }
+                  </div>
+                )}
+                {isRendering && (
+                  <div className="absolute inset-0 flex items-center justify-center text-blue-500">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                      <div>Rendering diagram...</div>
+                    </div>
+                  </div>
+                )}
+                <div
+                  ref={svgContainerRef}
+                  className="w-full h-full flex items-center justify-center p-4"
+                />
+              </div>
             </div>
           </div>
         </div>
