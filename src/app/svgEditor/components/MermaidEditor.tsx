@@ -19,6 +19,7 @@ const MermaidEditor: React.FC = () => {
   const [renderTrigger, setRenderTrigger] = useState(0);
   const [showNodePanel, setShowNodePanel] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [diagramBgColor, setDiagramBgColor] = useState('#ffffff');
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const renderCounterRef = useRef(0);
@@ -54,6 +55,18 @@ const MermaidEditor: React.FC = () => {
       console.error("Failed to initialize mermaid:", err);
     }
   }, [mounted]);
+
+  // Auto-render diagram on initial load
+  useEffect(() => {
+    if (mounted && code.trim()) {
+      // Delay to ensure mermaid is fully initialized
+      const timer = setTimeout(() => {
+        setRenderTrigger(prev => prev + 1);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [mounted, code]);
   
   // Separate effect for rendering to handle DOM updates safely
   useEffect(() => {
@@ -123,26 +136,26 @@ const MermaidEditor: React.FC = () => {
   // Separate effect to update the DOM with SVG content after React updates
   useEffect(() => {
     if (!svgContent || !svgContainerRef.current) return;
-    
+
     // Safely update the container after React has updated the DOM
     const updateSvgContainer = () => {
       if (svgContainerRef.current) {
         // Clear the container
         svgContainerRef.current.innerHTML = '';
-        
+
         // Create a wrapper div for the SVG
         const wrapper = document.createElement('div');
         wrapper.className = 'flex justify-center items-center w-full';
         wrapper.innerHTML = svgContent;
-        
+
         // Append the wrapper
         svgContainerRef.current.appendChild(wrapper);
       }
     };
-    
+
     // Use requestAnimationFrame to ensure DOM is ready
     requestAnimationFrame(updateSvgContainer);
-    
+
     // Cleanup function to prevent memory leaks
     return () => {
       if (svgContainerRef.current) {
@@ -150,6 +163,13 @@ const MermaidEditor: React.FC = () => {
       }
     };
   }, [svgContent]);
+
+  // Apply background color to the SVG container
+  useEffect(() => {
+    if (svgContainerRef.current) {
+      svgContainerRef.current.style.backgroundColor = diagramBgColor;
+    }
+  }, [diagramBgColor, svgContent]);
 
   // Trigger rendering instead of directly rendering
   const renderDiagram = () => {
@@ -183,15 +203,40 @@ const MermaidEditor: React.FC = () => {
     }
 
     try {
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      // Add background color to the SVG content
+      let modifiedSvgContent = svgContent;
+
+      // If background color is not white, add a background rectangle
+      if (diagramBgColor !== '#ffffff') {
+        // Parse the SVG to add background rectangle
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+        const svgElement = svgDoc.querySelector('svg');
+
+        if (svgElement) {
+          // Create background rectangle
+          const backgroundRect = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          backgroundRect.setAttribute('width', '100%');
+          backgroundRect.setAttribute('height', '100%');
+          backgroundRect.setAttribute('fill', diagramBgColor);
+
+          // Insert background rectangle as first element
+          svgElement.insertBefore(backgroundRect, svgElement.firstChild);
+
+          // Serialize back to string
+          modifiedSvgContent = new XMLSerializer().serializeToString(svgDoc);
+        }
+      }
+
+      const blob = new Blob([modifiedSvgContent], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
-      
+
       // Create a temporary anchor element
       const a = document.createElement('a');
       a.href = url;
       a.download = 'diagram.svg';
       a.style.display = 'none';
-      
+
       // Use a safer approach that doesn't leave elements in the DOM
       a.click();
       URL.revokeObjectURL(url);
@@ -282,61 +327,63 @@ const MermaidEditor: React.FC = () => {
   
   // Apply style change from the NodeStylePanel
   const handleNodeStyleChange = (nodeId: string, property: string, value: string) => {
-    // Check if this node already has styling
-    const existingStyleRegex = new RegExp(`style\\s+${nodeId}\\s+([^\\n]+)`, 'i');
-    const existingStyleMatch = code.match(existingStyleRegex);
-    
-    let newCode = code;
-    
-    if (existingStyleMatch) {
-      // Parse existing style
-      const existingStyles = parseStyleString(existingStyleMatch[1]);
-      
-      // Update with new property value
-      existingStyles[property] = value;
-      
-      // Create the new style declaration
-      const newStyleDeclaration = `style ${nodeId} ${styleObjToString(existingStyles)}`;
-      
-      // Replace in the code
-      newCode = code.replace(existingStyleRegex, newStyleDeclaration);
-    } else {
-      // No existing style, create a new one
-      const styleObj: Record<string, string> = {
-        [property]: value
-      };
-      
-      const styleDeclaration = `style ${nodeId} ${styleObjToString(styleObj)}`;
-      
-      if (code.includes('style ')) {
-        // Find the last style declaration
-        const lines = code.split('\n');
-        let lastStyleIndex = -1;
-        
-        for (let i = lines.length - 1; i >= 0; i--) {
-          if (lines[i].trim().startsWith('style ')) {
-            lastStyleIndex = i;
-            break;
-          }
-        }
-        
-        if (lastStyleIndex !== -1) {
-          // Insert after the last style
-          lines.splice(lastStyleIndex + 1, 0, styleDeclaration);
-          newCode = lines.join('\n');
-        } else {
-          // Couldn't find the style section, append to end
-          newCode = `${code}\n\n${styleDeclaration}`;
-        }
+    // Use functional update to prevent race conditions in bulk operations
+    setCode(currentCode => {
+      // Check if this node already has styling
+      const existingStyleRegex = new RegExp(`style\\s+${nodeId}\\s+([^\\n]+)`, 'i');
+      const existingStyleMatch = currentCode.match(existingStyleRegex);
+
+      let newCode = currentCode;
+
+      if (existingStyleMatch) {
+        // Parse existing style
+        const existingStyles = parseStyleString(existingStyleMatch[1]);
+
+        // Update with new property value
+        existingStyles[property] = value;
+
+        // Create the new style declaration
+        const newStyleDeclaration = `style ${nodeId} ${styleObjToString(existingStyles)}`;
+
+        // Replace in the code
+        newCode = currentCode.replace(existingStyleRegex, newStyleDeclaration);
       } else {
-        // No existing styles, append to the end with a blank line
-        newCode = `${code}\n\n${styleDeclaration}`;
+        // No existing style, create a new one
+        const styleObj: Record<string, string> = {
+          [property]: value
+        };
+
+        const styleDeclaration = `style ${nodeId} ${styleObjToString(styleObj)}`;
+
+        if (currentCode.includes('style ')) {
+          // Find the last style declaration
+          const lines = currentCode.split('\n');
+          let lastStyleIndex = -1;
+
+          for (let i = lines.length - 1; i >= 0; i--) {
+            if (lines[i].trim().startsWith('style ')) {
+              lastStyleIndex = i;
+              break;
+            }
+          }
+
+          if (lastStyleIndex !== -1) {
+            // Insert after the last style
+            lines.splice(lastStyleIndex + 1, 0, styleDeclaration);
+            newCode = lines.join('\n');
+          } else {
+            // Couldn't find the style section, append to end
+            newCode = `${currentCode}\n\n${styleDeclaration}`;
+          }
+        } else {
+          // No existing styles, append to the end with a blank line
+          newCode = `${currentCode}\n\n${styleDeclaration}`;
+        }
       }
-    }
-    
-    // Update the code
-    setCode(newCode);
-    
+
+      return newCode;
+    });
+
     // Trigger a re-render after a small delay
     setTimeout(() => {
       setRenderTrigger(prev => prev + 1);
@@ -374,6 +421,20 @@ const MermaidEditor: React.FC = () => {
           >
             {showNodePanel ? 'Hide Node Panel' : 'Show Node Panel'}
           </button>
+
+          {/* Background Color Control */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Background:</label>
+            {mounted && (
+              <input
+                type="color"
+                value={diagramBgColor}
+                onChange={(e) => setDiagramBgColor(e.target.value)}
+                className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                title="Diagram Background Color"
+              />
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <button
