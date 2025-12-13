@@ -8,13 +8,15 @@ interface SyntaxHighlighterProps {
 }
 
 const SyntaxHighlighter: React.FC<SyntaxHighlighterProps> = ({ code, language }) => {
-  // Use a simple syntax highlighting for HTML
-  const highlightedCode = highlightHtml(code);
+  // Only apply syntax highlighting for display purposes
+  const highlightedCode = language === 'html' ? highlightHtml(code) : code;
 
   return (
-    <pre className="p-4 whitespace-pre-wrap overflow-auto font-mono text-sm leading-snug">
-      <div dangerouslySetInnerHTML={{ __html: highlightedCode }} />
-    </pre>
+    <div className="relative">
+      <pre className="p-4 whitespace-pre-wrap overflow-auto font-mono text-sm leading-snug bg-gray-50 border rounded">
+        <div dangerouslySetInnerHTML={{ __html: highlightedCode }} />
+      </pre>
+    </div>
   );
 };
 

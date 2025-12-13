@@ -37,6 +37,7 @@ const HtmlFormatterTool: React.FC = () => {
   };
 
   const handleCopyToClipboard = () => {
+    // Copy the raw formatted HTML without syntax highlighting
     navigator.clipboard.writeText(formattedHtml);
     // Show feedback (could use a toast notification here)
     alert('Formatted HTML copied to clipboard!');
@@ -95,7 +96,7 @@ const HtmlFormatterTool: React.FC = () => {
             </button>
           </div>
           
-          <div className="border rounded bg-gray-50 overflow-auto max-h-96">
+          <div className="overflow-auto max-h-96">
             <SyntaxHighlighter code={formattedHtml} language="html" />
           </div>
         </div>
