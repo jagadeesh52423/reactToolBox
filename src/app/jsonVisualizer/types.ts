@@ -11,7 +11,7 @@ export interface JsonViewProps {
 export interface JsonViewRef {
     expandAll: () => void;
     collapseAll: () => void;
-    searchNodes: (searchText: string, level?: number) => void;
+    searchNodes: (searchText: string, level?: number, isFilterEnabled?: boolean, isFuzzyEnabled?: boolean) => void;
 }
 
 export interface TypeStyle {

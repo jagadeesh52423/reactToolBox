@@ -30,9 +30,11 @@ export default function JsonVisualizer() {
     const [error, setError] = useState<string>('');
     const [searchText, setSearchText] = useState('');
     const [searchLevel, setSearchLevel] = useState<string>('');
+    const [isFilterEnabled, setIsFilterEnabled] = useState(false);
+    const [isFuzzyEnabled, setIsFuzzyEnabled] = useState(false);
     const jsonViewRef = useRef<JsonViewRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const searchTimeoutRef = useRef<NodeJS.Timeout>();
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Add state for indentation level and modal visibility
     const [indentLevel, setIndentLevel] = useState<number>(2);
     const [showPrettifyOptions, setShowPrettifyOptions] = useState<boolean>(false);
@@ -143,9 +145,9 @@ export default function JsonVisualizer() {
     const handleSearch = useCallback(() => {
         const level = searchLevel ? parseInt(searchLevel) : undefined;
         if (jsonViewRef.current) {
-            jsonViewRef.current.searchNodes(searchText, level);
+            jsonViewRef.current.searchNodes(searchText, level, isFilterEnabled, isFuzzyEnabled);
         }
-    }, [searchText, searchLevel]);
+    }, [searchText, searchLevel, isFilterEnabled, isFuzzyEnabled]);
 
     const debouncedSearch = useCallback((text: string, level: string) => {
         if (searchTimeoutRef.current) {
@@ -155,10 +157,10 @@ export default function JsonVisualizer() {
         searchTimeoutRef.current = setTimeout(() => {
             const levelNum = level ? parseInt(level) : undefined;
             if (jsonViewRef.current && text) {
-                jsonViewRef.current.searchNodes(text, levelNum);
+                jsonViewRef.current.searchNodes(text, levelNum, isFilterEnabled, isFuzzyEnabled);
             }
         }, 300);
-    }, []);
+    }, [isFilterEnabled, isFuzzyEnabled]);
 
     const handleSearchTextChange = (text: string) => {
         setSearchText(text);
@@ -167,8 +169,24 @@ export default function JsonVisualizer() {
         } else {
             // Clear highlights when search is empty
             if (jsonViewRef.current) {
-                jsonViewRef.current.searchNodes('');
+                jsonViewRef.current.searchNodes('', undefined, isFilterEnabled, isFuzzyEnabled);
             }
+        }
+    };
+
+    const handleToggleChange = (toggleType: 'filter' | 'fuzzy', value: boolean) => {
+        if (toggleType === 'filter') {
+            setIsFilterEnabled(value);
+        } else {
+            setIsFuzzyEnabled(value);
+        }
+
+        // Re-trigger search when toggles change
+        if (searchText.trim() && jsonViewRef.current) {
+            const newFilterEnabled = toggleType === 'filter' ? value : isFilterEnabled;
+            const newFuzzyEnabled = toggleType === 'fuzzy' ? value : isFuzzyEnabled;
+            const level = searchLevel ? parseInt(searchLevel) : undefined;
+            jsonViewRef.current.searchNodes(searchText, level, newFilterEnabled, newFuzzyEnabled);
         }
     };
 
@@ -364,8 +382,8 @@ export default function JsonVisualizer() {
                                 </button>
                             </div>
                         </div>
-                        <div className="mb-3 flex flex-wrap gap-2 bg-white dark:bg-gray-900 p-2 rounded-lg border">
-                            <div className="flex gap-2 items-center">
+                        <div className="mb-3 bg-white dark:bg-gray-900 p-3 rounded-lg border space-y-3">
+                            <div className="flex gap-2 items-center flex-wrap">
                                 <input
                                     type="text"
                                     value={searchText}
@@ -388,6 +406,30 @@ export default function JsonVisualizer() {
                                 >
                                     Search
                                 </button>
+                            </div>
+                            <div className="flex gap-4 items-center text-sm">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isFilterEnabled}
+                                        onChange={(e) => handleToggleChange('filter', e.target.checked)}
+                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                    />
+                                    <span className="text-gray-700 dark:text-gray-300">
+                                        Filter (hide non-matching)
+                                    </span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isFuzzyEnabled}
+                                        onChange={(e) => handleToggleChange('fuzzy', e.target.checked)}
+                                        className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                                    />
+                                    <span className="text-gray-700 dark:text-gray-300">
+                                        Fuzzy search (e.g. "apl" → "apple")
+                                    </span>
+                                </label>
                             </div>
                         </div>
                         <div className="border rounded-lg p-4 overflow-auto bg-white dark:bg-gray-900 h-[calc(100vh-18rem)]">

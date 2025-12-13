@@ -25,3 +25,35 @@ export const getTypeStyles = (value: JSONValue): TypeStyle => {
 export const hasChildren = (node: JSONValue): boolean => {
     return typeof node === 'object' && node !== null && Object.keys(node).length > 0;
 };
+
+// Fuzzy search algorithm - checks if characters appear in order
+export const fuzzyMatch = (search: string, target: string): boolean => {
+    if (!search || !target) return !search;
+
+    const searchLower = search.toLowerCase();
+    const targetLower = target.toLowerCase();
+
+    let searchIndex = 0;
+    let targetIndex = 0;
+
+    while (searchIndex < searchLower.length && targetIndex < targetLower.length) {
+        if (searchLower[searchIndex] === targetLower[targetIndex]) {
+            searchIndex++;
+        }
+        targetIndex++;
+    }
+
+    return searchIndex === searchLower.length;
+};
+
+// Enhanced search function that supports both regular and fuzzy search
+export const matchesSearch = (searchText: string, target: string, isFuzzy: boolean): boolean => {
+    if (!searchText) return true;
+    if (!target) return false;
+
+    if (isFuzzy) {
+        return fuzzyMatch(searchText, target);
+    } else {
+        return target.toLowerCase().includes(searchText.toLowerCase());
+    }
+};
