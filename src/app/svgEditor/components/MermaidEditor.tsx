@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import mermaid from 'mermaid';
 import SampleDiagrams from '../components/SampleDiagrams';
-import ColorPalette from './ColorPalette';
 import NodeStylePanel from './NodeStylePanel';
 
 // Updated the default diagram with more spacing and simpler structure
@@ -18,20 +17,28 @@ const MermaidEditor: React.FC = () => {
   const [isRendering, setIsRendering] = useState(false);
   const [svgContent, setSvgContent] = useState<string>('');
   const [renderTrigger, setRenderTrigger] = useState(0);
-  const [showColorHelp, setShowColorHelp] = useState(false);
   const [showNodePanel, setShowNodePanel] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
+  const renderCounterRef = useRef(0);
+
+  // Ensure client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Initialize mermaid with improved configuration
   useEffect(() => {
+    if (!mounted) return;
+
     try {
       mermaid.initialize({
         startOnLoad: false,
         theme: 'default',
         securityLevel: 'loose',
         er: { useMaxWidth: false },
-        flowchart: { 
+        flowchart: {
           useMaxWidth: false,
           htmlLabels: true,
           curve: 'basis',
@@ -46,11 +53,11 @@ const MermaidEditor: React.FC = () => {
     } catch (err) {
       console.error("Failed to initialize mermaid:", err);
     }
-  }, []);
+  }, [mounted]);
   
   // Separate effect for rendering to handle DOM updates safely
   useEffect(() => {
-    if (!renderTrigger || !code.trim()) return;
+    if (!mounted || !renderTrigger || !code.trim()) return;
     
     const renderSvg = async () => {
       setIsRendering(true);
@@ -71,7 +78,9 @@ const MermaidEditor: React.FC = () => {
         // Append to body instead of the React tree
         document.body.appendChild(tempContainer);
         
-        const id = `mermaid-${Date.now()}`;
+        // Use a counter instead of Date.now() to avoid hydration issues
+        renderCounterRef.current += 1;
+        const id = `mermaid-${renderCounterRef.current}`;
         const { svg } = await mermaid.render(id, processedCode, tempContainer);
         
         // Store the SVG content in state
@@ -109,7 +118,7 @@ const MermaidEditor: React.FC = () => {
     };
     
     renderSvg();
-  }, [renderTrigger, code]);
+  }, [mounted, renderTrigger, code]);
   
   // Separate effect to update the DOM with SVG content after React updates
   useEffect(() => {
@@ -211,10 +220,10 @@ const MermaidEditor: React.FC = () => {
   const parseStyleString = (styleStr: string): Record<string, string> => {
     const styleObj: Record<string, string> = {};
     if (!styleStr) return styleObj;
-    
+
     // Remove "style nodeId " prefix if it exists
     const cleanStyleStr = styleStr.replace(/^style\s+\w+\s+/, '');
-    
+
     // Split by comma and extract property:value pairs
     cleanStyleStr.split(',').forEach(pair => {
       const [prop, val] = pair.split(':').map(s => s.trim());
@@ -222,111 +231,15 @@ const MermaidEditor: React.FC = () => {
         styleObj[prop] = val;
       }
     });
-    
+
     return styleObj;
   };
-  
+
   // Convert style object back to Mermaid style string
   const styleObjToString = (styleObj: Record<string, string>): string => {
     return Object.entries(styleObj)
       .map(([prop, val]) => `${prop}:${val}`)
       .join(',');
-  };
-
-  // Improved color style application that merges styles properly
-  const applyColorStyle = (styleText: string) => {
-    if (!editorRef.current) return;
-    
-    const textarea = editorRef.current;
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-    
-    if (selectionStart === selectionEnd) {
-      // No selection, just inform user what to do
-      setError('Please select a node or edge in your code first, then apply a color');
-      return;
-    }
-    
-    // Get the selected text
-    const selectedText = code.substring(selectionStart, selectionEnd);
-    
-    // Extract node ID from various formats
-    let nodeId = null;
-    
-    // Match node patterns: A[Text] or B{Text} or C(Text)
-    const nodeMatch = selectedText.match(/^([A-Za-z0-9_]+)(\[.*\]|\(.*\)|{.*})$/);
-    if (nodeMatch) {
-      // It's a node with a label, extract just the ID
-      nodeId = nodeMatch[1];
-    } else if (selectedText.match(/^[A-Za-z0-9_]+$/)) {
-      // It's just a node ID without a label
-      nodeId = selectedText;
-    } else {
-      setError('Please select a valid node ID or node definition to apply a style');
-      return;
-    }
-    
-    // Parse the new style to apply
-    const newStyleProps = parseStyleString(styleText);
-    
-    // Check if this node already has styling
-    const existingStyleRegex = new RegExp(`style\\s+${nodeId}\\s+([^\\n]+)`, 'i');
-    const existingStyleMatch = code.match(existingStyleRegex);
-    
-    let styleDeclaration = '';
-    
-    if (existingStyleMatch) {
-      // Parse existing style string to object
-      const existingStyleProps = parseStyleString(existingStyleMatch[1]);
-      
-      // Merge styles - new style properties override existing ones
-      const mergedStyle = { ...existingStyleProps, ...newStyleProps };
-      
-      // Generate the new style string
-      styleDeclaration = `style ${nodeId} ${styleObjToString(mergedStyle)}`;
-      
-      // Replace the existing style
-      const newCode = code.replace(existingStyleRegex, styleDeclaration);
-      setCode(newCode);
-    } else {
-      // No existing style for this node
-      styleDeclaration = `style ${nodeId} ${styleText}`;
-      
-      // Determine where to append the style
-      if (code.includes('style ')) {
-        // Append to the end of the existing styles section
-        // First, find the last style declaration
-        const lines = code.split('\n');
-        let lastStyleIndex = -1;
-        
-        for (let i = lines.length - 1; i >= 0; i--) {
-          if (lines[i].trim().startsWith('style ')) {
-            lastStyleIndex = i;
-            break;
-          }
-        }
-        
-        if (lastStyleIndex !== -1) {
-          // Insert after the last style
-          lines.splice(lastStyleIndex + 1, 0, styleDeclaration);
-          setCode(lines.join('\n'));
-        } else {
-          // Couldn't find the style section, append to end
-          setCode(`${code}\n\n${styleDeclaration}`);
-        }
-      } else {
-        // No existing styles, append to the end with a blank line
-        setCode(`${code}\n\n${styleDeclaration}`);
-      }
-    }
-    
-    // Keep selection on the original node
-    setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.setSelectionRange(selectionStart, selectionEnd);
-        editorRef.current.focus();
-      }
-    }, 0);
   };
 
   // Extract nodes from the current diagram code
@@ -455,13 +368,6 @@ const MermaidEditor: React.FC = () => {
             Clear
           </button>
           <SampleDiagrams onSelectSample={loadSample} />
-          <ColorPalette onColorSelect={(style, name) => applyColorStyle(style)} />
-          <button
-            onClick={() => setShowColorHelp(!showColorHelp)}
-            className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded text-sm hover:bg-amber-200"
-          >
-            {showColorHelp ? 'Hide Help' : 'Color Help'}
-          </button>
           <button
             onClick={() => setShowNodePanel(!showNodePanel)}
             className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200"
@@ -486,42 +392,6 @@ const MermaidEditor: React.FC = () => {
           </button>
         </div>
       </div>
-      
-      {/* Color Help Section */}
-      {showColorHelp && (
-        <div className="bg-yellow-50 p-4 rounded-lg mb-4">
-          <h3 className="font-semibold mb-2">How to use colors in Mermaid:</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-sm mb-1">For nodes:</h4>
-              <pre className="bg-white p-2 rounded text-xs">
-{`A[My Node]
-style A fill:#f9a,stroke:#333,stroke-width:2px`}
-              </pre>
-            </div>
-            <div>
-              <h4 className="font-medium text-sm mb-1">For classDefs (multiple nodes):</h4>
-              <pre className="bg-white p-2 rounded text-xs">
-{`classDef important fill:#f96,stroke:#333,stroke-width:2px
-class A,B important`}
-              </pre>
-            </div>
-            <div>
-              <h4 className="font-medium text-sm mb-1">Colored links:</h4>
-              <pre className="bg-white p-2 rounded text-xs">
-{`A --> B
-linkStyle 0 stroke:#f00,stroke-width:2px`}
-              </pre>
-            </div>
-            <div>
-              <h4 className="font-medium text-sm mb-1">Using the color picker:</h4>
-              <p className="text-xs">1. Select a node in the editor (e.g., "A[Start]")</p>
-              <p className="text-xs">2. Choose a color from the palette</p>
-              <p className="text-xs">3. The style will be applied automatically</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Node Style Panel */}
       {showNodePanel && svgContent && (

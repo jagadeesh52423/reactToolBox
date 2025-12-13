@@ -48,9 +48,9 @@ const tools: Tool[] = [
     icon: 'Aa',
   },
   {
-    name: 'SVG Editor',
+    name: 'Mermaid Editor',
     path: '/svgEditor',
-    description: 'Create and edit diagrams with Mermaid and download as SVG',
+    description: 'Create beautiful diagrams with Mermaid syntax and download as SVG',
     icon: '📊',
   },
   {
