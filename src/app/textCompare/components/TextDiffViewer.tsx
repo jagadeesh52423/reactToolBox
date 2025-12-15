@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import { computeDiff, DiffResult } from '../utils/diffUtils';
+import { computeDiff, DiffResult, computeWordDiff, WordDiff } from '../utils/diffUtils';
 
 const DEFAULT_TEXT_LEFT = `This is a sample text.
 It has multiple lines.
@@ -28,16 +28,26 @@ const TextDiffViewer: React.FC = () => {
     setShowDiff(true);
   };
 
-  const renderDiffLine = (line: string, type: string, lineNumber: number) => {
-    const bgColor = type === 'added' ? 'bg-green-100' 
+  const renderDiffLine = (line: string, type: string, lineNumber: number, otherLine?: string, side?: 'left' | 'right') => {
+    const bgColor = type === 'added' ? 'bg-green-100'
                   : type === 'removed' ? 'bg-red-100'
                   : type === 'changed' ? 'bg-yellow-100'
                   : '';
-    const textColor = type === 'added' ? 'text-green-800' 
+    const textColor = type === 'added' ? 'text-green-800'
                     : type === 'removed' ? 'text-red-800'
                     : type === 'changed' ? 'text-yellow-800'
                     : '';
-    
+
+    // For changed lines, compute word-level diff
+    let wordDiff: WordDiff[] | null = null;
+    if (type === 'changed' && otherLine !== undefined && side) {
+      const wordDiffResult = computeWordDiff(
+        side === 'left' ? line : otherLine,
+        side === 'right' ? line : otherLine
+      );
+      wordDiff = side === 'left' ? wordDiffResult.left : wordDiffResult.right;
+    }
+
     return (
       <div className={`py-1 ${bgColor} ${textColor} px-2 font-mono whitespace-pre-wrap break-all flex`}>
         {lineNumber > 0 && (
@@ -46,7 +56,18 @@ const TextDiffViewer: React.FC = () => {
           </div>
         )}
         <div className="flex-grow">
-          {line || ' '}
+          {wordDiff ? (
+            wordDiff.map((word, index) => (
+              <span
+                key={index}
+                className={word.type === 'changed' ? 'bg-yellow-300 text-yellow-900 font-semibold' : ''}
+              >
+                {word.text}
+              </span>
+            ))
+          ) : (
+            line || ' '
+          )}
         </div>
       </div>
     );
@@ -95,7 +116,7 @@ const TextDiffViewer: React.FC = () => {
               <div>
                 {diffResult.left.map((item, index) => (
                   <div key={`left-${index}`} className="border-b last:border-b-0">
-                    {renderDiffLine(item.text, item.type, item.lineNumber)}
+                    {renderDiffLine(item.text, item.type, item.lineNumber, diffResult.right[index]?.text, 'left')}
                   </div>
                 ))}
               </div>
@@ -105,7 +126,7 @@ const TextDiffViewer: React.FC = () => {
               <div>
                 {diffResult.right.map((item, index) => (
                   <div key={`right-${index}`} className="border-b last:border-b-0">
-                    {renderDiffLine(item.text, item.type, item.lineNumber)}
+                    {renderDiffLine(item.text, item.type, item.lineNumber, diffResult.left[index]?.text, 'right')}
                   </div>
                 ))}
               </div>
