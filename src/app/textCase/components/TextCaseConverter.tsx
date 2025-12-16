@@ -1,120 +1,98 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { TextCase, textCaseOptions, convertTextCase } from '../utils/textCaseUtils';
+import React, { useState } from 'react';
+import { useTextCaseConverter } from '../hooks/useTextCaseConverter';
+import { CaseSelector } from './CaseSelector';
+import { TextInput } from './TextInput';
+import { TextOutput } from './TextOutput';
+import { QuickExamples } from './QuickExamples';
+import { Notification } from './Notification';
 
 const DEFAULT_TEXT = `Hello World! This is a sample text.
 You can convert it to different text cases.`;
 
+/**
+ * Main Text Case Converter Component
+ * Refactored following SOLID principles and design patterns:
+ *
+ * - Single Responsibility: Component only orchestrates sub-components
+ * - Open/Closed: Easy to extend with new case types without modifying existing code
+ * - Dependency Inversion: Depends on abstractions (hook) rather than concrete implementations
+ * - Strategy Pattern: Different case conversion strategies
+ * - Factory Pattern: Strategy creation encapsulated in factory
+ * - Separation of Concerns: Business logic in service layer, UI in components
+ */
 const TextCaseConverter: React.FC = () => {
-  const [inputText, setInputText] = useState(DEFAULT_TEXT);
-  const [selectedCase, setSelectedCase] = useState<TextCase>('uppercase');
-  const [outputText, setOutputText] = useState('');
+  const {
+    inputText,
+    outputText,
+    selectedCase,
+    availableOptions,
+    inputStats,
+    outputStats,
+    updateInputText,
+    updateSelectedCase,
+    copyToClipboard,
+    pasteFromClipboard,
+    clearInput,
+  } = useTextCaseConverter(DEFAULT_TEXT);
 
-  useEffect(() => {
-    setOutputText(convertTextCase(inputText, selectedCase));
-  }, [inputText, selectedCase]);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
 
-  const handleCopyOutput = () => {
-    navigator.clipboard.writeText(outputText);
-    alert('Text copied to clipboard!');
+  const handleCopy = async () => {
+    const success = await copyToClipboard();
+    setNotification({
+      message: success ? 'Text copied to clipboard!' : 'Failed to copy text',
+      type: success ? 'success' : 'error',
+    });
   };
 
-  const handleClearInput = () => {
-    setInputText('');
-    setOutputText('');
-  };
-
-  const handlePasteInput = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setInputText(text);
-    } catch (err) {
-      alert('Failed to read clipboard');
-    }
+  const handlePaste = async () => {
+    const success = await pasteFromClipboard();
+    setNotification({
+      message: success ? 'Text pasted from clipboard!' : 'Failed to read clipboard',
+      type: success ? 'success' : 'error',
+    });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h2 className="text-lg font-semibold mb-3">Select Text Case</h2>
-        <select
-          value={selectedCase}
-          onChange={(e) => setSelectedCase(e.target.value as TextCase)}
-          className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {textCaseOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label} - {option.example}
-            </option>
-          ))}
-        </select>
-      </div>
+    <>
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Input Text</h3>
-            <div className="space-x-2">
-              <button
-                onClick={handlePasteInput}
-                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-              >
-                Paste
-              </button>
-              <button
-                onClick={handleClearInput}
-                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-          <textarea
+      <div className="space-y-6">
+        <CaseSelector
+          selectedCase={selectedCase}
+          options={availableOptions}
+          onChange={updateSelectedCase}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TextInput
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Enter your text here..."
-            className="w-full h-80 p-4 border border-gray-300 rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={updateInputText}
+            onPaste={handlePaste}
+            onClear={clearInput}
+            stats={inputStats}
           />
-          <div className="text-sm text-gray-600">
-            {inputText.length} characters, {inputText.trim().split(/\s+/).filter(Boolean).length} words
-          </div>
+
+          <TextOutput
+            value={outputText}
+            onCopy={handleCopy}
+            stats={outputStats}
+          />
         </div>
 
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Output</h3>
-            {outputText && (
-              <button
-                onClick={handleCopyOutput}
-                className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm transition-colors"
-              >
-                Copy
-              </button>
-            )}
-          </div>
-          <div className="w-full h-80 p-4 border border-gray-300 rounded-lg font-mono text-sm bg-gray-50 overflow-auto">
-            <pre className="whitespace-pre-wrap break-words">
-              {outputText || 'Converted text will appear here...'}
-            </pre>
-          </div>
-          <div className="text-sm text-gray-600">
-            {outputText.length} characters, {outputText.trim().split(/\s+/).filter(Boolean).length} words
-          </div>
-        </div>
+        <QuickExamples options={availableOptions} />
       </div>
-
-      <div className="bg-gray-100 rounded-lg p-4">
-        <h3 className="text-lg font-semibold mb-3">Quick Examples</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {textCaseOptions.slice(0, 6).map((option) => (
-            <div key={option.value} className="bg-white p-3 rounded border">
-              <div className="font-medium text-sm">{option.label}</div>
-              <div className="text-gray-600 text-xs mt-1">{option.example}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </>
   );
 };
 
