@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { HTMLFormattingService } from '../services/HTMLFormattingService';
 import { FormatOptions } from '../models/HTMLToken';
+import { ValidationResult } from '../validators/HTMLValidator';
 
 /**
  * Custom hook for HTML formatting logic
@@ -13,6 +14,7 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
   const [indentSize, setIndentSize] = useState<number>(2);
   const [error, setError] = useState<string>('');
   const [showOutput, setShowOutput] = useState<boolean>(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
   // Create service instance once
   const formattingService = useMemo(() => new HTMLFormattingService(), []);
@@ -54,6 +56,12 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
   const formatHTML = useCallback(() => {
     try {
       setError('');
+
+      // First validate
+      const validation = formattingService.validateHTML(inputHTML);
+      setValidationResult(validation);
+
+      // Then format
       const result = formattingService.formatAndHighlight(inputHTML, formatOptions);
       setFormattedHTML(result.formatted);
       setHighlightedHTML(result.highlighted);
@@ -64,15 +72,25 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
       setShowOutput(false);
       setFormattedHTML('');
       setHighlightedHTML('');
+      setValidationResult(null);
     }
   }, [inputHTML, formatOptions, formattingService]);
 
-  // Validate HTML
-  const validateHTML = useCallback(() => {
+  // Validate HTML only (without formatting)
+  const validateHTMLOnly = useCallback(() => {
     try {
-      return formattingService.validateHTML(inputHTML);
+      const validation = formattingService.validateHTML(inputHTML);
+      setValidationResult(validation);
+      return validation;
     } catch {
-      return { valid: false, errors: ['Failed to validate HTML'] };
+      const errorResult: ValidationResult = {
+        valid: false,
+        errors: [{ type: 'error', message: 'Failed to validate HTML' }],
+        warnings: [],
+        info: [],
+      };
+      setValidationResult(errorResult);
+      return errorResult;
     }
   }, [inputHTML, formattingService]);
 
@@ -94,6 +112,7 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
     setHighlightedHTML('');
     setError('');
     setShowOutput(false);
+    setValidationResult(null);
   }, []);
 
   // Update input
@@ -117,12 +136,13 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
     showOutput,
     inputStats,
     outputStats,
+    validationResult,
 
     // Actions
     updateInput,
     updateIndentSize,
     formatHTML,
-    validateHTML,
+    validateHTMLOnly,
     copyToClipboard,
     clearInput,
   };

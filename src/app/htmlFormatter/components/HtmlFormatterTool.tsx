@@ -6,6 +6,7 @@ import { FormatControls } from './FormatControls';
 import { HTMLOutput } from './HTMLOutput';
 import { ErrorDisplay } from './ErrorDisplay';
 import { Notification } from './Notification';
+import { ValidationResults } from './ValidationResults';
 
 const DEFAULT_HTML = `<!DOCTYPE html>
 <html>
@@ -50,9 +51,11 @@ const HtmlFormatterTool: React.FC = () => {
     showOutput,
     inputStats,
     outputStats,
+    validationResult,
     updateInput,
     updateIndentSize,
     formatHTML,
+    validateHTMLOnly,
     copyToClipboard,
     clearInput,
   } = useHTMLFormatter(DEFAULT_HTML);
@@ -108,6 +111,10 @@ const HtmlFormatterTool: React.FC = () => {
           onFormat={handleFormat}
           disabled={!inputHTML.trim()}
         />
+
+        {validationResult && (
+          <ValidationResults validationResult={validationResult} />
+        )}
 
         {showOutput && (
           <HTMLOutput

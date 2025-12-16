@@ -4,6 +4,7 @@ import { IHTMLHighlighter } from '../highlighters/IHTMLHighlighter';
 import { StandardHTMLFormatter } from '../formatters/StandardHTMLFormatter';
 import { BasicHTMLHighlighter } from '../highlighters/BasicHTMLHighlighter';
 import { FormatOptions } from '../models/HTMLToken';
+import { HTMLValidator, ValidationResult } from '../validators/HTMLValidator';
 
 /**
  * Service class for HTML formatting operations
@@ -14,6 +15,7 @@ export class HTMLFormattingService {
   private tokenizer: HTMLTokenizer;
   private formatter: IHTMLFormatter;
   private highlighter: IHTMLHighlighter;
+  private validator: HTMLValidator;
 
   constructor(
     formatter?: IHTMLFormatter,
@@ -22,6 +24,7 @@ export class HTMLFormattingService {
     this.tokenizer = new HTMLTokenizer();
     this.formatter = formatter || new StandardHTMLFormatter();
     this.highlighter = highlighter || new BasicHTMLHighlighter();
+    this.validator = new HTMLValidator();
   }
 
   /**
@@ -92,42 +95,28 @@ export class HTMLFormattingService {
   }
 
   /**
-   * Validates HTML structure (basic validation)
+   * Validates HTML structure with comprehensive checks
    * @param html - HTML string to validate
-   * @returns Validation result with errors if any
+   * @returns Detailed validation result with errors, warnings, and info
    */
-  public validateHTML(html: string): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
+  public validateHTML(html: string): ValidationResult {
     try {
       const tokens = this.tokenizer.tokenize(html);
-      const tagStack: string[] = [];
-
-      for (const token of tokens) {
-        if (token.type === 'TAG_OPEN' && token.tagName) {
-          tagStack.push(token.tagName);
-        } else if (token.type === 'TAG_CLOSE' && token.tagName) {
-          const expected = tagStack.pop();
-          if (expected !== token.tagName) {
-            errors.push(
-              `Mismatched closing tag: expected </${expected}>, found </${token.tagName}>`
-            );
-          }
-        }
-      }
-
-      // Check for unclosed tags
-      if (tagStack.length > 0) {
-        errors.push(`Unclosed tags: ${tagStack.join(', ')}`);
-      }
+      return this.validator.validate(tokens);
     } catch (error) {
-      errors.push('Failed to parse HTML');
+      return {
+        valid: false,
+        errors: [
+          {
+            type: 'error',
+            message: 'Failed to parse HTML',
+            suggestion: 'Check for syntax errors in your HTML',
+          },
+        ],
+        warnings: [],
+        info: [],
+      };
     }
-
-    return {
-      valid: errors.length === 0,
-      errors,
-    };
   }
 
   /**
