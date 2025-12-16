@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { HTMLFormattingService } from '../services/HTMLFormattingService';
 import { FormatOptions } from '../models/HTMLToken';
 import { ValidationResult } from '../validators/HTMLValidator';
+import { downloadFile, generateFilename } from '../utils/fileUtils';
 
 /**
  * Custom hook for HTML formatting logic
@@ -15,6 +16,7 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
   const [error, setError] = useState<string>('');
   const [showOutput, setShowOutput] = useState<boolean>(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [currentFilename, setCurrentFilename] = useState<string>('');
 
   // Create service instance once
   const formattingService = useMemo(() => new HTMLFormattingService(), []);
@@ -113,6 +115,7 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
     setError('');
     setShowOutput(false);
     setValidationResult(null);
+    setCurrentFilename('');
   }, []);
 
   // Update input
@@ -120,6 +123,26 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
     setInputHTML(html);
     setError(''); // Clear error when input changes
   }, []);
+
+  // Load file
+  const loadFile = useCallback((content: string, filename: string) => {
+    setInputHTML(content);
+    setCurrentFilename(filename);
+    setError('');
+    setShowOutput(false);
+    setValidationResult(null);
+  }, []);
+
+  // Download formatted HTML
+  const downloadFormattedHTML = useCallback(() => {
+    if (!formattedHTML) return;
+
+    const filename = currentFilename
+      ? currentFilename.replace(/\.html?$/i, '-formatted.html')
+      : generateFilename('formatted-html');
+
+    downloadFile(formattedHTML, filename, 'text/html');
+  }, [formattedHTML, currentFilename]);
 
   // Update indent size
   const updateIndentSize = useCallback((size: number) => {
@@ -137,6 +160,7 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
     inputStats,
     outputStats,
     validationResult,
+    currentFilename,
 
     // Actions
     updateInput,
@@ -145,5 +169,7 @@ export const useHTMLFormatter = (defaultHTML: string = '') => {
     validateHTMLOnly,
     copyToClipboard,
     clearInput,
+    loadFile,
+    downloadFormattedHTML,
   };
 };
