@@ -1,7 +1,11 @@
 'use client';
 import React, { useState } from 'react';
-import { formatHtml } from '../utils/htmlUtils';
-import SyntaxHighlighter from './SyntaxHighlighter';
+import { useHTMLFormatter } from '../hooks/useHTMLFormatter';
+import { HTMLInput } from './HTMLInput';
+import { FormatControls } from './FormatControls';
+import { HTMLOutput } from './HTMLOutput';
+import { ErrorDisplay } from './ErrorDisplay';
+import { Notification } from './Notification';
 
 const DEFAULT_HTML = `<!DOCTYPE html>
 <html>
@@ -17,91 +21,103 @@ const DEFAULT_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+/**
+ * Main HTML Formatter Component (Refactored)
+ *
+ * Refactored following SOLID principles and design patterns:
+ *
+ * - Single Responsibility: Component only orchestrates sub-components
+ * - Open/Closed: Easy to extend with new formatter/highlighter strategies
+ * - Dependency Inversion: Depends on abstractions (hook, services) not concrete implementations
+ * - Strategy Pattern: Different formatting and highlighting strategies
+ * - Service Layer: Business logic separated from UI
+ * - Separation of Concerns: Tokenizer, Formatter, Highlighter are separate classes
+ *
+ * Architecture:
+ * - Tokenizer: Parses HTML into structured tokens
+ * - Formatter: Applies formatting rules using Strategy pattern
+ * - Highlighter: Applies syntax highlighting using Strategy pattern
+ * - Service: Coordinates between components (Facade pattern)
+ * - Hook: Manages state and business logic interactions
+ * - Components: Focused UI components with single responsibilities
+ */
 const HtmlFormatterTool: React.FC = () => {
-  const [htmlCode, setHtmlCode] = useState(DEFAULT_HTML);
-  const [formattedHtml, setFormattedHtml] = useState('');
-  const [indentSize, setIndentSize] = useState(2);
-  const [error, setError] = useState('');
-  const [showFormatted, setShowFormatted] = useState(false);
+  const {
+    inputHTML,
+    highlightedHTML,
+    indentSize,
+    error,
+    showOutput,
+    inputStats,
+    outputStats,
+    updateInput,
+    updateIndentSize,
+    formatHTML,
+    copyToClipboard,
+    clearInput,
+  } = useHTMLFormatter(DEFAULT_HTML);
+
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
 
   const handleFormat = () => {
-    try {
-      const result = formatHtml(htmlCode, indentSize);
-      setFormattedHtml(result);
-      setShowFormatted(true);
-      setError('');
-    } catch (err) {
-      setError(`Error formatting HTML: ${err instanceof Error ? err.message : String(err)}`);
-      setShowFormatted(false);
+    formatHTML();
+    if (!error) {
+      setNotification({
+        message: 'HTML formatted successfully!',
+        type: 'success',
+      });
     }
   };
 
-  const handleCopyToClipboard = () => {
-    // Copy the raw formatted HTML without syntax highlighting
-    navigator.clipboard.writeText(formattedHtml);
-    // Show feedback (could use a toast notification here)
-    alert('Formatted HTML copied to clipboard!');
+  const handleCopy = async () => {
+    const success = await copyToClipboard();
+    setNotification({
+      message: success
+        ? 'Formatted HTML copied to clipboard!'
+        : 'Failed to copy to clipboard',
+      type: success ? 'success' : 'error',
+    });
   };
 
   return (
-    <div className="space-y-4">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      
-      <div className="flex flex-col gap-2">
-        <label className="font-medium">HTML Input</label>
-        <textarea
-          className="w-full h-64 p-2 border rounded font-mono text-sm"
-          value={htmlCode}
-          onChange={(e) => setHtmlCode(e.target.value)}
-          placeholder="Paste your HTML code here..."
+    <>
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
         />
-      </div>
-      
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-2">
-          <label htmlFor="indentSize" className="text-sm font-medium">Indent Size:</label>
-          <select 
-            id="indentSize"
-            className="border rounded p-1"
-            value={indentSize}
-            onChange={(e) => setIndentSize(Number(e.target.value))}
-          >
-            <option value="2">2 spaces</option>
-            <option value="4">4 spaces</option>
-            <option value="8">8 spaces</option>
-          </select>
-        </div>
-        
-        <button
-          onClick={handleFormat}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-        >
-          Format HTML
-        </button>
-      </div>
-      
-      {showFormatted && (
-        <div className="mt-6">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold">Formatted HTML</h2>
-            <button
-              onClick={handleCopyToClipboard}
-              className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded text-sm"
-            >
-              Copy to Clipboard
-            </button>
-          </div>
-          
-          <div className="overflow-auto max-h-96">
-            <SyntaxHighlighter code={formattedHtml} language="html" />
-          </div>
-        </div>
       )}
-    </div>
+
+      <div className="space-y-6">
+        <ErrorDisplay error={error} />
+
+        <HTMLInput
+          value={inputHTML}
+          onChange={updateInput}
+          onClear={clearInput}
+          stats={inputStats}
+        />
+
+        <FormatControls
+          indentSize={indentSize}
+          onIndentSizeChange={updateIndentSize}
+          onFormat={handleFormat}
+          disabled={!inputHTML.trim()}
+        />
+
+        {showOutput && (
+          <HTMLOutput
+            highlightedHTML={highlightedHTML}
+            onCopy={handleCopy}
+            stats={outputStats}
+          />
+        )}
+      </div>
+    </>
   );
 };
 
