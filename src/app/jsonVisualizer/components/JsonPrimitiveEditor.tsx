@@ -102,10 +102,10 @@ export default function JsonPrimitiveEditor({
                         onChange={(e) => setEditValue(e.target.value)}
                         className={`
                             px-2 py-1 text-sm font-mono rounded-md
-                            bg-slate-800 border focus:outline-none focus:ring-1
+                            bg-white dark:bg-slate-800 border focus:outline-none focus:ring-1
                             ${error
-                                ? 'border-red-500/50 focus:ring-red-500/30 text-red-300'
-                                : 'border-slate-600 focus:ring-indigo-500/30 text-slate-200'
+                                ? 'border-red-400/50 dark:border-red-500/50 focus:ring-red-500/30 text-red-600 dark:text-red-300'
+                                : 'border-gray-300 dark:border-slate-600 focus:ring-indigo-500/30 text-gray-800 dark:text-slate-200'
                             }
                         `}
                         onKeyDown={handleKeyDown}
@@ -113,21 +113,21 @@ export default function JsonPrimitiveEditor({
                     />
                     <button
                         onClick={saveEdit}
-                        className="p-1.5 rounded-md bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                        className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-600/30 transition-colors"
                         title="Save (Enter)"
                     >
                         <CheckIcon size={14} />
                     </button>
                     <button
                         onClick={cancelEdit}
-                        className="p-1.5 rounded-md bg-slate-600/20 text-slate-400 hover:bg-slate-600/30 transition-colors"
+                        className="p-1.5 rounded-md bg-gray-100 dark:bg-slate-600/20 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600/30 transition-colors"
                         title="Cancel (Esc)"
                     >
                         <XIcon size={14} />
                     </button>
                 </div>
                 {error && (
-                    <div className="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded">
+                    <div className="text-xs text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-500/10 px-2 py-1 rounded">
                         {error}
                     </div>
                 )}

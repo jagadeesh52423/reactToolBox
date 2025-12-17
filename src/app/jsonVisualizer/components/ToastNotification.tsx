@@ -108,7 +108,7 @@ export default function ToastNotification({ toast, onClose }: ToastNotificationP
             {/* Close Button */}
             <button
                 onClick={onClose}
-                className="ml-2 p-1 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors"
+                className="ml-2 p-1 rounded-lg text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
                 aria-label="Close notification"
             >
                 <XIcon size={14} />

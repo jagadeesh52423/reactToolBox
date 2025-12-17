@@ -66,27 +66,27 @@ export default function StatusBar({ jsonInput, parsedJson, error }: StatusBarPro
     }, [jsonInput, parsedJson, error]);
 
     return (
-        <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-slate-800/50 to-slate-900/50 dark:from-slate-800 dark:to-slate-900 border-t border-slate-700/50 text-sm">
+        <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-gray-100/50 to-gray-200/50 dark:from-slate-800/50 dark:to-slate-900/50 border-t border-gray-200/50 dark:border-slate-700/50 text-sm">
             <div className="flex items-center gap-6">
                 {/* Size */}
-                <div className="flex items-center gap-2 text-slate-400">
-                    <DatabaseIcon size={14} className="text-slate-500" />
-                    <span className="font-medium text-slate-300">{stats.size}</span>
-                    <span className="text-slate-500">Size</span>
+                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
+                    <DatabaseIcon size={14} className="text-gray-400 dark:text-slate-500" />
+                    <span className="font-medium text-gray-700 dark:text-slate-300">{stats.size}</span>
+                    <span className="text-gray-400 dark:text-slate-500">Size</span>
                 </div>
 
                 {/* Node Count */}
-                <div className="flex items-center gap-2 text-slate-400">
-                    <HashIcon size={14} className="text-slate-500" />
-                    <span className="font-medium text-slate-300">{stats.nodeCount}</span>
-                    <span className="text-slate-500">Nodes</span>
+                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
+                    <HashIcon size={14} className="text-gray-400 dark:text-slate-500" />
+                    <span className="font-medium text-gray-700 dark:text-slate-300">{stats.nodeCount}</span>
+                    <span className="text-gray-400 dark:text-slate-500">Nodes</span>
                 </div>
 
                 {/* Depth */}
-                <div className="flex items-center gap-2 text-slate-400">
-                    <LayersIcon size={14} className="text-slate-500" />
-                    <span className="font-medium text-slate-300">{stats.depth}</span>
-                    <span className="text-slate-500">Depth</span>
+                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
+                    <LayersIcon size={14} className="text-gray-400 dark:text-slate-500" />
+                    <span className="font-medium text-gray-700 dark:text-slate-300">{stats.depth}</span>
+                    <span className="text-gray-400 dark:text-slate-500">Depth</span>
                 </div>
             </div>
 
@@ -94,18 +94,18 @@ export default function StatusBar({ jsonInput, parsedJson, error }: StatusBarPro
             <div className="flex items-center gap-2">
                 {stats.isValid ? (
                     <>
-                        <CheckIcon size={14} className="text-emerald-400" />
-                        <span className="text-emerald-400 font-medium">Valid JSON</span>
+                        <CheckIcon size={14} className="text-emerald-500 dark:text-emerald-400" />
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">Valid JSON</span>
                     </>
                 ) : error ? (
                     <>
-                        <AlertCircleIcon size={14} className="text-red-400" />
-                        <span className="text-red-400 font-medium">Invalid JSON</span>
+                        <AlertCircleIcon size={14} className="text-red-500 dark:text-red-400" />
+                        <span className="text-red-600 dark:text-red-400 font-medium">Invalid JSON</span>
                     </>
                 ) : (
                     <>
-                        <AlertCircleIcon size={14} className="text-slate-500" />
-                        <span className="text-slate-500">No input</span>
+                        <AlertCircleIcon size={14} className="text-gray-400 dark:text-slate-500" />
+                        <span className="text-gray-400 dark:text-slate-500">No input</span>
                     </>
                 )}
             </div>

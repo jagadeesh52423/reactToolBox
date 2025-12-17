@@ -83,20 +83,20 @@ export default function JsonInputPanel({
     };
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl border border-slate-700/50 shadow-xl overflow-hidden">
+        <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700/50">
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/50 dark:border-slate-700/50">
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-500/80" />
                     <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
                     <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                    <span className="ml-3 text-sm font-medium text-slate-300">JSON Input</span>
+                    <span className="ml-3 text-sm font-medium text-gray-600 dark:text-slate-300">JSON Input</span>
                 </div>
 
                 {/* Toolbar */}
                 <div className="flex items-center gap-1">
                     {/* File Operations Group */}
-                    <div className="flex items-center gap-1 pr-2 border-r border-slate-600/50">
+                    <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -106,7 +106,7 @@ export default function JsonInputPanel({
                         />
                         <button
                             onClick={triggerFileUpload}
-                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-all duration-200"
                             title="Import JSON file"
                         >
                             <FolderOpenIcon size={18} />
@@ -114,7 +114,7 @@ export default function JsonInputPanel({
                         <button
                             onClick={onDownload}
                             disabled={!jsonInput}
-                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                             title="Download JSON file"
                         >
                             <DownloadIcon size={18} />
@@ -127,7 +127,7 @@ export default function JsonInputPanel({
                         <div className="relative">
                             <button
                                 onClick={onTogglePrettify}
-                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 transition-all duration-200"
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-indigo-700 dark:text-slate-300 hover:text-indigo-900 dark:hover:text-white bg-indigo-100/50 dark:bg-indigo-600/20 hover:bg-indigo-200/50 dark:hover:bg-indigo-600/40 border border-indigo-300/50 dark:border-indigo-500/30 transition-all duration-200"
                                 title="Format JSON"
                             >
                                 <SparklesIcon size={16} />
@@ -139,8 +139,8 @@ export default function JsonInputPanel({
                             </button>
 
                             {showPrettifyOptions && (
-                                <div className="absolute right-0 mt-2 z-20 bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-3 min-w-[180px]">
-                                    <div className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wide">
+                                <div className="absolute right-0 mt-2 z-20 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-xl p-3 min-w-[180px]">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2 font-medium uppercase tracking-wide">
                                         Indentation
                                     </div>
                                     <div className="flex gap-1">
@@ -151,7 +151,7 @@ export default function JsonInputPanel({
                                                 className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                                                     indentLevel === spaces
                                                         ? 'bg-indigo-600 text-white'
-                                                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+                                                        : 'bg-gray-100 dark:bg-slate-700/50 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600/50'
                                                 }`}
                                             >
                                                 {spaces}
@@ -167,8 +167,8 @@ export default function JsonInputPanel({
                             onClick={handleCopyClick}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${
                                 copied
-                                    ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-500/30'
-                                    : 'text-slate-300 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30'
+                                    ? 'bg-emerald-100/50 dark:bg-emerald-600/30 text-emerald-600 dark:text-emerald-400 border border-emerald-300/50 dark:border-emerald-500/30'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 border border-gray-300/50 dark:border-slate-600/30'
                             }`}
                             title="Copy to clipboard"
                         >
@@ -193,14 +193,14 @@ export default function JsonInputPanel({
                 {/* Line Numbers */}
                 <div
                     ref={lineNumbersRef}
-                    className="w-12 bg-slate-900/50 border-r border-slate-700/30 overflow-hidden select-none"
+                    className="w-12 bg-gray-100/50 dark:bg-slate-900/50 border-r border-gray-200/30 dark:border-slate-700/30 overflow-hidden select-none"
                     style={{ overflowY: 'hidden' }}
                 >
                     <div className="py-4 pr-3 text-right">
                         {lineNumbers.map((num) => (
                             <div
                                 key={num}
-                                className="text-slate-600 text-sm font-mono leading-6 h-6"
+                                className="text-gray-400 dark:text-slate-600 text-sm font-mono leading-6 h-6"
                             >
                                 {num}
                             </div>
@@ -211,7 +211,7 @@ export default function JsonInputPanel({
                 {/* Textarea */}
                 <textarea
                     ref={textareaRef}
-                    className="flex-1 p-4 font-mono text-sm leading-6 bg-transparent text-slate-200 focus:outline-none resize-none placeholder-slate-600"
+                    className="flex-1 p-4 font-mono text-sm leading-6 bg-transparent text-gray-800 dark:text-slate-200 focus:outline-none resize-none placeholder-gray-400 dark:placeholder-slate-600"
                     value={jsonInput}
                     onChange={(e) => onJsonChange(e.target.value)}
                     onScroll={handleScroll}
@@ -223,11 +223,11 @@ export default function JsonInputPanel({
 
             {/* Error Display */}
             {error && (
-                <div className="px-4 py-3 bg-red-900/20 border-t border-red-500/30 flex items-start gap-3">
-                    <AlertCircleIcon size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border-t border-red-200/50 dark:border-red-500/30 flex items-start gap-3">
+                    <AlertCircleIcon size={18} className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
-                        <div className="text-red-400 font-medium text-sm">Parse Error</div>
-                        <div className="text-red-300/80 text-sm mt-0.5">{error}</div>
+                        <div className="text-red-600 dark:text-red-400 font-medium text-sm">Parse Error</div>
+                        <div className="text-red-500/80 dark:text-red-300/80 text-sm mt-0.5">{error}</div>
                     </div>
                 </div>
             )}

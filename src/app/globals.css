@@ -2,20 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light theme (default) */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark theme (class-based) */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Smooth theme transitions */
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html body,
+html main,
+html header,
+html footer,
+html aside,
+html nav {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }

@@ -208,7 +208,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                         transition-all duration-150 group
                         ${isHighlighted
                             ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40'
-                            : 'hover:bg-slate-700/30'
+                            : 'hover:bg-gray-200/50 dark:hover:bg-slate-700/30'
                         }
                     `}
                     onClick={toggleCurrentLevel}
@@ -217,7 +217,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                     <button
                         className={`
                             w-5 h-5 flex items-center justify-center rounded
-                            text-slate-500 hover:text-slate-300 hover:bg-slate-600/50
+                            text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50
                             transition-all duration-200
                         `}
                         onClick={(e) => {
@@ -231,24 +231,24 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                     </button>
 
                     {/* Type Icon */}
-                    <div className="text-slate-500">
+                    <div className="text-gray-400 dark:text-slate-500">
                         {isArray ? <BracketsIcon size={14} /> : <BracesIcon size={14} />}
                     </div>
 
                     {/* Bracket and Preview */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="font-mono text-slate-400">
+                        <span className="font-mono text-gray-500 dark:text-slate-400">
                             {isArray ? '[' : '{'}
                         </span>
 
                         {!isExpanded && (
-                            <span className="text-slate-500 text-sm truncate">
+                            <span className="text-gray-400 dark:text-slate-500 text-sm truncate">
                                 {itemCount} {itemCount === 1 ? 'item' : 'items'}
                             </span>
                         )}
 
                         {!isExpanded && (
-                            <span className="font-mono text-slate-400">
+                            <span className="font-mono text-gray-500 dark:text-slate-400">
                                 {isArray ? ']' : '}'}
                             </span>
                         )}
@@ -269,7 +269,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                 e.stopPropagation();
                                 expandSubtree();
                             }}
-                            className="p-1 rounded text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            className="p-1 rounded text-gray-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
                             title="Expand all"
                         >
                             <ExpandIcon size={14} />
@@ -279,7 +279,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                 e.stopPropagation();
                                 collapseSubtree();
                             }}
-                            className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-600/50 transition-colors"
+                            className="p-1 rounded text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50 transition-colors"
                             title="Collapse all"
                         >
                             <CollapseIcon size={14} />
@@ -292,8 +292,8 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                             className={`
                                 p-1 rounded transition-colors
                                 ${showCopied
-                                    ? 'text-emerald-400 bg-emerald-500/10'
-                                    : 'text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10'
+                                    ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10'
+                                    : 'text-gray-400 dark:text-slate-500 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-cyan-500/10'
                                 }
                             `}
                             title="Copy subtree"
@@ -307,7 +307,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 {isExpanded && (
                     <div className="relative ml-3 mt-1">
                         {/* Connector Line */}
-                        <div className="absolute left-0 top-0 bottom-4 w-px bg-gradient-to-b from-slate-600/50 to-transparent" />
+                        <div className="absolute left-0 top-0 bottom-4 w-px bg-gradient-to-b from-gray-300/50 dark:from-slate-600/50 to-transparent" />
 
                         {items.map(([key, value], index) => {
                             if (!searchService.shouldItemBeVisible(key, value, searchOptions)) {
@@ -321,16 +321,16 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                             return (
                                 <div key={key} className="relative">
                                     {/* Horizontal Connector */}
-                                    <div className="absolute left-0 top-4 w-3 h-px bg-slate-600/50" />
+                                    <div className="absolute left-0 top-4 w-3 h-px bg-gray-300/50 dark:bg-slate-600/50" />
 
                                     {/* Node Dot */}
-                                    <div className="absolute left-[-2px] top-[13px] w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                    <div className="absolute left-[-2px] top-[13px] w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-slate-500" />
 
                                     <div className="ml-4 group/item">
                                         <div className={`
                                             flex items-center gap-2 py-1 px-2 rounded-lg
                                             transition-colors duration-150
-                                            ${isPrimitiveChild ? 'hover:bg-slate-700/20' : ''}
+                                            ${isPrimitiveChild ? 'hover:bg-gray-200/50 dark:hover:bg-slate-700/20' : ''}
                                         `}>
                                             {/* Delete Button */}
                                             <button
@@ -338,7 +338,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                     e.stopPropagation();
                                                     onDelete([...path, key]);
                                                 }}
-                                                className="opacity-0 group-hover/item:opacity-100 p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                className="opacity-0 group-hover/item:opacity-100 p-1 rounded text-gray-400 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
                                                 title="Delete"
                                             >
                                                 <TrashIcon size={12} />
@@ -353,13 +353,13 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                 <span className={`
                                                     font-medium transition-colors
                                                     ${isArray
-                                                        ? 'text-slate-500 font-mono text-sm'
-                                                        : 'text-blue-400 hover:text-blue-300'
+                                                        ? 'text-gray-400 dark:text-slate-500 font-mono text-sm'
+                                                        : 'text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300'
                                                     }
                                                 `}>
                                                     {isArray ? `[${key}]` : key}
                                                 </span>
-                                                <span className="text-slate-600">:</span>
+                                                <span className="text-gray-400 dark:text-slate-600">:</span>
                                             </button>
 
                                             {/* Value */}
@@ -386,7 +386,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
 
                         {/* Closing Bracket */}
                         <div className="ml-4 py-1 px-2">
-                            <span className="font-mono text-slate-400">
+                            <span className="font-mono text-gray-500 dark:text-slate-400">
                                 {isArray ? ']' : '}'}
                             </span>
                         </div>

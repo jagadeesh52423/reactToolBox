@@ -46,21 +46,21 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
         ref
     ) => {
         return (
-            <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl border border-slate-700/50 shadow-xl overflow-hidden">
+            <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700/50">
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/50 dark:border-slate-700/50">
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500/80" />
                         <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
                         <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                        <span className="ml-3 text-sm font-medium text-slate-300">JSON Viewer</span>
+                        <span className="ml-3 text-sm font-medium text-gray-600 dark:text-slate-300">JSON Viewer</span>
                     </div>
 
                     {/* Tree Controls */}
                     <div className="flex items-center gap-1">
                         <button
                             onClick={onExpandAll}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30 transition-all duration-200"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 border border-gray-300/30 dark:border-slate-600/30 transition-all duration-200"
                             title="Expand all nodes"
                         >
                             <ExpandIcon size={14} />
@@ -68,7 +68,7 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                         </button>
                         <button
                             onClick={onCollapseAll}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30 transition-all duration-200"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 border border-gray-300/30 dark:border-slate-600/30 transition-all duration-200"
                             title="Collapse all nodes"
                         >
                             <CollapseIcon size={14} />
@@ -98,12 +98,12 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                             onUpdate={onUpdate}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-500">
                             <BracesIcon size={48} className="mb-4 opacity-30" />
                             <p className="text-lg font-medium">
                                 {error ? 'Fix JSON errors to view' : 'No JSON to display'}
                             </p>
-                            <p className="text-sm mt-1 text-slate-600">
+                            <p className="text-sm mt-1 text-gray-500 dark:text-slate-600">
                                 {error ? 'Check the input panel for error details' : 'Paste or import JSON in the input panel'}
                             </p>
                         </div>
