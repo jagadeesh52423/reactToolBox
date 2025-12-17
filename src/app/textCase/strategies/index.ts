@@ -3,7 +3,7 @@
  * Makes it easier to import strategies throughout the application
  */
 
-export { ITextCaseStrategy } from './ITextCaseStrategy';
+export type { ITextCaseStrategy } from './ITextCaseStrategy';
 export { BaseTextCaseStrategy } from './BaseTextCaseStrategy';
 export { UpperCaseStrategy } from './UpperCaseStrategy';
 export { LowerCaseStrategy } from './LowerCaseStrategy';
