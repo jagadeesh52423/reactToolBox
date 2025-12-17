@@ -1,502 +1,523 @@
 'use client';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
+import {
+    CheckCircleIcon,
+    ChevronDownIcon,
+    ChevronRightIcon,
+    BracesIcon,
+    BracketsIcon,
+    ExpandIcon,
+    CollapseIcon,
+    FilterIcon,
+    LayersIcon
+} from './Icons';
 
 interface StructuredDiffViewerProps {
-  left: string;
-  right: string;
+    left: string;
+    right: string;
 }
 
-interface DiffNode {
-  key: string;
-  path: string;
-  value: any;
-  type: 'added' | 'removed' | 'changed' | 'unchanged';
-  children?: DiffNode[];
-  leftValue?: any;
-  rightValue?: any;
-  level: number;
+type DiffType = 'added' | 'removed' | 'changed' | 'unchanged';
+
+interface DiffResult {
+    type: DiffType;
+    leftValue?: unknown;
+    rightValue?: unknown;
+    children?: Record<string, DiffResult>;
 }
 
-interface DiffSegment {
-  text: string;
-  type: 'common' | 'removed' | 'added';
-}
+type ViewMode = 'diffs' | 'full';
 
 const StructuredDiffViewer: React.FC<StructuredDiffViewerProps> = ({ left, right }) => {
-  const diffTree = useMemo(() => {
-    try {
-      const leftObj = JSON.parse(left);
-      const rightObj = JSON.parse(right);
-      return buildDiffTree(leftObj, rightObj);
-    } catch (error) {
-      console.error("Error parsing JSON:", error);
-      return [];
-    }
-  }, [left, right]);
+    const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['root']));
+    const [viewMode, setViewMode] = useState<ViewMode>('diffs');
 
-  // Word-level diff using LCS (Longest Common Subsequence)
-  function computeWordDiff(oldText: string, newText: string): { oldSegments: DiffSegment[], newSegments: DiffSegment[] } {
-    const oldWords = oldText.split(/(\s+)/);
-    const newWords = newText.split(/(\s+)/);
-
-    // Compute LCS
-    const lcs = computeLCS(oldWords, newWords);
-
-    // Build diff segments
-    const oldSegments: DiffSegment[] = [];
-    const newSegments: DiffSegment[] = [];
-
-    let oldIndex = 0;
-    let newIndex = 0;
-    let lcsIndex = 0;
-
-    while (oldIndex < oldWords.length || newIndex < newWords.length) {
-      if (lcsIndex < lcs.length &&
-          oldIndex < oldWords.length &&
-          newIndex < newWords.length &&
-          oldWords[oldIndex] === newWords[newIndex] &&
-          oldWords[oldIndex] === lcs[lcsIndex]) {
-        // Common part
-        oldSegments.push({ text: oldWords[oldIndex], type: 'common' });
-        newSegments.push({ text: newWords[newIndex], type: 'common' });
-        oldIndex++;
-        newIndex++;
-        lcsIndex++;
-      } else {
-        // Handle deletions from old
-        while (oldIndex < oldWords.length &&
-               (lcsIndex >= lcs.length || oldWords[oldIndex] !== lcs[lcsIndex])) {
-          oldSegments.push({ text: oldWords[oldIndex], type: 'removed' });
-          oldIndex++;
+    // Build diff tree
+    const diffTree = useMemo(() => {
+        try {
+            const leftObj = JSON.parse(left);
+            const rightObj = JSON.parse(right);
+            return buildDiff(leftObj, rightObj);
+        } catch (error) {
+            console.error("Error parsing JSON:", error);
+            return null;
         }
+    }, [left, right]);
 
-        // Handle additions to new
-        while (newIndex < newWords.length &&
-               (lcsIndex >= lcs.length || newWords[newIndex] !== lcs[lcsIndex])) {
-          newSegments.push({ text: newWords[newIndex], type: 'added' });
-          newIndex++;
-        }
-      }
-    }
-
-    return { oldSegments, newSegments };
-  }
-
-  // LCS algorithm
-  function computeLCS(arr1: string[], arr2: string[]): string[] {
-    const m = arr1.length;
-    const n = arr2.length;
-    const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-
-    // Fill DP table
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        if (arr1[i - 1] === arr2[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1] + 1;
-        } else {
-          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-        }
-      }
-    }
-
-    // Reconstruct LCS
-    const lcs: string[] = [];
-    let i = m, j = n;
-    while (i > 0 && j > 0) {
-      if (arr1[i - 1] === arr2[j - 1]) {
-        lcs.unshift(arr1[i - 1]);
-        i--;
-        j--;
-      } else if (dp[i - 1][j] > dp[i][j - 1]) {
-        i--;
-      } else {
-        j--;
-      }
-    }
-
-    return lcs;
-  }
-
-  // Helper function to check if any descendant has changes
-  function hasDescendantChanges(nodes: DiffNode[]): boolean {
-    return nodes.some(node => {
-      if (node.type !== 'unchanged') {
-        return true;
-      }
-      if (node.children && node.children.length > 0) {
-        return hasDescendantChanges(node.children);
-      }
-      return false;
-    });
-  }
-
-  // Helper function to check if a node or its descendants have actual changes
-  function hasActualChanges(node: DiffNode): boolean {
-    if (node.type !== 'unchanged') {
-      return true;
-    }
-    if (node.children && node.children.length > 0) {
-      return node.children.some(child => hasActualChanges(child));
-    }
-    return false;
-  }
-
-  function buildDiffTree(left: any, right: any, path = '', level = 0): DiffNode[] {
-    const nodes: DiffNode[] = [];
-
-    // Handle the case where one or both values are not objects
-    if (typeof left !== 'object' || typeof right !== 'object' || left === null || right === null) {
-      if (left === right) {
-        return [{
-          key: path || 'root',
-          path,
-          value: left,
-          type: 'unchanged',
-          level
-        }];
-      }
-
-      if (left !== undefined && right !== undefined) {
-        return [{
-          key: path || 'root',
-          path,
-          value: null,
-          type: 'changed',
-          leftValue: left,
-          rightValue: right,
-          level
-        }];
-      }
-
-      if (left !== undefined) {
-        return [{
-          key: path || 'root',
-          path,
-          value: left,
-          type: 'removed',
-          level
-        }];
-      }
-
-      return [{
-        key: path || 'root',
-        path,
-        value: right,
-        type: 'added',
-        level
-      }];
-    }
-
-    const allKeys = new Set([...Object.keys(left || {}), ...Object.keys(right || {})]);
-
-    for (const key of Array.from(allKeys).sort()) {
-      const currentPath = path ? `${path}.${key}` : key;
-      const leftValue = left?.[key];
-      const rightValue = right?.[key];
-
-      // Key exists in both
-      if (key in (left || {}) && key in (right || {})) {
-        if (typeof leftValue === 'object' && typeof rightValue === 'object' &&
-            leftValue !== null && rightValue !== null) {
-          // Both are objects - create parent node and recurse
-          const children = buildDiffTree(leftValue, rightValue, currentPath, level + 1);
-
-          // Both are objects - create parent node and recurse
-          const hasAnyChanges = hasDescendantChanges(children);
-
-          // Always show the parent if there are any changes in descendants
-          if (hasAnyChanges || children.some(child => child.type !== 'unchanged')) {
-            nodes.push({
-              key,
-              path: currentPath,
-              value: Array.isArray(leftValue) ? [] : {}, // Use proper container type
-              type: 'unchanged', // Parent is unchanged, only children differ
-              children: children, // Include all children
-              level
-            });
-          }
-        } else {
-          // Compare primitive values
-          if (leftValue === rightValue) {
-            nodes.push({
-              key,
-              path: currentPath,
-              value: leftValue,
-              type: 'unchanged',
-              level
-            });
-          } else {
-            nodes.push({
-              key,
-              path: currentPath,
-              value: null,
-              type: 'changed',
-              leftValue,
-              rightValue,
-              level
-            });
-          }
-        }
-      }
-      // Key only in left (removed)
-      else if (key in (left || {})) {
-        if (typeof leftValue === 'object' && leftValue !== null) {
-          const children = buildDiffTree(leftValue, {}, currentPath, level + 1);
-          // For removed objects, show all children as removed
-          nodes.push({
-            key,
-            path: currentPath,
-            value: Array.isArray(leftValue) ? [] : {}, // Use proper container type
-            type: 'removed',
-            children: children.map(child => ({ ...child, type: 'removed' as const })),
-            level
-          });
-        } else {
-          nodes.push({
-            key,
-            path: currentPath,
-            value: leftValue,
-            type: 'removed',
-            level
-          });
-        }
-      }
-      // Key only in right (added)
-      else if (key in (right || {})) {
-        if (typeof rightValue === 'object' && rightValue !== null) {
-          const children = buildDiffTree({}, rightValue, currentPath, level + 1);
-          // For added objects, show all children as added
-          nodes.push({
-            key,
-            path: currentPath,
-            value: Array.isArray(rightValue) ? [] : {}, // Use proper container type
-            type: 'added',
-            children: children.map(child => ({ ...child, type: 'added' as const })),
-            level
-          });
-        } else {
-          nodes.push({
-            key,
-            path: currentPath,
-            value: rightValue,
-            type: 'added',
-            level
-          });
-        }
-      }
-    }
-
-    return nodes;
-  }
-
-  const renderNode = (node: DiffNode): React.ReactNode => {
-    const indent = node.level * 24; // 24px per level
-    const hasChildren = node.children && node.children.length > 0;
-
-    const getBackgroundColor = (type: string, hasChildren: boolean) => {
-      switch (type) {
-        case 'added': return 'bg-green-100 border-l-4 border-green-400';
-        case 'removed': return 'bg-red-100 border-l-4 border-red-400';
-        case 'changed': return 'bg-yellow-100 border-l-4 border-yellow-400';
-        default:
-          // For unchanged parents, use a more subtle styling
-          return hasChildren ? 'bg-gray-25 border-l-4 border-gray-300' : 'bg-gray-50 border-l-4 border-gray-200';
-      }
-    };
-
-    const getTextColor = (type: string) => {
-      switch (type) {
-        case 'added': return 'text-green-800';
-        case 'removed': return 'text-red-800';
-        case 'changed': return 'text-yellow-800';
-        default: return 'text-gray-700';
-      }
-    };
-
-    const formatValue = (value: any) => {
-      if (value === null) return 'null';
-      if (value === undefined) return 'undefined';
-      if (typeof value === 'string') return `"${value}"`;
-      if (typeof value === 'object') {
-        if (Array.isArray(value)) {
-          return value.length === 0 ? '[...]' : `[${value.length} items]`;
-        }
-        return Object.keys(value).length === 0 ? '{...}' : `{${Object.keys(value).length} props}`;
-      }
-      return String(value);
-    };
-
-    return (
-      <div key={node.path || node.key}>
-        <div
-          className={`p-2 mb-1 rounded ${getBackgroundColor(node.type, hasChildren || false)} ${getTextColor(node.type)}`}
-          style={{ marginLeft: `${indent}px` }}
-        >
-          <div className="flex items-start">
-            <span className="font-mono font-medium mr-2 mt-1">
-              {node.key}:
-            </span>
-
-            {node.type === 'changed' ? (
-              <div className="flex-1">
-                {/* Render word-level diff for string values */}
-                {typeof node.leftValue === 'string' && typeof node.rightValue === 'string' ?
-                  (() => {
-                    const { oldSegments, newSegments } = computeWordDiff(node.leftValue, node.rightValue);
-                    const leftText = oldSegments.map(s => s.text).join('');
-                    const rightText = newSegments.map(s => s.text).join('');
-
-                    // Determine if values should be side by side or stacked
-                    const maxLineLength = 60; // Adjust this threshold as needed
-                    const canFitSideBySide = leftText.length <= maxLineLength && rightText.length <= maxLineLength;
-
-                    return canFitSideBySide ? (
-                      // Side by side layout
-                      <div className="flex gap-2 items-center">
-                        <div className="flex-1 bg-red-100 border border-red-300 rounded px-3 py-2">
-                          <div className="text-xs text-red-700 font-semibold mb-1">Before:</div>
-                          <div className="font-mono text-sm">
-                            {oldSegments.map((segment, idx) => (
-                              <span
-                                key={idx}
-                                className={segment.type === 'removed' ? 'bg-red-300 text-red-900 font-bold' : ''}
-                              >
-                                {segment.text}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 text-gray-400 text-lg">
-                          →
-                        </div>
-                        <div className="flex-1 bg-green-100 border border-green-300 rounded px-3 py-2">
-                          <div className="text-xs text-green-700 font-semibold mb-1">After:</div>
-                          <div className="font-mono text-sm">
-                            {newSegments.map((segment, idx) => (
-                              <span
-                                key={idx}
-                                className={segment.type === 'added' ? 'bg-green-300 text-green-900 font-bold' : ''}
-                              >
-                                {segment.text}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      // Stacked layout for longer content
-                      <div className="flex flex-col space-y-2">
-                        <div className="bg-red-100 border border-red-300 rounded px-3 py-2">
-                          <div className="font-mono text-sm">
-                            {oldSegments.map((segment, idx) => (
-                              <span
-                                key={idx}
-                                className={segment.type === 'removed' ? 'bg-red-300 text-red-900 font-bold' : ''}
-                              >
-                                {segment.text}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="bg-green-100 border border-green-300 rounded px-3 py-2">
-                          <div className="font-mono text-sm">
-                            {newSegments.map((segment, idx) => (
-                              <span
-                                key={idx}
-                                className={segment.type === 'added' ? 'bg-green-300 text-green-900 font-bold' : ''}
-                              >
-                                {segment.text}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()
-                  :
-                  /* Fallback for non-string values */
-                  (() => {
-                    const leftFormatted = formatValue(node.leftValue);
-                    const rightFormatted = formatValue(node.rightValue);
-                    const maxLineLength = 60; // Adjust this threshold as needed
-                    const canFitSideBySide = leftFormatted.length <= maxLineLength && rightFormatted.length <= maxLineLength;
-
-                    return canFitSideBySide ? (
-                      // Side by side layout
-                      <div className="flex gap-2 items-center">
-                        <div className="flex-1 bg-red-100 border border-red-300 rounded px-3 py-2">
-                          <div className="text-xs text-red-700 font-semibold mb-1">Before:</div>
-                          <span className="font-mono text-sm">{leftFormatted}</span>
-                        </div>
-                        <div className="flex-shrink-0 text-gray-400 text-lg">
-                          →
-                        </div>
-                        <div className="flex-1 bg-green-100 border border-green-300 rounded px-3 py-2">
-                          <div className="text-xs text-green-700 font-semibold mb-1">After:</div>
-                          <span className="font-mono text-sm">{rightFormatted}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      // Stacked layout for longer content
-                      <div className="flex flex-col space-y-2">
-                        <div className="bg-red-100 border border-red-300 rounded px-3 py-2">
-                          <span className="font-mono text-sm">{leftFormatted}</span>
-                        </div>
-                        <div className="bg-green-100 border border-green-300 rounded px-3 py-2">
-                          <span className="font-mono text-sm">{rightFormatted}</span>
-                        </div>
-                      </div>
-                    );
-                  })()
+    // Initially expand all paths with changes
+    useMemo(() => {
+        if (diffTree) {
+            const pathsToExpand = new Set<string>(['root']);
+            const collectChangedPaths = (diff: DiffResult, path: string) => {
+                if (diff.children) {
+                    Object.entries(diff.children).forEach(([key, child]) => {
+                        const childPath = path ? `${path}.${key}` : key;
+                        if (hasChanges(child)) {
+                            pathsToExpand.add(path);
+                            pathsToExpand.add(childPath);
+                            collectChangedPaths(child, childPath);
+                        }
+                    });
                 }
-              </div>
-            ) : (
-              <span className="font-mono">
-                {hasChildren ? (
-                  typeof node.value === 'object' && node.value !== null ?
-                    (Array.isArray(node.value) ? '[...]' : '{...}') :
-                    formatValue(node.value)
-                ) : formatValue(node.value)}
-              </span>
-            )}
+            };
+            collectChangedPaths(diffTree, 'root');
+            setExpandedPaths(pathsToExpand);
+        }
+    }, [diffTree]);
 
-            {/* Don't show status badge for unchanged parent nodes */}
-            {!(node.type === 'unchanged' && hasChildren) && (
-              <span className={`ml-auto px-2 py-1 rounded-full text-xs font-medium ${
-                node.type === 'added' ? 'bg-green-200 text-green-800' :
-                node.type === 'removed' ? 'bg-red-200 text-red-800' :
-                node.type === 'changed' ? 'bg-yellow-200 text-yellow-800' :
-                'bg-gray-200 text-gray-600'
-              }`}>
-                {node.type}
-              </span>
-            )}
-          </div>
-        </div>
+    function buildDiff(left: unknown, right: unknown): DiffResult {
+        // Both are the same
+        if (left === right) {
+            return { type: 'unchanged', leftValue: left, rightValue: right };
+        }
 
-        {hasChildren && node.children?.map(child => renderNode(child))}
-      </div>
-    );
-  };
+        // One is undefined
+        if (left === undefined) {
+            return { type: 'added', rightValue: right };
+        }
+        if (right === undefined) {
+            return { type: 'removed', leftValue: left };
+        }
 
-  // Check if there are any actual differences (not just unchanged nodes)
-  const hasActualDifferences = diffTree.some(node => hasActualChanges(node));
+        // Different types
+        if (typeof left !== typeof right || Array.isArray(left) !== Array.isArray(right)) {
+            return { type: 'changed', leftValue: left, rightValue: right };
+        }
 
-  if (diffTree.length === 0 || !hasActualDifferences) {
+        // Both are objects/arrays
+        if (typeof left === 'object' && left !== null && typeof right === 'object' && right !== null) {
+            const leftObj = left as Record<string, unknown>;
+            const rightObj = right as Record<string, unknown>;
+            const allKeys = new Set([...Object.keys(leftObj), ...Object.keys(rightObj)]);
+            const children: Record<string, DiffResult> = {};
+
+            allKeys.forEach(key => {
+                children[key] = buildDiff(leftObj[key], rightObj[key]);
+            });
+
+            return { type: 'unchanged', leftValue: left, rightValue: right, children };
+        }
+
+        // Primitives that differ
+        return { type: 'changed', leftValue: left, rightValue: right };
+    }
+
+    function hasChanges(diff: DiffResult): boolean {
+        if (diff.type !== 'unchanged') return true;
+        if (diff.children) {
+            return Object.values(diff.children).some(child => hasChanges(child));
+        }
+        return false;
+    }
+
+    const toggleExpanded = useCallback((path: string) => {
+        setExpandedPaths(prev => {
+            const next = new Set(prev);
+            if (next.has(path)) {
+                next.delete(path);
+            } else {
+                next.add(path);
+            }
+            return next;
+        });
+    }, []);
+
+    const expandAll = useCallback(() => {
+        if (!diffTree) return;
+        const allPaths = new Set<string>(['root']);
+        const collectPaths = (diff: DiffResult, path: string) => {
+            if (diff.children) {
+                Object.entries(diff.children).forEach(([key, child]) => {
+                    const childPath = path ? `${path}.${key}` : key;
+                    allPaths.add(childPath);
+                    collectPaths(child, childPath);
+                });
+            }
+        };
+        collectPaths(diffTree, 'root');
+        setExpandedPaths(allPaths);
+    }, [diffTree]);
+
+    const collapseAll = useCallback(() => {
+        setExpandedPaths(new Set(['root']));
+    }, []);
+
+    // Get diff indicator color
+    const getDiffBorderColor = (type: DiffType): string => {
+        switch (type) {
+            case 'added': return 'border-l-emerald-500 dark:border-l-emerald-400';
+            case 'removed': return 'border-l-red-500 dark:border-l-red-400';
+            case 'changed': return 'border-l-amber-500 dark:border-l-amber-400';
+            case 'unchanged': return viewMode === 'full' ? 'border-l-gray-300 dark:border-l-slate-600' : 'border-l-transparent';
+            default: return 'border-l-transparent';
+        }
+    };
+
+    const getDiffBgColor = (type: DiffType): string => {
+        switch (type) {
+            case 'added': return 'bg-emerald-50/30 dark:bg-emerald-900/10';
+            case 'removed': return 'bg-red-50/30 dark:bg-red-900/10';
+            case 'changed': return 'bg-amber-50/30 dark:bg-amber-900/10';
+            case 'unchanged': return viewMode === 'full' ? 'bg-gray-50/20 dark:bg-slate-800/20' : '';
+            default: return '';
+        }
+    };
+
+    const getDiffBadge = (type: DiffType): React.ReactNode => {
+        if (type === 'unchanged') return null;
+        const colors = {
+            added: 'bg-emerald-100 dark:bg-emerald-800/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-600/50',
+            removed: 'bg-red-100 dark:bg-red-800/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-600/50',
+            changed: 'bg-amber-100 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-600/50'
+        };
+        return (
+            <span className={`ml-2 px-1.5 py-0.5 text-xs font-medium rounded border ${colors[type]}`}>
+                {type}
+            </span>
+        );
+    };
+
+    // Format primitive value with type coloring
+    const formatValue = (value: unknown): React.ReactNode => {
+        if (value === null) {
+            return <span className="text-gray-500 dark:text-gray-400 italic">null</span>;
+        }
+        if (typeof value === 'string') {
+            return <span className="text-green-600 dark:text-green-400">&quot;{value}&quot;</span>;
+        }
+        if (typeof value === 'number') {
+            return <span className="text-blue-600 dark:text-blue-400">{value}</span>;
+        }
+        if (typeof value === 'boolean') {
+            return <span className="text-purple-600 dark:text-purple-400">{value.toString()}</span>;
+        }
+        return <span>{String(value)}</span>;
+    };
+
+    // Render a tree node
+    const renderNode = (
+        key: string,
+        diff: DiffResult,
+        path: string,
+        level: number,
+        isArrayItem: boolean = false,
+        isLast: boolean = false
+    ): React.ReactNode => {
+        const currentPath = path ? `${path}.${key}` : key;
+        const isExpanded = expandedPaths.has(currentPath);
+        const hasChildren = diff.children && Object.keys(diff.children).length > 0;
+        const value = diff.type === 'removed' ? diff.leftValue : diff.rightValue ?? diff.leftValue;
+        const isArray = Array.isArray(value);
+        const isObject = typeof value === 'object' && value !== null;
+        const itemCount = isObject ? Object.keys(value).length : 0;
+
+        // For changed values, show before/after
+        const renderChangedValue = () => (
+            <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-100/50 dark:bg-red-900/20 border border-red-200/50 dark:border-red-500/30">
+                    <span className="text-xs text-red-500 dark:text-red-400 font-medium">−</span>
+                    <span className="font-mono text-sm">{formatValue(diff.leftValue)}</span>
+                </div>
+                <span className="text-gray-400 dark:text-slate-500">→</span>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/30">
+                    <span className="text-xs text-emerald-500 dark:text-emerald-400 font-medium">+</span>
+                    <span className="font-mono text-sm">{formatValue(diff.rightValue)}</span>
+                </div>
+            </div>
+        );
+
+        return (
+            <div key={currentPath} className="relative">
+                {/* Horizontal connector */}
+                {level > 0 && (
+                    <div className="absolute left-0 top-4 w-3 h-px bg-gray-300/50 dark:bg-slate-600/50" />
+                )}
+
+                {/* Node dot */}
+                {level > 0 && (
+                    <div className="absolute left-[-2px] top-[13px] w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-slate-500" />
+                )}
+
+                <div className={`ml-${level > 0 ? 4 : 0}`}>
+                    <div
+                        className={`
+                            flex items-center gap-2 py-1.5 px-2 rounded-lg
+                            border-l-2 ${getDiffBorderColor(diff.type)} ${getDiffBgColor(diff.type)}
+                            transition-colors duration-150 group
+                            ${hasChildren ? 'cursor-pointer hover:bg-gray-100/50 dark:hover:bg-slate-700/30' : ''}
+                        `}
+                        onClick={hasChildren ? () => toggleExpanded(currentPath) : undefined}
+                    >
+                        {/* Expand/Collapse Icon for objects/arrays */}
+                        {hasChildren ? (
+                            <button
+                                className="w-5 h-5 flex items-center justify-center rounded text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50 transition-all"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpanded(currentPath);
+                                }}
+                            >
+                                <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                                    <ChevronDownIcon size={14} />
+                                </div>
+                            </button>
+                        ) : (
+                            <span className="w-5" />
+                        )}
+
+                        {/* Key name */}
+                        <span className={`font-medium ${isArrayItem ? 'text-gray-400 dark:text-slate-500 font-mono text-sm' : 'text-blue-600 dark:text-blue-400'}`}>
+                            {isArrayItem ? `[${key}]` : key}
+                        </span>
+                        <span className="text-gray-400 dark:text-slate-600">:</span>
+
+                        {/* Value */}
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                            {diff.type === 'changed' && !hasChildren ? (
+                                renderChangedValue()
+                            ) : hasChildren ? (
+                                <>
+                                    {/* Type Icon */}
+                                    <div className="text-gray-400 dark:text-slate-500">
+                                        {isArray ? <BracketsIcon size={14} /> : <BracesIcon size={14} />}
+                                    </div>
+                                    <span className="font-mono text-gray-500 dark:text-slate-400">
+                                        {isArray ? '[' : '{'}
+                                    </span>
+                                    {!isExpanded && (
+                                        <>
+                                            <span className="text-gray-400 dark:text-slate-500 text-sm">
+                                                {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                                            </span>
+                                            <span className="font-mono text-gray-500 dark:text-slate-400">
+                                                {isArray ? ']' : '}'}
+                                            </span>
+                                        </>
+                                    )}
+                                    <span className={`px-1.5 py-0.5 text-xs font-medium rounded border ${
+                                        isArray
+                                            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                                            : 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
+                                    }`}>
+                                        {isArray ? 'Array' : 'Object'}
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="font-mono text-sm">{formatValue(value)}</span>
+                            )}
+                        </div>
+
+                        {/* Diff badge for non-container types */}
+                        {!hasChildren && getDiffBadge(diff.type)}
+                    </div>
+
+                    {/* Children */}
+                    {hasChildren && isExpanded && (
+                        <div className="relative ml-3 mt-1">
+                            {/* Vertical connector line */}
+                            <div className="absolute left-0 top-0 bottom-4 w-px bg-gradient-to-b from-gray-300/50 dark:from-slate-600/50 to-transparent" />
+
+                            {Object.entries(diff.children!).map(([childKey, childDiff], index, arr) => {
+                                // Skip unchanged children unless they have changed descendants (only in diffs mode)
+                                if (viewMode === 'diffs' && childDiff.type === 'unchanged' && !hasChanges(childDiff)) {
+                                    return null;
+                                }
+                                return renderNode(
+                                    childKey,
+                                    childDiff,
+                                    currentPath,
+                                    level + 1,
+                                    isArray,
+                                    index === arr.length - 1
+                                );
+                            })}
+
+                            {/* Closing bracket */}
+                            <div className="ml-4 py-1 px-2">
+                                <span className="font-mono text-gray-500 dark:text-slate-400">
+                                    {isArray ? ']' : '}'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    // Check if there are any differences
+    const hasDifferences = diffTree && hasChanges(diffTree);
+
+    if (!diffTree || !hasDifferences) {
+        return (
+            <div className="p-6 text-center bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-500/30">
+                <CheckCircleIcon size={32} className="mx-auto mb-2 text-emerald-500 dark:text-emerald-400" />
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                    JSON objects are identical!
+                </span>
+            </div>
+        );
+    }
+
+    const rootValue = diffTree.rightValue ?? diffTree.leftValue;
+    const isRootArray = Array.isArray(rootValue);
+
     return (
-      <div className="p-4 text-center text-green-600 bg-green-50 rounded">
-        JSON objects are identical!
-      </div>
-    );
-  }
+        <div className="rounded-lg bg-white dark:bg-slate-800/30 border border-gray-200/50 dark:border-slate-700/50 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/50 dark:border-slate-700/50">
+                {/* Legend */}
+                <div className="flex items-center gap-4 text-xs">
+                    <span className="text-gray-500 dark:text-slate-400">Legend:</span>
+                    <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded border-l-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/30" />
+                        <span className="text-emerald-600 dark:text-emerald-400">Added</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded border-l-2 border-red-500 bg-red-100 dark:bg-red-900/30" />
+                        <span className="text-red-600 dark:text-red-400">Removed</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded border-l-2 border-amber-500 bg-amber-100 dark:bg-amber-900/30" />
+                        <span className="text-amber-600 dark:text-amber-400">Changed</span>
+                    </span>
+                    {viewMode === 'full' && (
+                        <span className="flex items-center gap-1">
+                            <span className="w-3 h-3 rounded border-l-2 border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-800/30" />
+                            <span className="text-gray-500 dark:text-slate-400">Unchanged</span>
+                        </span>
+                    )}
+                </div>
 
-  return (
-    <div className="border rounded p-4 bg-white">
-      <div className="space-y-1">
-        {diffTree.map(node => renderNode(node))}
-      </div>
-    </div>
-  );
+                {/* View Mode Toggle + Expand/Collapse buttons */}
+                <div className="flex items-center gap-2">
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center bg-gray-100/50 dark:bg-slate-700/30 rounded-lg p-0.5">
+                        <button
+                            onClick={() => setViewMode('diffs')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+                                viewMode === 'diffs'
+                                    ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+                            }`}
+                            title="Show only differences"
+                        >
+                            <FilterIcon size={12} />
+                            <span>Diffs Only</span>
+                        </button>
+                        <button
+                            onClick={() => setViewMode('full')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+                                viewMode === 'full'
+                                    ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+                            }`}
+                            title="Show full tree with all values"
+                        >
+                            <LayersIcon size={12} />
+                            <span>Full Tree</span>
+                        </button>
+                    </div>
+
+                    {/* Separator */}
+                    <div className="w-px h-5 bg-gray-300/50 dark:bg-slate-600/50" />
+
+                    {/* Expand/Collapse buttons */}
+                    <div className="flex items-center gap-1">
+                    <button
+                        onClick={expandAll}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                        title="Expand all"
+                    >
+                        <ExpandIcon size={12} />
+                        <span>Expand</span>
+                    </button>
+                    <button
+                        onClick={collapseAll}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                        title="Collapse all"
+                    >
+                        <CollapseIcon size={12} />
+                        <span>Collapse</span>
+                    </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tree content */}
+            <div className="p-4">
+                {/* Root node */}
+                <div className="relative">
+                    <div
+                        className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-gray-100/50 dark:hover:bg-slate-700/30 transition-colors group"
+                        onClick={() => toggleExpanded('root')}
+                    >
+                        <button
+                            className="w-5 h-5 flex items-center justify-center rounded text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50 transition-all"
+                        >
+                            <div className={`transition-transform duration-200 ${expandedPaths.has('root') ? 'rotate-0' : '-rotate-90'}`}>
+                                <ChevronDownIcon size={14} />
+                            </div>
+                        </button>
+                        <div className="text-gray-400 dark:text-slate-500">
+                            {isRootArray ? <BracketsIcon size={14} /> : <BracesIcon size={14} />}
+                        </div>
+                        <span className="font-mono text-gray-500 dark:text-slate-400">
+                            {isRootArray ? '[' : '{'}
+                        </span>
+                        {!expandedPaths.has('root') && (
+                            <>
+                                <span className="text-gray-400 dark:text-slate-500 text-sm">
+                                    {Object.keys(rootValue as object).length} items
+                                </span>
+                                <span className="font-mono text-gray-500 dark:text-slate-400">
+                                    {isRootArray ? ']' : '}'}
+                                </span>
+                            </>
+                        )}
+                        <span className={`px-1.5 py-0.5 text-xs font-medium rounded border ${
+                            isRootArray
+                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                                : 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
+                        }`}>
+                            {isRootArray ? 'Array' : 'Object'}
+                        </span>
+                    </div>
+
+                    {/* Root children */}
+                    {expandedPaths.has('root') && diffTree.children && (
+                        <div className="relative ml-3 mt-1">
+                            {/* Vertical connector line */}
+                            <div className="absolute left-0 top-0 bottom-4 w-px bg-gradient-to-b from-gray-300/50 dark:from-slate-600/50 to-transparent" />
+
+                            {Object.entries(diffTree.children).map(([key, childDiff], index, arr) => {
+                                // Skip unchanged children (only in diffs mode)
+                                if (viewMode === 'diffs' && childDiff.type === 'unchanged' && !hasChanges(childDiff)) {
+                                    return null;
+                                }
+                                return renderNode(key, childDiff, 'root', 1, isRootArray, index === arr.length - 1);
+                            })}
+
+                            {/* Closing bracket */}
+                            <div className="ml-4 py-1 px-2">
+                                <span className="font-mono text-gray-500 dark:text-slate-400">
+                                    {isRootArray ? ']' : '}'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Footer with type colors */}
+            <div className="flex items-center justify-end gap-4 px-4 py-2 bg-gray-50/50 dark:bg-slate-800/50 border-t border-gray-200/50 dark:border-slate-700/50 text-xs text-gray-400 dark:text-slate-500">
+                <span className="text-green-600 dark:text-green-400">&quot;string&quot;</span>
+                <span className="text-blue-600 dark:text-blue-400">number</span>
+                <span className="text-purple-600 dark:text-purple-400">boolean</span>
+                <span className="text-gray-500 dark:text-gray-400 italic">null</span>
+            </div>
+        </div>
+    );
 };
 
 export default StructuredDiffViewer;

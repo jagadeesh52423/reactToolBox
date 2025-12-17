@@ -1,7 +1,8 @@
 'use client';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Editor, { OnMount, OnChange } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface JsonEditorProps {
   value: string;
@@ -16,6 +17,20 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [editorHeight, setEditorHeight] = useState(256); // Default height
+  const { resolvedTheme } = useTheme();
+
+  // Update editor theme when system theme changes
+  useEffect(() => {
+    if (editorRef.current) {
+      const monacoTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'vs';
+      // Access monaco through the editor instance
+      import('@monaco-editor/react').then(({ loader }) => {
+        loader.init().then((monaco) => {
+          monaco.editor.setTheme(monacoTheme);
+        });
+      });
+    }
+  }, [resolvedTheme]);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -116,7 +131,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
 
   const editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
     language: 'json',
-    theme: 'vs',
+    theme: resolvedTheme === 'dark' ? 'vs-dark' : 'vs',
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
     wordWrap: 'on',
@@ -149,7 +164,10 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
   };
 
   return (
-    <div className={`border rounded font-mono ${className}`} style={{ height: `${editorHeight}px` }}>
+    <div
+      className={`border border-gray-200/50 dark:border-slate-700/50 rounded-lg font-mono bg-white dark:bg-slate-900 ${className}`}
+      style={{ height: `${editorHeight}px` }}
+    >
       <Editor
         height="100%"
         value={value}
@@ -157,7 +175,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
         onMount={handleEditorDidMount}
         options={editorOptions}
         loading={
-          <div className="flex items-center justify-center h-64 text-gray-500">
+          <div className="flex items-center justify-center h-64 text-gray-500 dark:text-slate-400">
             <div className="animate-pulse">Loading editor...</div>
           </div>
         }
