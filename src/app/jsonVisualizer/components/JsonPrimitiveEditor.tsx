@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { JSONValue } from '../models/JsonModels';
+import { JSONValue, JsonValueType } from '../models/JsonModels';
 import { getJsonParserService } from '../services/JsonParserService';
+import { CheckIcon, XIcon } from './Icons';
 
 interface JsonPrimitiveEditorProps {
     value: JSONValue;
@@ -11,10 +12,10 @@ interface JsonPrimitiveEditorProps {
 }
 
 /**
- * JsonPrimitiveEditor Component
+ * JsonPrimitiveEditor Component - Professional Redesign
  *
  * Displays and allows inline editing of primitive JSON values.
- * Shows type-specific styling and validation.
+ * Features type-colored values and smooth edit transitions.
  */
 export default function JsonPrimitiveEditor({
     value,
@@ -29,9 +30,7 @@ export default function JsonPrimitiveEditor({
     const typeStyle = parserService.getTypeStyle(value);
 
     const startEditing = () => {
-        // Only allow editing primitives
         if (typeof value === 'object' && value !== null) return;
-
         setIsEditing(true);
         setEditValue(JSON.stringify(value));
         setError('');
@@ -61,6 +60,38 @@ export default function JsonPrimitiveEditor({
         }
     };
 
+    // Get color based on type
+    const getValueColor = () => {
+        switch (typeStyle.type) {
+            case JsonValueType.STRING:
+                return 'text-emerald-400';
+            case JsonValueType.NUMBER:
+                return 'text-blue-400';
+            case JsonValueType.BOOLEAN:
+                return 'text-purple-400';
+            case JsonValueType.NULL:
+                return 'text-slate-500 italic';
+            default:
+                return 'text-slate-300';
+        }
+    };
+
+    // Get badge styling based on type
+    const getBadgeStyle = () => {
+        switch (typeStyle.type) {
+            case JsonValueType.STRING:
+                return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+            case JsonValueType.NUMBER:
+                return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+            case JsonValueType.BOOLEAN:
+                return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+            case JsonValueType.NULL:
+                return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+            default:
+                return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        }
+    };
+
     if (isEditing) {
         return (
             <div className="flex flex-col gap-2">
@@ -69,29 +100,34 @@ export default function JsonPrimitiveEditor({
                         type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        className={`border rounded px-1 py-0.5 text-sm font-mono focus:outline-none focus:ring-1 bg-white dark:bg-gray-800 ${
-                            error
-                                ? 'border-red-500 focus:ring-red-500'
-                                : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-                        }`}
+                        className={`
+                            px-2 py-1 text-sm font-mono rounded-md
+                            bg-slate-800 border focus:outline-none focus:ring-1
+                            ${error
+                                ? 'border-red-500/50 focus:ring-red-500/30 text-red-300'
+                                : 'border-slate-600 focus:ring-indigo-500/30 text-slate-200'
+                            }
+                        `}
                         onKeyDown={handleKeyDown}
                         autoFocus
                     />
                     <button
                         onClick={saveEdit}
-                        className="text-sm bg-green-500 text-white px-2 py-0.5 rounded hover:bg-green-600 transition-colors"
+                        className="p-1.5 rounded-md bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                        title="Save (Enter)"
                     >
-                        Save
+                        <CheckIcon size={14} />
                     </button>
                     <button
                         onClick={cancelEdit}
-                        className="text-sm bg-gray-500 text-white px-2 py-0.5 rounded hover:bg-gray-600 transition-colors"
+                        className="p-1.5 rounded-md bg-slate-600/20 text-slate-400 hover:bg-slate-600/30 transition-colors"
+                        title="Cancel (Esc)"
                     >
-                        Cancel
+                        <XIcon size={14} />
                     </button>
                 </div>
                 {error && (
-                    <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                    <div className="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded">
                         {error}
                     </div>
                 )}
@@ -103,9 +139,10 @@ export default function JsonPrimitiveEditor({
         <div className="flex items-center gap-2">
             <span
                 className={`
-                    ${typeStyle.color} ${typeStyle.darkColor}
-                    ${isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800 px-1 rounded' : ''}
-                    cursor-pointer hover:underline
+                    font-mono text-sm cursor-pointer transition-all duration-150
+                    hover:opacity-80
+                    ${getValueColor()}
+                    ${isHighlighted ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded ring-1 ring-yellow-500/40' : ''}
                 `}
                 onClick={startEditing}
                 title="Click to edit"
@@ -113,10 +150,16 @@ export default function JsonPrimitiveEditor({
                 {JSON.stringify(value)}
             </span>
             <span
-                className="text-xs opacity-50 bg-gray-100 dark:bg-gray-700 px-1 rounded"
+                className={`
+                    px-1.5 py-0.5 text-[10px] font-medium rounded border uppercase tracking-wide
+                    ${getBadgeStyle()}
+                `}
                 title={typeStyle.label}
             >
-                {typeStyle.icon}
+                {typeStyle.type === JsonValueType.STRING ? 'str' :
+                 typeStyle.type === JsonValueType.NUMBER ? 'num' :
+                 typeStyle.type === JsonValueType.BOOLEAN ? 'bool' :
+                 typeStyle.type === JsonValueType.NULL ? 'null' : '?'}
             </span>
         </div>
     );

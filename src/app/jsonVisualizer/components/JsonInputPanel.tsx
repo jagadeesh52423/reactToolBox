@@ -1,8 +1,16 @@
 'use client';
 
-import { useRef } from 'react';
-import { IndentLevel } from '../models/JsonModels';
-import PrettifyDropdown from './PrettifyDropdown';
+import { useRef, useState, useMemo, useCallback } from 'react';
+import { IndentLevel, INDENT_LEVELS } from '../models/JsonModels';
+import {
+    FolderOpenIcon,
+    DownloadIcon,
+    SparklesIcon,
+    ClipboardIcon,
+    ClipboardCheckIcon,
+    ChevronDownIcon,
+    AlertCircleIcon
+} from './Icons';
 
 interface JsonInputPanelProps {
     jsonInput: string;
@@ -18,10 +26,13 @@ interface JsonInputPanelProps {
 }
 
 /**
- * JsonInputPanel Component
+ * JsonInputPanel Component - Professional Redesign
  *
- * Left panel containing JSON text input, file operations, and formatting options.
- * Single responsibility - handles JSON input/output only.
+ * Features:
+ * - Line numbers in editor
+ * - Modern icon-based toolbar
+ * - Grouped actions with visual separators
+ * - Smooth animations and hover effects
  */
 export default function JsonInputPanel({
     jsonInput,
@@ -36,14 +47,35 @@ export default function JsonInputPanel({
     onDownload
 }: JsonInputPanelProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const lineNumbersRef = useRef<HTMLDivElement>(null);
+    const [copied, setCopied] = useState(false);
+
+    // Calculate line numbers
+    const lineNumbers = useMemo(() => {
+        const lines = jsonInput.split('\n');
+        return lines.map((_, i) => i + 1);
+    }, [jsonInput]);
+
+    // Sync scroll between line numbers and textarea
+    const handleScroll = useCallback(() => {
+        if (lineNumbersRef.current && textareaRef.current) {
+            lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+        }
+    }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             onFileUpload(file);
-            // Reset input so same file can be selected again
             e.target.value = '';
         }
+    };
+
+    const handleCopyClick = () => {
+        onCopy();
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     const triggerFileUpload = () => {
@@ -51,68 +83,154 @@ export default function JsonInputPanel({
     };
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+        <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl border border-slate-700/50 shadow-xl overflow-hidden">
             {/* Header */}
-            <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    JSON Input
-                </h2>
-                <div className="flex gap-2">
-                    <PrettifyDropdown
-                        isOpen={showPrettifyOptions}
-                        currentIndent={indentLevel}
-                        onToggle={onTogglePrettify}
-                        onPrettify={onPrettify}
-                    />
-                    <button
-                        onClick={onCopy}
-                        className="px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 text-sm transition-colors"
-                        title="Copy JSON to clipboard"
-                    >
-                        Copy
-                    </button>
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700/50">
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                    <span className="ml-3 text-sm font-medium text-slate-300">JSON Input</span>
+                </div>
+
+                {/* Toolbar */}
+                <div className="flex items-center gap-1">
+                    {/* File Operations Group */}
+                    <div className="flex items-center gap-1 pr-2 border-r border-slate-600/50">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="application/json,.json"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
+                        <button
+                            onClick={triggerFileUpload}
+                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                            title="Import JSON file"
+                        >
+                            <FolderOpenIcon size={18} />
+                        </button>
+                        <button
+                            onClick={onDownload}
+                            disabled={!jsonInput}
+                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Download JSON file"
+                        >
+                            <DownloadIcon size={18} />
+                        </button>
+                    </div>
+
+                    {/* Format Operations Group */}
+                    <div className="flex items-center gap-1 pl-2">
+                        {/* Prettify Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={onTogglePrettify}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 transition-all duration-200"
+                                title="Format JSON"
+                            >
+                                <SparklesIcon size={16} />
+                                <span className="text-sm font-medium">Format</span>
+                                <ChevronDownIcon
+                                    size={14}
+                                    className={`transition-transform duration-200 ${showPrettifyOptions ? 'rotate-180' : ''}`}
+                                />
+                            </button>
+
+                            {showPrettifyOptions && (
+                                <div className="absolute right-0 mt-2 z-20 bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-3 min-w-[180px]">
+                                    <div className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wide">
+                                        Indentation
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {INDENT_LEVELS.map((spaces) => (
+                                            <button
+                                                key={spaces}
+                                                onClick={() => onPrettify(spaces)}
+                                                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                                                    indentLevel === spaces
+                                                        ? 'bg-indigo-600 text-white'
+                                                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+                                                }`}
+                                            >
+                                                {spaces}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Copy Button */}
+                        <button
+                            onClick={handleCopyClick}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                                copied
+                                    ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-500/30'
+                                    : 'text-slate-300 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30'
+                            }`}
+                            title="Copy to clipboard"
+                        >
+                            {copied ? (
+                                <>
+                                    <ClipboardCheckIcon size={16} />
+                                    <span className="text-sm font-medium">Copied!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ClipboardIcon size={16} />
+                                    <span className="text-sm font-medium">Copy</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Text Area */}
-            <textarea
-                className="w-full h-[calc(100vh-14rem)] p-4 font-mono text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                value={jsonInput}
-                onChange={(e) => onJsonChange(e.target.value)}
-                placeholder="Paste your JSON here..."
-                spellCheck={false}
-            />
+            {/* Editor with Line Numbers */}
+            <div className="flex-1 flex overflow-hidden">
+                {/* Line Numbers */}
+                <div
+                    ref={lineNumbersRef}
+                    className="w-12 bg-slate-900/50 border-r border-slate-700/30 overflow-hidden select-none"
+                    style={{ overflowY: 'hidden' }}
+                >
+                    <div className="py-4 pr-3 text-right">
+                        {lineNumbers.map((num) => (
+                            <div
+                                key={num}
+                                className="text-slate-600 text-sm font-mono leading-6 h-6"
+                            >
+                                {num}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Textarea */}
+                <textarea
+                    ref={textareaRef}
+                    className="flex-1 p-4 font-mono text-sm leading-6 bg-transparent text-slate-200 focus:outline-none resize-none placeholder-slate-600"
+                    value={jsonInput}
+                    onChange={(e) => onJsonChange(e.target.value)}
+                    onScroll={handleScroll}
+                    placeholder="Paste your JSON here..."
+                    spellCheck={false}
+                    style={{ tabSize: 2 }}
+                />
+            </div>
 
             {/* Error Display */}
             {error && (
-                <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                    {error}
+                <div className="px-4 py-3 bg-red-900/20 border-t border-red-500/30 flex items-start gap-3">
+                    <AlertCircleIcon size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <div className="text-red-400 font-medium text-sm">Parse Error</div>
+                        <div className="text-red-300/80 text-sm mt-0.5">{error}</div>
+                    </div>
                 </div>
             )}
-
-            {/* File Operations */}
-            <div className="flex gap-2 mt-3">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="application/json,.json"
-                    className="hidden"
-                    onChange={handleFileChange}
-                />
-                <button
-                    onClick={triggerFileUpload}
-                    className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm flex-grow transition-colors"
-                >
-                    Import JSON
-                </button>
-                <button
-                    onClick={onDownload}
-                    className="px-3 py-1.5 bg-cyan-500 text-white rounded hover:bg-cyan-600 text-sm flex-grow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!jsonInput}
-                >
-                    Download JSON
-                </button>
-            </div>
         </div>
     );
 }

@@ -4,6 +4,7 @@ import { forwardRef } from 'react';
 import { JSONValue, JsonPath, SearchOptions, JsonTreeViewRef } from '../models/JsonModels';
 import SearchControls from './SearchControls';
 import JsonTreeView from './JsonTreeView';
+import { ExpandIcon, CollapseIcon, BracesIcon } from './Icons';
 
 interface JsonViewerPanelProps {
     parsedJson: JSONValue | null;
@@ -21,10 +22,10 @@ interface JsonViewerPanelProps {
 }
 
 /**
- * JsonViewerPanel Component
+ * JsonViewerPanel Component - Professional Redesign
  *
  * Right panel containing the interactive JSON tree viewer and search controls.
- * Single responsibility - displays JSON tree and handles navigation.
+ * Features modern styling, integrated search, and tree controls.
  */
 const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
     (
@@ -45,24 +46,33 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
         ref
     ) => {
         return (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl border border-slate-700/50 shadow-xl overflow-hidden">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        JSON Viewer
-                    </h2>
-                    <div className="flex gap-2">
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                        <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                        <span className="ml-3 text-sm font-medium text-slate-300">JSON Viewer</span>
+                    </div>
+
+                    {/* Tree Controls */}
+                    <div className="flex items-center gap-1">
                         <button
                             onClick={onExpandAll}
-                            className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30 transition-all duration-200"
+                            title="Expand all nodes"
                         >
-                            Expand All
+                            <ExpandIcon size={14} />
+                            <span className="text-sm">Expand</span>
                         </button>
                         <button
                             onClick={onCollapseAll}
-                            className="px-3 py-1.5 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30 transition-all duration-200"
+                            title="Collapse all nodes"
                         >
-                            Collapse All
+                            <CollapseIcon size={14} />
+                            <span className="text-sm">Collapse</span>
                         </button>
                     </div>
                 </div>
@@ -78,8 +88,8 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                 />
 
                 {/* Tree View */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 overflow-auto bg-white dark:bg-gray-900 h-[calc(100vh-18rem)]">
-                    {parsedJson ? (
+                <div className="flex-1 overflow-auto p-4">
+                    {parsedJson !== null ? (
                         <JsonTreeView
                             ref={ref}
                             data={parsedJson}
@@ -88,8 +98,14 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                             onUpdate={onUpdate}
                         />
                     ) : (
-                        <div className="flex items-center justify-center h-full text-gray-500">
-                            {error ? 'Fix JSON errors to view' : 'Enter valid JSON to visualize'}
+                        <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                            <BracesIcon size={48} className="mb-4 opacity-30" />
+                            <p className="text-lg font-medium">
+                                {error ? 'Fix JSON errors to view' : 'No JSON to display'}
+                            </p>
+                            <p className="text-sm mt-1 text-slate-600">
+                                {error ? 'Check the input panel for error details' : 'Paste or import JSON in the input panel'}
+                            </p>
                         </div>
                     )}
                 </div>

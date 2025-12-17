@@ -1,24 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useJsonVisualizer } from '../hooks/useJsonVisualizer';
 import JsonInputPanel from './JsonInputPanel';
 import JsonViewerPanel from './JsonViewerPanel';
 import ToastNotification from './ToastNotification';
+import StatusBar from './StatusBar';
+import { HomeIcon, BracesIcon } from './Icons';
 
 /**
- * JsonVisualizerRefactored Component
+ * JsonVisualizerRefactored Component - Professional Redesign
  *
  * Main orchestrator component for the JSON Visualizer tool.
- * Uses useJsonVisualizer hook for all state management.
- *
- * Architecture:
- * - models/ - Type definitions (JSONValue, SearchOptions, etc.)
- * - strategies/ - Search algorithms (exact, fuzzy)
- * - services/ - Business logic (parser, search, mutations)
- * - hooks/ - React state management (useJsonVisualizer)
- * - components/ - UI components (this and children)
+ * Features:
+ * - Modern dark theme with gradients
+ * - Status bar with JSON statistics
+ * - Professional header with branding
+ * - Responsive two-panel layout
  */
 export default function JsonVisualizerRefactored() {
     const {
@@ -62,65 +60,80 @@ export default function JsonVisualizerRefactored() {
     } = useJsonVisualizer();
 
     return (
-        <div className="min-h-screen p-4">
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        JSON Visualizer
-                    </h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                        View, edit, and explore JSON data
-                    </p>
+            <header className="px-6 py-4 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
+                <div className="max-w-[1800px] mx-auto flex items-center justify-between">
+                    {/* Logo & Title */}
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            <BracesIcon size={20} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-white">
+                                JSON Visualizer
+                            </h1>
+                            <p className="text-sm text-slate-400">
+                                View, edit, and explore JSON data
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Navigation */}
+                    <Link
+                        href="/"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                    >
+                        <HomeIcon size={18} />
+                        <span className="text-sm font-medium">Home</span>
+                    </Link>
                 </div>
-                <Link
-                    href="/"
-                    className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-                >
-                    <Image
-                        className="dark:invert"
-                        src="/vercel.svg"
-                        alt="Vercel logomark"
-                        width={20}
-                        height={20}
-                    />
-                    Home
-                </Link>
-            </div>
+            </header>
 
             {/* Main Content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Panel - Input */}
-                <JsonInputPanel
-                    jsonInput={jsonInput}
-                    error={error}
-                    indentLevel={indentLevel}
-                    showPrettifyOptions={showPrettifyOptions}
-                    onJsonChange={handleJsonChange}
-                    onPrettify={handlePrettify}
-                    onTogglePrettify={togglePrettifyOptions}
-                    onCopy={handleCopy}
-                    onFileUpload={handleFileUpload}
-                    onDownload={handleDownload}
-                />
+            <main className="flex-1 p-6 overflow-hidden">
+                <div className="max-w-[1800px] mx-auto h-full">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-180px)]">
+                        {/* Left Panel - Input */}
+                        <JsonInputPanel
+                            jsonInput={jsonInput}
+                            error={error}
+                            indentLevel={indentLevel}
+                            showPrettifyOptions={showPrettifyOptions}
+                            onJsonChange={handleJsonChange}
+                            onPrettify={handlePrettify}
+                            onTogglePrettify={togglePrettifyOptions}
+                            onCopy={handleCopy}
+                            onFileUpload={handleFileUpload}
+                            onDownload={handleDownload}
+                        />
 
-                {/* Right Panel - Viewer */}
-                <JsonViewerPanel
-                    ref={treeViewRef}
-                    parsedJson={parsedJson}
-                    error={error}
-                    searchOptions={searchOptions}
-                    onSearchTextChange={handleSearchTextChange}
-                    onSearchLevelChange={handleSearchLevelChange}
-                    onFilterToggle={handleFilterToggle}
-                    onFuzzyToggle={handleFuzzyToggle}
-                    onSearch={handleSearch}
-                    onExpandAll={handleExpandAll}
-                    onCollapseAll={handleCollapseAll}
-                    onDelete={handleDelete}
-                    onUpdate={handleUpdate}
-                />
-            </div>
+                        {/* Right Panel - Viewer */}
+                        <JsonViewerPanel
+                            ref={treeViewRef}
+                            parsedJson={parsedJson}
+                            error={error}
+                            searchOptions={searchOptions}
+                            onSearchTextChange={handleSearchTextChange}
+                            onSearchLevelChange={handleSearchLevelChange}
+                            onFilterToggle={handleFilterToggle}
+                            onFuzzyToggle={handleFuzzyToggle}
+                            onSearch={handleSearch}
+                            onExpandAll={handleExpandAll}
+                            onCollapseAll={handleCollapseAll}
+                            onDelete={handleDelete}
+                            onUpdate={handleUpdate}
+                        />
+                    </div>
+                </div>
+            </main>
+
+            {/* Status Bar */}
+            <StatusBar
+                jsonInput={jsonInput}
+                parsedJson={parsedJson}
+                error={error}
+            />
 
             {/* Toast Notification */}
             <ToastNotification toast={toast} onClose={clearToast} />
