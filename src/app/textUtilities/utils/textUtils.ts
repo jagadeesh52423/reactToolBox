@@ -48,6 +48,51 @@ export function toKebabCase(text: string): string {
     .replace(/-+/g, '-');
 }
 
+export function toSentenceCase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+export function toConstantCase(text: string): string {
+  return text
+    .replace(/\s+/g, '_')
+    .replace(/[A-Z]/g, (match, index) => index > 0 ? `_${match}` : match)
+    .replace(/[-./]/g, '_')
+    .replace(/_+/g, '_')
+    .toUpperCase();
+}
+
+export function toDotCase(text: string): string {
+  return text
+    .replace(/\s+/g, '.')
+    .replace(/[A-Z]/g, (match, index) => index > 0 ? `.${match.toLowerCase()}` : match.toLowerCase())
+    .replace(/[-_/]/g, '.')
+    .replace(/\.+/g, '.')
+    .toLowerCase();
+}
+
+export function toPathCase(text: string): string {
+  return text
+    .replace(/\s+/g, '/')
+    .replace(/[A-Z]/g, (match, index) => index > 0 ? `/${match.toLowerCase()}` : match.toLowerCase())
+    .replace(/[-_.]/g, '/')
+    .replace(/\/+/g, '/')
+    .toLowerCase();
+}
+
+export function toAlternatingCase(text: string): string {
+  return text
+    .split('')
+    .map((char, index) => index % 2 === 0 ? char.toLowerCase() : char.toUpperCase())
+    .join('');
+}
+
+export function toInverseCase(text: string): string {
+  return text
+    .split('')
+    .map(char => char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase())
+    .join('');
+}
+
 // Formatting functions
 export function trimWhitespace(text: string): string {
   return text.trim();

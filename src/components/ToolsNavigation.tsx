@@ -44,7 +44,7 @@ const tools: Tool[] = [
   {
     name: 'Text Utilities',
     path: '/textUtilities',
-    description: 'Collection of text transformation tools',
+    description: 'Text transformations, case conversion, encoding, and more',
     icon: 'Aa',
   },
   {
@@ -53,12 +53,6 @@ const tools: Tool[] = [
     description: 'Create beautiful diagrams with Mermaid syntax and download as SVG',
     icon: '📊',
   },
-  {
-    name: 'Text Case',
-    path: '/textCase',
-    description: 'Convert text between different case formats',
-    icon: 'Tt',
-  }
 ];
 
 interface ToolsNavigationProps {

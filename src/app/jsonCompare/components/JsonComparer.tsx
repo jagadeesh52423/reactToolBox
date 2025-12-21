@@ -219,20 +219,7 @@ const JsonComparer: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col">
-      {/* Header */}
-      <header className="px-6 py-4 border-b border-gray-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-            <GitCompareIcon size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">JSON Compare</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Compare and visualize differences between two JSON objects</p>
-          </div>
-        </div>
-      </header>
-
+    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-auto">
         {/* Error Banner */}

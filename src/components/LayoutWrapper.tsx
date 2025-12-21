@@ -15,16 +15,16 @@ const LayoutWrapper: React.FC<LayoutWrapperProps> = ({ children }) => {
   return (
     <>
       {!isHomePage ? (
-        <div className="flex flex-col lg:flex-row gap-6">
-          <aside className="lg:w-64 flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="flex flex-col lg:flex-row h-full">
+          <aside className="lg:w-56 flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
             <ToolsNavigation />
           </aside>
-          <main className="flex-1">
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
         </div>
       ) : (
-        <main>
+        <main className="w-full">
           {children}
         </main>
       )}
