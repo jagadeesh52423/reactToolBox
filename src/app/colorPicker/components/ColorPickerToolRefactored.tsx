@@ -19,7 +19,7 @@
  */
 
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useColorPicker } from '../hooks/useColorPicker';
 import { ColorPreview } from './ColorPreview';
 import { ColorFormatInputs } from './ColorFormatInputs';
@@ -41,6 +41,7 @@ const ColorPickerToolRefactored: React.FC = () => {
     updateRgb,
     updateHsl,
     updateHsv,
+    setHsv,
     generateRandom,
     useEyedropper,
     saveToHistory,
@@ -58,8 +59,11 @@ const ColorPickerToolRefactored: React.FC = () => {
     colorService,
   } = useColorPicker('#3498db');
 
-  const isEyedropperSupported =
-    typeof window !== 'undefined' && 'EyeDropper' in window;
+  // Check for EyeDropper support after mount to avoid hydration mismatch
+  const [isEyedropperSupported, setIsEyedropperSupported] = useState(false);
+  useEffect(() => {
+    setIsEyedropperSupported('EyeDropper' in window);
+  }, []);
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
@@ -153,7 +157,7 @@ const ColorPickerToolRefactored: React.FC = () => {
           )}
 
           {activePickerTab === PickerTab.WHEEL && (
-            <ColorWheelPicker hsv={hsv} onHsvChange={(newHsv) => updateHsv('h', newHsv.h)} />
+            <ColorWheelPicker hsv={hsv} onHsvChange={setHsv} />
           )}
 
           {activePickerTab === PickerTab.HARMONY && (

@@ -16,6 +16,12 @@ const ColorPickerTool: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'hex' | 'rgb' | 'hsl' | 'hsv'>('hex');
   const [activePickerTab, setActivePickerTab] = useState<'inputs' | 'palettes' | 'wheel' | 'harmony'>('inputs');
   const [selectedPalette, setSelectedPalette] = useState<keyof typeof COLOR_PALETTES>('material');
+  const [isEyedropperSupported, setIsEyedropperSupported] = useState(false);
+
+  // Check for EyeDropper support after mount to avoid hydration mismatch
+  useEffect(() => {
+    setIsEyedropperSupported('EyeDropper' in window);
+  }, []);
   
   // Update all color formats when hex changes
   useEffect(() => {
@@ -79,17 +85,14 @@ const ColorPickerTool: React.FC = () => {
 
   // Use eyedropper API if available
   const handleEyedropper = async () => {
-    if (typeof window !== 'undefined' && 'EyeDropper' in window) {
-      try {
-        // @ts-ignore - EyeDropper is experimental
-        const eyeDropper = new EyeDropper();
-        const result = await eyeDropper.open();
-        setHex(result.sRGBHex);
-      } catch (error) {
-        console.log('Eyedropper cancelled or failed');
-      }
-    } else {
-      alert('Eyedropper API is not supported in this browser');
+    if (!isEyedropperSupported) return;
+    try {
+      // @ts-ignore - EyeDropper is experimental
+      const eyeDropper = new EyeDropper();
+      const result = await eyeDropper.open();
+      setHex(result.sRGBHex);
+    } catch (error) {
+      console.log('Eyedropper cancelled or failed');
     }
   };
   
@@ -147,7 +150,7 @@ const ColorPickerTool: React.FC = () => {
               >
                 🎲 Random
               </button>
-              {typeof window !== 'undefined' && 'EyeDropper' in window && (
+              {isEyedropperSupported && (
                 <button
                   onClick={handleEyedropper}
                   className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
@@ -482,41 +485,74 @@ const ColorPickerTool: React.FC = () => {
           {activePickerTab === 'wheel' && (
             <div className="space-y-6">
               <div className="text-center">
-                <h3 className="text-lg font-medium mb-4">Color Wheel (Interactive)</h3>
-                <div className="mx-auto w-64 h-64 rounded-full relative border-4 border-gray-300"
+                <h3 className="text-lg font-medium mb-4 dark:text-white">Color Wheel</h3>
+                <div className="mx-auto w-64 h-64 rounded-full relative border-4 border-gray-300 dark:border-gray-600 cursor-crosshair shadow-lg overflow-hidden"
                      style={{
-                       background: `conic-gradient(
+                       background: `conic-gradient(from 0deg at 50% 50%,
                          hsl(0, 100%, 50%),
+                         hsl(30, 100%, 50%),
                          hsl(60, 100%, 50%),
+                         hsl(90, 100%, 50%),
                          hsl(120, 100%, 50%),
+                         hsl(150, 100%, 50%),
                          hsl(180, 100%, 50%),
+                         hsl(210, 100%, 50%),
                          hsl(240, 100%, 50%),
+                         hsl(270, 100%, 50%),
                          hsl(300, 100%, 50%),
+                         hsl(330, 100%, 50%),
                          hsl(360, 100%, 50%)
                        )`
                      }}
-                     onClick={(e) => {
+                     onMouseDown={(e) => {
                        const rect = e.currentTarget.getBoundingClientRect();
-                       const centerX = rect.left + rect.width / 2;
-                       const centerY = rect.top + rect.height / 2;
-                       const x = e.clientX - centerX;
-                       const y = e.clientY - centerY;
-                       const angle = Math.atan2(y, x);
-                       const hue = Math.round(((angle * 180 / Math.PI) + 360) % 360);
-                       const newHsv = { ...hsv, h: hue };
+                       const centerX = rect.width / 2;
+                       const centerY = rect.height / 2;
+                       const x = e.clientX - rect.left - centerX;
+                       const y = e.clientY - rect.top - centerY;
+
+                       const maxRadius = Math.min(centerX, centerY);
+                       const distance = Math.sqrt(x * x + y * y);
+                       const saturation = Math.min(100, Math.round((distance / maxRadius) * 100));
+
+                       let angle = Math.atan2(y, x) * (180 / Math.PI);
+                       const hue = Math.round((angle + 90 + 360) % 360);
+
+                       const newHsv = { ...hsv, h: hue, s: saturation };
                        setHsv(newHsv);
                        setHex(hsvToHex(newHsv.h, newHsv.s, newHsv.v));
                      }}
                 >
+                  {/* White center fade for saturation visualization */}
                   <div
-                    className="absolute w-4 h-4 bg-white border-2 border-black rounded-full transform -translate-x-2 -translate-y-2"
+                    className="absolute inset-0 rounded-full pointer-events-none"
                     style={{
-                      left: `${50 + 40 * Math.cos(hsv.h * Math.PI / 180)}%`,
-                      top: `${50 + 40 * Math.sin(hsv.h * Math.PI / 180)}%`,
+                      background: 'radial-gradient(circle, white 0%, transparent 70%)'
+                    }}
+                  />
+                  {/* Color indicator */}
+                  <div
+                    className="absolute w-5 h-5 rounded-full shadow-lg pointer-events-none border-2 border-white"
+                    style={{
+                      left: `${50 + (hsv.s / 100) * 46 * Math.cos((hsv.h - 90) * Math.PI / 180)}%`,
+                      top: `${50 + (hsv.s / 100) * 46 * Math.sin((hsv.h - 90) * Math.PI / 180)}%`,
+                      transform: 'translate(-50%, -50%)',
+                      backgroundColor: `hsl(${hsv.h}, ${hsv.s}%, 50%)`,
+                      boxShadow: '0 0 0 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.3)',
                     }}
                   />
                 </div>
-                <p className="text-sm text-gray-600 mt-2">Click on the wheel to select hue</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                  Click to select hue (angle) and saturation (distance)
+                </p>
+                <div className="flex justify-center gap-4 mt-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                    Hue: <span className="font-mono">{hsv.h}°</span>
+                  </p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                    Saturation: <span className="font-mono">{hsv.s}%</span>
+                  </p>
+                </div>
               </div>
             </div>
           )}
