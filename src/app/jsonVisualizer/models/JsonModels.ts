@@ -291,6 +291,7 @@ export interface JsonTreeViewRef {
     expandAll: () => Promise<void>;
     collapseAll: () => Promise<void>;
     search: (options: SearchOptions) => void;
+    toggle: () => void;
 }
 
 /**

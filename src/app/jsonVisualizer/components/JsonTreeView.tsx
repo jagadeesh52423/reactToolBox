@@ -5,6 +5,7 @@ import { JSONValue, JsonPath, SearchOptions, JsonTreeViewRef, JsonValueType } fr
 import { getJsonParserService } from '../services/JsonParserService';
 import { getJsonSearchService } from '../services/JsonSearchService';
 import JsonPrimitiveEditor from './JsonPrimitiveEditor';
+import ContextMenu, { ContextMenuItem } from './ContextMenu';
 import {
     ChevronDownIcon,
     ChevronRightIcon,
@@ -15,6 +16,13 @@ import {
     BracesIcon,
     BracketsIcon
 } from './Icons';
+
+interface ContextMenuState {
+    visible: boolean;
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+}
 
 interface JsonTreeViewProps {
     data: JSONValue;
@@ -41,6 +49,12 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
         const [isHighlighted, setIsHighlighted] = useState(false);
         const [isFiltered, setIsFiltered] = useState(false);
         const [showCopied, setShowCopied] = useState(false);
+        const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+            visible: false,
+            x: 0,
+            y: 0,
+            items: []
+        });
 
         const childrenRefs = useRef<{ [key: string]: JsonTreeViewRef }>({});
         const nodeRef = useRef<HTMLDivElement>(null);
@@ -143,10 +157,15 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
             }
         }, [data, level, searchService]);
 
+        const toggle = useCallback(() => {
+            setIsExpanded(prev => !prev);
+        }, []);
+
         useImperativeHandle(ref, () => ({
             expandAll: () => expandSubtree(),
             collapseAll: () => collapseSubtree(),
-            search: (options: SearchOptions) => performSearch(options)
+            search: (options: SearchOptions) => performSearch(options),
+            toggle: () => toggle()
         }));
 
         const toggleCurrentLevel = () => {
@@ -167,6 +186,33 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
         const handleCopyPath = (key: string) => {
             const fullPath = [...path, key].join('.');
             navigator.clipboard.writeText(fullPath);
+        };
+
+        const handleContextMenu = (e: React.MouseEvent, key: string, value: JSONValue) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const fullPath = [...path, key].join('.');
+            const valueStr = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+            const fieldJson = JSON.stringify({ [key]: value }, null, 2);
+
+            const items: ContextMenuItem[] = [
+                { label: 'Copy Key', value: key },
+                { label: 'Copy Value', value: valueStr },
+                { label: 'Copy Field', value: fieldJson },
+                { label: 'Copy Path', value: fullPath },
+            ];
+
+            setContextMenu({
+                visible: true,
+                x: e.clientX,
+                y: e.clientY,
+                items
+            });
+        };
+
+        const closeContextMenu = () => {
+            setContextMenu(prev => ({ ...prev, visible: false }));
         };
 
         if (isFiltered) {
@@ -199,90 +245,71 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
         return (
             <div
                 ref={nodeRef}
-                className={`relative ${level > 1 ? 'ml-4' : ''}`}
+                className={`relative ${level > 1 ? 'ml-2' : ''}`}
             >
-                {/* Node Header */}
+                {/* Node Header - Key at top-left */}
                 <div
                     className={`
-                        flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer
+                        inline-flex items-center gap-1 py-0.5 px-1.5 rounded cursor-pointer
                         transition-all duration-150 group
                         ${isHighlighted
                             ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40'
-                            : 'hover:bg-gray-200/50 dark:hover:bg-slate-700/30'
+                            : 'hover:bg-gray-200/60 dark:hover:bg-slate-700/40'
                         }
                     `}
                     onClick={toggleCurrentLevel}
                 >
                     {/* Expand/Collapse Icon */}
-                    <button
-                        className={`
-                            w-5 h-5 flex items-center justify-center rounded
-                            text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50
-                            transition-all duration-200
-                        `}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCurrentLevel();
-                        }}
-                    >
-                        <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
-                            <ChevronDownIcon size={14} />
-                        </div>
-                    </button>
-
-                    {/* Type Icon */}
-                    <div className="text-gray-400 dark:text-slate-500">
-                        {isArray ? <BracketsIcon size={14} /> : <BracesIcon size={14} />}
+                    <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                        <ChevronRightIcon size={12} />
                     </div>
 
-                    {/* Bracket and Preview */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="font-mono text-gray-500 dark:text-slate-400">
-                            {isArray ? '[' : '{'}
-                        </span>
+                    {/* Bracket */}
+                    <span className="font-mono text-sm text-gray-500 dark:text-slate-400">
+                        {isArray ? '[' : '{'}
+                    </span>
 
-                        {!isExpanded && (
-                            <span className="text-gray-400 dark:text-slate-500 text-sm truncate">
-                                {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                    {/* Item count when collapsed */}
+                    {!isExpanded && (
+                        <>
+                            <span className="text-gray-400 dark:text-slate-500 text-xs">
+                                {itemCount}
                             </span>
-                        )}
-
-                        {!isExpanded && (
-                            <span className="font-mono text-gray-500 dark:text-slate-400">
+                            <span className="font-mono text-sm text-gray-500 dark:text-slate-400">
                                 {isArray ? ']' : '}'}
                             </span>
-                        )}
+                        </>
+                    )}
 
-                        {/* Type Badge */}
-                        <span className={`
-                            px-1.5 py-0.5 text-xs font-medium rounded border
-                            ${getBadgeColor()}
-                        `}>
-                            {isArray ? 'Array' : 'Object'}
-                        </span>
-                    </div>
+                    {/* Type Badge */}
+                    <span className={`
+                        px-1 py-0 text-xs font-medium rounded border
+                        ${getBadgeColor()}
+                    `}>
+                        {isArray ? 'Array' : 'Object'}
+                    </span>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 expandSubtree();
                             }}
-                            className="p-1 rounded text-gray-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            className="p-0.5 rounded text-gray-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
                             title="Expand all"
                         >
-                            <ExpandIcon size={14} />
+                            <ExpandIcon size={12} />
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 collapseSubtree();
                             }}
-                            className="p-1 rounded text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50 transition-colors"
+                            className="p-0.5 rounded text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50 transition-colors"
                             title="Collapse all"
                         >
-                            <CollapseIcon size={14} />
+                            <CollapseIcon size={12} />
                         </button>
                         <button
                             onClick={(e) => {
@@ -290,7 +317,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                 copySubtree();
                             }}
                             className={`
-                                p-1 rounded transition-colors
+                                p-0.5 rounded transition-colors
                                 ${showCopied
                                     ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10'
                                     : 'text-gray-400 dark:text-slate-500 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-cyan-500/10'
@@ -298,99 +325,139 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                             `}
                             title="Copy subtree"
                         >
-                            <ClipboardIcon size={14} />
+                            <ClipboardIcon size={12} />
                         </button>
                     </div>
                 </div>
 
                 {/* Children */}
                 {isExpanded && (
-                    <div className="relative ml-3 mt-1">
-                        {/* Connector Line */}
-                        <div className="absolute left-0 top-0 bottom-4 w-px bg-gradient-to-b from-gray-300/50 dark:from-slate-600/50 to-transparent" />
+                    <div className="relative ml-2 mt-0.5">
+                        {/* Vertical Connector Line - from top to last child */}
+                        <div className="absolute left-1.5 top-0 bottom-6 w-px bg-gray-300 dark:bg-slate-600" />
 
                         {items.map(([key, value], index) => {
                             if (!searchService.shouldItemBeVisible(key, value, searchOptions)) {
                                 return null;
                             }
 
-                            const isLast = index === items.length - 1;
-                            const childType = parserService.getValueType(value);
                             const isPrimitiveChild = parserService.isPrimitive(value);
+                            const isObjectChild = !isPrimitiveChild;
 
                             return (
-                                <div key={key} className="relative">
-                                    {/* Horizontal Connector */}
-                                    <div className="absolute left-0 top-4 w-3 h-px bg-gray-300/50 dark:bg-slate-600/50" />
+                                <div key={key} className="relative group/item">
+                                    {/* Horizontal Connector - connects vertical line to node */}
+                                    <div className="absolute left-1.5 top-3 w-2 h-px bg-gray-300 dark:bg-slate-600" />
 
-                                    {/* Node Dot */}
-                                    <div className="absolute left-[-2px] top-[13px] w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-slate-500" />
-
-                                    <div className="ml-4 group/item">
-                                        <div className={`
-                                            flex items-center gap-2 py-1 px-2 rounded-lg
-                                            transition-colors duration-150
-                                            ${isPrimitiveChild ? 'hover:bg-gray-200/50 dark:hover:bg-slate-700/20' : ''}
-                                        `}>
+                                    {/* Key Row - positioned at top-left */}
+                                    <div className="ml-4 flex items-center gap-1">
+                                        <div
+                                            className={`
+                                                flex items-center gap-1.5 py-0.5 px-1.5 rounded cursor-context-menu
+                                                transition-colors duration-150
+                                                hover:bg-gray-200/40 dark:hover:bg-slate-700/20
+                                            `}
+                                            onContextMenu={(e) => handleContextMenu(e, key, value)}
+                                        >
                                             {/* Delete Button */}
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     onDelete([...path, key]);
                                                 }}
-                                                className="opacity-0 group-hover/item:opacity-100 p-1 rounded text-gray-400 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                className="opacity-0 group-hover/item:opacity-100 p-0.5 rounded text-gray-400 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
                                                 title="Delete"
                                             >
-                                                <TrashIcon size={12} />
+                                                <TrashIcon size={10} />
                                             </button>
 
                                             {/* Key */}
-                                            <button
-                                                onClick={() => handleCopyPath(key)}
-                                                className="flex items-center gap-1 group/key"
-                                                title="Copy path"
-                                            >
-                                                <span className={`
-                                                    font-medium transition-colors
+                                            <span
+                                                className={`
+                                                    font-medium text-sm transition-colors select-none
                                                     ${isArray
-                                                        ? 'text-gray-400 dark:text-slate-500 font-mono text-sm'
-                                                        : 'text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300'
+                                                        ? 'text-gray-500 dark:text-slate-500 font-mono'
+                                                        : 'text-blue-600 dark:text-blue-400'
                                                     }
-                                                `}>
-                                                    {isArray ? `[${key}]` : key}
-                                                </span>
-                                                <span className="text-gray-400 dark:text-slate-600">:</span>
+                                                `}
+                                            >
+                                                {isArray ? `[${key}]` : key}
+                                            </span>
+                                            <span className="text-gray-400 dark:text-slate-600">:</span>
+
+                                            {/* Copy Path Button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCopyPath(key);
+                                                }}
+                                                className="opacity-0 group-hover/item:opacity-100 p-0.5 rounded text-gray-400 dark:text-slate-600 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
+                                                title={`Copy path: ${[...path, key].join('.')}`}
+                                            >
+                                                <ClipboardIcon size={10} />
                                             </button>
 
-                                            {/* Value */}
-                                            <div className="flex-1 min-w-0">
-                                                <JsonTreeView
-                                                    ref={(r) => {
-                                                        if (r) {
-                                                            childrenRefs.current[key] = r;
-                                                        }
-                                                    }}
-                                                    data={value}
-                                                    level={level + 1}
-                                                    path={[...path, key]}
-                                                    searchOptions={searchOptions}
-                                                    onDelete={onDelete}
-                                                    onUpdate={onUpdate}
-                                                />
-                                            </div>
+                                            {/* Inline value for primitives */}
+                                            {isPrimitiveChild && (
+                                                <div className="flex-shrink min-w-0">
+                                                    <JsonTreeView
+                                                        ref={(r) => {
+                                                            if (r) {
+                                                                childrenRefs.current[key] = r;
+                                                            }
+                                                        }}
+                                                        data={value}
+                                                        level={level + 1}
+                                                        path={[...path, key]}
+                                                        searchOptions={searchOptions}
+                                                        onDelete={onDelete}
+                                                        onUpdate={onUpdate}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
+
+                                    {/* Child object/array - rendered below the key */}
+                                    {isObjectChild && (
+                                        <div className="ml-4">
+                                            <JsonTreeView
+                                                ref={(r) => {
+                                                    if (r) {
+                                                        childrenRefs.current[key] = r;
+                                                    }
+                                                }}
+                                                data={value}
+                                                level={level + 1}
+                                                path={[...path, key]}
+                                                searchOptions={searchOptions}
+                                                onDelete={onDelete}
+                                                onUpdate={onUpdate}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
 
                         {/* Closing Bracket */}
-                        <div className="ml-4 py-1 px-2">
-                            <span className="font-mono text-gray-500 dark:text-slate-400">
+                        <div className="ml-4 py-0.5 px-1.5">
+                            <span className="font-mono text-gray-500 dark:text-slate-400 text-sm">
                                 {isArray ? ']' : '}'}
                             </span>
                         </div>
                     </div>
+                )}
+
+                {/* Context Menu */}
+                {contextMenu.visible && (
+                    <ContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        items={contextMenu.items}
+                        onSelect={() => {}}
+                        onClose={closeContextMenu}
+                    />
                 )}
             </div>
         );
