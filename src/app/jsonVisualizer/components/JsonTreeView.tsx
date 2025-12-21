@@ -46,7 +46,8 @@ interface JsonTreeViewProps {
  */
 const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
     ({ data, level = 1, path = [], searchOptions, onDelete, onUpdate }, ref) => {
-        const [isExpanded, setIsExpanded] = useState(level === 1);
+        // Auto-expand all levels by default
+        const [isExpanded, setIsExpanded] = useState(true);
         const [isHighlighted, setIsHighlighted] = useState(false);
         const [isFiltered, setIsFiltered] = useState(false);
         const [showCopied, setShowCopied] = useState(false);
