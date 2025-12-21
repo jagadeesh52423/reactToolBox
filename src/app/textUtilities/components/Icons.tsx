@@ -204,3 +204,22 @@ export const SparklesIcon: React.FC<IconProps> = ({ size = 24, className = '' })
     <path d="M17 19h4" />
   </svg>
 );
+
+export const ReplaceIcon: React.FC<IconProps> = ({ size = 24, className = '' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M11 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" />
+    <path d="m21 12-9 9" />
+    <path d="m21.5 3.5-9.5 9.5" />
+    <path d="M16 3h5v5" />
+  </svg>
+);

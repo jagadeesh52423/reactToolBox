@@ -16,14 +16,16 @@ import {
   WandIcon,
   LinkIcon,
   HashIcon,
-  SparklesIcon
+  SparklesIcon,
+  ReplaceIcon
 } from './Icons';
+import TextReplacer from './TextReplacer';
 
 const DEFAULT_TEXT = `Hello World! This is some sample text.
 It has multiple lines and some extra   spaces.
 You can transform it using various text utilities.`;
 
-type Category = 'case' | 'format' | 'encoding' | 'counting';
+type Category = 'case' | 'format' | 'encoding' | 'counting' | 'replace';
 
 interface TransformOption {
   id: string;
@@ -68,6 +70,7 @@ const CATEGORY_CONFIG: Record<Category, { label: string; icon: React.ReactNode; 
   format: { label: 'Formatting', icon: <WandIcon size={16} />, gradient: 'from-emerald-500 to-teal-500' },
   encoding: { label: 'Encoding', icon: <LinkIcon size={16} />, gradient: 'from-amber-500 to-orange-500' },
   counting: { label: 'Counting', icon: <HashIcon size={16} />, gradient: 'from-rose-500 to-pink-500' },
+  replace: { label: 'Find & Replace', icon: <ReplaceIcon size={16} />, gradient: 'from-cyan-500 to-blue-500' },
 };
 
 const TextTransformer: React.FC = () => {
@@ -167,107 +170,116 @@ const TextTransformer: React.FC = () => {
             })}
           </div>
 
-          {/* Editor Panels */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Input Panel */}
-            <div className="flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
-              <PanelHeader
-                title="Input Text"
-                actions={
-                  <>
-                    <button
-                      onClick={handlePaste}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
-                    >
-                      <SparklesIcon size={14} />
-                      <span>Paste</span>
-                    </button>
-                    <button
-                      onClick={handleCopyInput}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
-                    >
-                      {copiedInput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-                      <span>{copiedInput ? 'Copied!' : 'Copy'}</span>
-                    </button>
-                    <button
-                      onClick={handleClear}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-900/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 border border-red-200/50 dark:border-red-500/30 transition-all duration-200 text-xs font-medium"
-                    >
-                      <TrashIcon size={14} />
-                      <span>Clear</span>
-                    </button>
-                  </>
-                }
-              />
-              <div className="flex-1 p-4">
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Enter or paste your text here..."
-                  className="w-full h-64 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
-                />
-              </div>
-            </div>
+          {/* Conditional Rendering based on category */}
+          {activeCategory === 'replace' ? (
+            <TextReplacer />
+          ) : (
+            <>
+              {/* Editor Panels */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Input Panel */}
+                <div className="flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+                  <PanelHeader
+                    title="Input Text"
+                    actions={
+                      <>
+                        <button
+                          onClick={handlePaste}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
+                        >
+                          <SparklesIcon size={14} />
+                          <span>Paste</span>
+                        </button>
+                        <button
+                          onClick={handleCopyInput}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
+                        >
+                          {copiedInput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+                          <span>{copiedInput ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                        <button
+                          onClick={handleClear}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-900/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 border border-red-200/50 dark:border-red-500/30 transition-all duration-200 text-xs font-medium"
+                        >
+                          <TrashIcon size={14} />
+                          <span>Clear</span>
+                        </button>
+                      </>
+                    }
+                  />
+                  <div className="flex-1 p-4">
+                    <textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder="Enter or paste your text here..."
+                      className="w-full h-64 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
+                    />
+                  </div>
+                </div>
 
-            {/* Output Panel */}
-            <div className="flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
-              <PanelHeader
-                title={lastTransform ? `Output - ${lastTransform}` : 'Output'}
-                actions={
-                  outputText && (
-                    <button
-                      onClick={handleCopyOutput}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 border border-indigo-200/50 dark:border-indigo-500/30 transition-all duration-200 text-xs font-medium"
-                    >
-                      {copiedOutput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-                      <span>{copiedOutput ? 'Copied!' : 'Copy'}</span>
-                    </button>
-                  )
-                }
-              />
-              <div className="flex-1 p-4">
-                <div className="w-full h-64 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 font-mono text-sm overflow-auto whitespace-pre-wrap">
-                  {outputText || (
-                    <span className="text-gray-400 dark:text-slate-500">
-                      Transformed output will appear here...
-                    </span>
-                  )}
+                {/* Output Panel */}
+                <div className="flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+                  <PanelHeader
+                    title={lastTransform ? `Output - ${lastTransform}` : 'Output'}
+                    actions={
+                      outputText && (
+                        <button
+                          onClick={handleCopyOutput}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 border border-indigo-200/50 dark:border-indigo-500/30 transition-all duration-200 text-xs font-medium"
+                        >
+                          {copiedOutput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+                          <span>{copiedOutput ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      )
+                    }
+                  />
+                  <div className="flex-1 p-4">
+                    <div className="w-full h-64 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 font-mono text-sm overflow-auto whitespace-pre-wrap">
+                      {outputText || (
+                        <span className="text-gray-400 dark:text-slate-500">
+                          Transformed output will appear here...
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Transformation Options */}
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
-            <PanelHeader title={`${CATEGORY_CONFIG[activeCategory].label} Options`} />
-            <div className="p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {filteredOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => handleTransform(option)}
-                    className="group flex flex-col items-start p-3 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-200 text-left"
-                  >
-                    <span className="font-medium text-sm text-gray-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {option.label}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-slate-500 mt-1 line-clamp-2">
-                      {option.description}
-                    </span>
-                  </button>
-                ))}
+              {/* Transformation Options */}
+              <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+                <PanelHeader title={`${CATEGORY_CONFIG[activeCategory].label} Options`} />
+                <div className="p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    {filteredOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => handleTransform(option)}
+                        className="group flex flex-col items-start p-3 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-200 text-left"
+                      >
+                        <span className="font-medium text-sm text-gray-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {option.label}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-slate-500 mt-1 line-clamp-2">
+                          {option.description}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </main>
 
-      {/* Status Bar */}
-      <TextStatusBar
-        inputStats={inputStats}
-        outputStats={outputStats}
-        hasOutput={!!outputText}
-      />
+      {/* Status Bar - only show for non-replace categories */}
+      {activeCategory !== 'replace' && (
+        <TextStatusBar
+          inputStats={inputStats}
+          outputStats={outputStats}
+          hasOutput={!!outputText}
+        />
+      )}
     </div>
   );
 };
