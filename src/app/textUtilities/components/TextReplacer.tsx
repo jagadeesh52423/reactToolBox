@@ -484,7 +484,7 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Enter or paste your source text here, or load from file..."
-                className="w-full h-48 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
+                className="w-full h-48 p-4 rounded-lg bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
               />
             </div>
           </div>
@@ -524,7 +524,7 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
                 value={tokenFileContent}
                 onChange={(e) => setTokenFileContent(e.target.value)}
                 placeholder={`Enter replacement tokens (${tokenFormat === 'keyValue' ? 'key=value per line' : tokenFormat === 'json' ? '{"key": "value"}' : 'search,replace per line'})...`}
-                className="w-full h-32 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
+                className="w-full h-32 p-4 rounded-lg bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
               />
             </div>
           </div>
