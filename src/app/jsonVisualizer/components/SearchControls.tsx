@@ -11,6 +11,7 @@ interface SearchControlsProps {
     onFuzzyToggle: (enabled: boolean) => void;
     onCaseSensitiveToggle: (enabled: boolean) => void;
     onRegexToggle: (enabled: boolean) => void;
+    onKeysOnlyToggle: (enabled: boolean) => void;
     onSearch: () => void;
     matchCount?: number;
 }
@@ -32,10 +33,11 @@ export default function SearchControls({
     onFuzzyToggle,
     onCaseSensitiveToggle,
     onRegexToggle,
+    onKeysOnlyToggle,
     onSearch,
     matchCount
 }: SearchControlsProps) {
-    const { searchText, searchLevel, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = searchOptions;
+    const { searchText, searchLevel, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = searchOptions;
 
     const handleClear = () => {
         onSearchTextChange('');
@@ -134,6 +136,21 @@ export default function SearchControls({
                         title="Use Regular Expression"
                     >
                         <span className="font-mono">.*</span>
+                    </button>
+
+                    {/* Keys Only Toggle */}
+                    <button
+                        onClick={() => onKeysOnlyToggle(!isKeysOnly)}
+                        className={`
+                            px-2.5 py-1.5 rounded-md text-xs font-medium border transition-all
+                            ${isKeysOnly
+                                ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/40'
+                                : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-500 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
+                            }
+                        `}
+                        title="Search keys only (ignore values)"
+                    >
+                        <span className="font-mono">{'{k}'}</span>
                     </button>
 
                     <div className="w-px h-5 bg-gray-300 dark:bg-slate-600" />

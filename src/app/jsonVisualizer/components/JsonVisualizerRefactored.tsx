@@ -48,6 +48,7 @@ export default function JsonVisualizerRefactored() {
         handleFuzzyToggle,
         handleCaseSensitiveToggle,
         handleRegexToggle,
+        handleKeysOnlyToggle,
         handleSearch,
 
         // Tree Handlers
@@ -102,6 +103,7 @@ export default function JsonVisualizerRefactored() {
                             onFuzzyToggle={handleFuzzyToggle}
                             onCaseSensitiveToggle={handleCaseSensitiveToggle}
                             onRegexToggle={handleRegexToggle}
+                            onKeysOnlyToggle={handleKeysOnlyToggle}
                             onSearch={handleSearch}
                             onExpandAll={handleExpandAll}
                             onCollapseAll={handleCollapseAll}

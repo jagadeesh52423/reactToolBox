@@ -6,6 +6,7 @@ import { getJsonParserService } from '../services/JsonParserService';
 import { getJsonSearchService } from '../services/JsonSearchService';
 import JsonPrimitiveEditor from './JsonPrimitiveEditor';
 import ContextMenu, { ContextMenuItem } from './ContextMenu';
+import HighlightedText from './HighlightedText';
 import {
     ChevronDownIcon,
     ChevronRightIcon,
@@ -107,7 +108,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
         }, []);
 
         const performSearch = useCallback((options: SearchOptions) => {
-            const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = options;
+            const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = options;
 
             if (!searchText) {
                 setIsHighlighted(false);
@@ -120,7 +121,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 return;
             }
 
-            const hasAnyMatch = searchService.deepSearch(data, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
+            const hasAnyMatch = searchService.deepSearch(data, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly);
             const shouldHighlight = searchService.shouldHighlight(data, level, options);
 
             if (shouldHighlight) {
@@ -224,6 +225,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 <JsonPrimitiveEditor
                     value={data}
                     isHighlighted={isHighlighted}
+                    searchOptions={searchOptions}
                     onUpdate={(newValue) => onUpdate(path, newValue)}
                 />
             );
@@ -381,7 +383,16 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                     }
                                                 `}
                                             >
-                                                {isArray ? `[${key}]` : key}
+                                                {isArray ? (
+                                                    `[${key}]`
+                                                ) : searchOptions.searchText ? (
+                                                    <HighlightedText
+                                                        text={key}
+                                                        searchOptions={searchOptions}
+                                                    />
+                                                ) : (
+                                                    key
+                                                )}
                                             </span>
                                             <span className="text-gray-400 dark:text-slate-600">:</span>
 

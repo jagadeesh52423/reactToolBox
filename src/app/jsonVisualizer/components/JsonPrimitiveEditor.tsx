@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { JSONValue, JsonValueType } from '../models/JsonModels';
+import { JSONValue, JsonValueType, SearchOptions } from '../models/JsonModels';
 import { getJsonParserService } from '../services/JsonParserService';
 import { CheckIcon, XIcon } from './Icons';
+import HighlightedText from './HighlightedText';
 
 interface JsonPrimitiveEditorProps {
     value: JSONValue;
     isHighlighted: boolean;
+    searchOptions: SearchOptions;
     onUpdate: (value: JSONValue) => void;
 }
 
@@ -20,6 +22,7 @@ interface JsonPrimitiveEditorProps {
 export default function JsonPrimitiveEditor({
     value,
     isHighlighted,
+    searchOptions,
     onUpdate
 }: JsonPrimitiveEditorProps) {
     const [isEditing, setIsEditing] = useState(false);
@@ -135,6 +138,8 @@ export default function JsonPrimitiveEditor({
         );
     }
 
+    const displayValue = JSON.stringify(value);
+
     return (
         <div className="flex items-center gap-2">
             <span
@@ -147,7 +152,14 @@ export default function JsonPrimitiveEditor({
                 onClick={startEditing}
                 title="Click to edit"
             >
-                {JSON.stringify(value)}
+                {searchOptions.searchText ? (
+                    <HighlightedText
+                        text={displayValue}
+                        searchOptions={searchOptions}
+                    />
+                ) : (
+                    displayValue
+                )}
             </span>
             <span
                 className={`

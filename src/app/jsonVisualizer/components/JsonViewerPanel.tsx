@@ -17,6 +17,7 @@ interface JsonViewerPanelProps {
     onFuzzyToggle: (enabled: boolean) => void;
     onCaseSensitiveToggle: (enabled: boolean) => void;
     onRegexToggle: (enabled: boolean) => void;
+    onKeysOnlyToggle: (enabled: boolean) => void;
     onSearch: () => void;
     onExpandAll: () => void;
     onCollapseAll: () => void;
@@ -44,6 +45,7 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
             onFuzzyToggle,
             onCaseSensitiveToggle,
             onRegexToggle,
+            onKeysOnlyToggle,
             onSearch,
             onExpandAll,
             onCollapseAll,
@@ -106,6 +108,7 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                     onFuzzyToggle={onFuzzyToggle}
                     onCaseSensitiveToggle={onCaseSensitiveToggle}
                     onRegexToggle={onRegexToggle}
+                    onKeysOnlyToggle={onKeysOnlyToggle}
                     onSearch={onSearch}
                 />
 

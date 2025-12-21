@@ -72,6 +72,7 @@ export interface UseJsonVisualizerReturn {
     handleFuzzyToggle: (enabled: boolean) => void;
     handleCaseSensitiveToggle: (enabled: boolean) => void;
     handleRegexToggle: (enabled: boolean) => void;
+    handleKeysOnlyToggle: (enabled: boolean) => void;
     handleSearch: () => void;
 
     // Tree Handlers
@@ -118,7 +119,8 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         isFilterEnabled: false,
         isFuzzyEnabled: false,
         isCaseSensitive: false,
-        isRegexEnabled: false
+        isRegexEnabled: false,
+        isKeysOnly: false
     });
 
     // Prettify State
@@ -365,6 +367,16 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         }
     }, [searchOptions]);
 
+    const handleKeysOnlyToggle = useCallback((enabled: boolean) => {
+        const newOptions = { ...searchOptions, isKeysOnly: enabled };
+        setSearchOptions(newOptions);
+
+        // Re-trigger search with new options
+        if (searchOptions.searchText.trim() && treeViewRef.current) {
+            treeViewRef.current.search(newOptions);
+        }
+    }, [searchOptions]);
+
     const handleSearch = useCallback(() => {
         performSearch();
     }, [performSearch]);
@@ -470,6 +482,7 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         handleFuzzyToggle,
         handleCaseSensitiveToggle,
         handleRegexToggle,
+        handleKeysOnlyToggle,
         handleSearch,
 
         // Tree Handlers

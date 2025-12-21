@@ -101,7 +101,7 @@ export class JsonSearchService {
      * @returns SearchResult with match information
      */
     searchNode(data: JSONValue, options: SearchOptions): SearchResult {
-        const { searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = options;
+        const { searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = options;
 
         if (!searchText) {
             return {
@@ -115,11 +115,13 @@ export class JsonSearchService {
         const matchedKeys: string[] = [];
         const matchedValues: string[] = [];
 
-        // For primitives, check if value matches
+        // For primitives, check if value matches (skip if keys only)
         if (typeof data !== 'object' || data === null) {
-            const valueStr = String(data);
-            if (this.matches(searchText, valueStr, isFuzzyEnabled, isCaseSensitive, isRegexEnabled)) {
-                matchedValues.push(valueStr);
+            if (!isKeysOnly) {
+                const valueStr = String(data);
+                if (this.matches(searchText, valueStr, isFuzzyEnabled, isCaseSensitive, isRegexEnabled)) {
+                    matchedValues.push(valueStr);
+                }
             }
             return {
                 matches: matchedValues.length > 0,
@@ -140,9 +142,11 @@ export class JsonSearchService {
 
             // Check if value matches (for primitives) or has matching descendants
             if (typeof value !== 'object' || value === null) {
-                const valueStr = String(value);
-                if (this.matches(searchText, valueStr, isFuzzyEnabled, isCaseSensitive, isRegexEnabled)) {
-                    matchedValues.push(valueStr);
+                if (!isKeysOnly) {
+                    const valueStr = String(value);
+                    if (this.matches(searchText, valueStr, isFuzzyEnabled, isCaseSensitive, isRegexEnabled)) {
+                        matchedValues.push(valueStr);
+                    }
                 }
             } else {
                 // Recursively search nested objects/arrays
@@ -170,6 +174,7 @@ export class JsonSearchService {
      * @param isFuzzy - Whether to use fuzzy matching
      * @param isCaseSensitive - Whether to use case-sensitive matching
      * @param isRegex - Whether to treat searchText as regex
+     * @param isKeysOnly - Whether to search keys only
      * @returns true if any match found
      */
     deepSearch(
@@ -177,12 +182,14 @@ export class JsonSearchService {
         searchText: string,
         isFuzzy: boolean = false,
         isCaseSensitive: boolean = false,
-        isRegex: boolean = false
+        isRegex: boolean = false,
+        isKeysOnly: boolean = false
     ): boolean {
         if (!searchText) return true;
 
         if (typeof data !== 'object' || data === null) {
-            return this.matches(searchText, String(data), isFuzzy, isCaseSensitive, isRegex);
+            // For primitives, only match if not keys-only mode
+            return !isKeysOnly && this.matches(searchText, String(data), isFuzzy, isCaseSensitive, isRegex);
         }
 
         return Object.entries(data).some(([key, value]) => {
@@ -193,9 +200,10 @@ export class JsonSearchService {
 
             // Check value or recurse
             if (typeof value === 'object' && value !== null) {
-                return this.deepSearch(value, searchText, isFuzzy, isCaseSensitive, isRegex);
+                return this.deepSearch(value, searchText, isFuzzy, isCaseSensitive, isRegex, isKeysOnly);
             } else {
-                return this.matches(searchText, String(value), isFuzzy, isCaseSensitive, isRegex);
+                // Only check primitive values if not keys-only mode
+                return !isKeysOnly && this.matches(searchText, String(value), isFuzzy, isCaseSensitive, isRegex);
             }
         });
     }
@@ -208,7 +216,7 @@ export class JsonSearchService {
      * @returns true if node should be highlighted
      */
     shouldHighlight(data: JSONValue, currentLevel: number, options: SearchOptions): boolean {
-        const { searchText, searchLevel, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = options;
+        const { searchText, searchLevel, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = options;
 
         if (!searchText) return false;
 
@@ -219,14 +227,16 @@ export class JsonSearchService {
 
         // Check if this node has direct matches (keys or primitive values)
         if (typeof data !== 'object' || data === null) {
-            return this.matches(searchText, String(data), isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
+            // For primitives, only match if not keys-only mode
+            return !isKeysOnly && this.matches(searchText, String(data), isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
         }
 
         // For objects/arrays, check immediate keys and primitive values
         return Object.entries(data).some(([key, value]) => {
             const keyMatches = this.matches(searchText, key, isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
             if (typeof value !== 'object' || value === null) {
-                const valueMatches = this.matches(searchText, String(value), isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
+                // Only check values if not keys-only mode
+                const valueMatches = !isKeysOnly && this.matches(searchText, String(value), isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
                 return keyMatches || valueMatches;
             }
             return keyMatches;
@@ -240,13 +250,13 @@ export class JsonSearchService {
      * @returns true if node should be visible
      */
     shouldBeVisible(data: JSONValue, options: SearchOptions): boolean {
-        const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = options;
+        const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = options;
 
         if (!searchText || !isFilterEnabled) {
             return true;
         }
 
-        return this.deepSearch(data, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
+        return this.deepSearch(data, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly);
     }
 
     /**
@@ -257,7 +267,7 @@ export class JsonSearchService {
      * @returns true if the item should be visible
      */
     shouldItemBeVisible(key: string, value: JSONValue, options: SearchOptions): boolean {
-        const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = options;
+        const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = options;
 
         if (!searchText || !isFilterEnabled) {
             return true;
@@ -268,8 +278,8 @@ export class JsonSearchService {
             return true;
         }
 
-        // Check if value matches or contains matches
-        return this.deepSearch(value, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
+        // Check if value matches or contains matches (deepSearch handles isKeysOnly)
+        return this.deepSearch(value, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly);
     }
 }
 
