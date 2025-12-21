@@ -34,11 +34,11 @@ const DEFAULT_TEXT = `Hello {{name}}! Welcome to {{company}}.
 Your order #{{orderId}} has been confirmed.
 We will deliver to {{address}} within {{days}} business days.`;
 
-const DEFAULT_TOKENS = `name=John Doe
-company=Acme Inc.
-orderId=12345
-address=123 Main Street
-days=3-5`;
+const DEFAULT_TOKENS = `name=>John Doe
+company=>Acme Inc.
+orderId=>12345
+address=>123 Main Street
+days=>3-5`;
 
 const TextReplacer: React.FC<ReplacerProps> = () => {
   const [inputText, setInputText] = useState(DEFAULT_TEXT);
@@ -91,13 +91,13 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
           }
         });
       } else {
-        // Key-value format: key=value per line
+        // Key-value format: key=>value per line (using => as delimiter to avoid conflicts)
         const lines = content.split('\n').filter(line => line.trim() && !line.startsWith('#'));
         lines.forEach((line, index) => {
-          const separatorIndex = line.indexOf('=');
+          const separatorIndex = line.indexOf('=>');
           if (separatorIndex !== -1) {
             const key = line.substring(0, separatorIndex).trim();
-            const value = line.substring(separatorIndex + 1).trim();
+            const value = line.substring(separatorIndex + 2).trim();
             if (key) {
               pairs.push({
                 id: `pair-${index}`,
@@ -334,10 +334,10 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
       extension = 'csv';
       mimeType = 'text/csv';
     } else {
-      // Key=Value format
+      // Key=>Value format (using => as delimiter to avoid conflicts with = in patterns)
       content = replacementPairs
         .filter(pair => pair.search)
-        .map(pair => `${pair.search}=${pair.replace}`)
+        .map(pair => `${pair.search}=>${pair.replace}`)
         .join('\n');
       extension = 'txt';
       mimeType = 'text/plain';
@@ -428,7 +428,7 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
             onChange={(e) => setTokenFormat(e.target.value as 'keyValue' | 'json' | 'csv')}
             className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 dark:bg-slate-700 border border-gray-200/50 dark:border-slate-600/50 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           >
-            <option value="keyValue">Key=Value</option>
+            <option value="keyValue">Key=&gt;Value</option>
             <option value="json">JSON</option>
             <option value="csv">CSV</option>
           </select>
@@ -523,7 +523,7 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
               <textarea
                 value={tokenFileContent}
                 onChange={(e) => setTokenFileContent(e.target.value)}
-                placeholder={`Enter replacement tokens (${tokenFormat === 'keyValue' ? 'key=value per line' : tokenFormat === 'json' ? '{"key": "value"}' : 'search,replace per line'})...`}
+                placeholder={`Enter replacement tokens (${tokenFormat === 'keyValue' ? 'key=>value per line' : tokenFormat === 'json' ? '{"key": "value"}' : 'search,replace per line'})...`}
                 className="w-full h-32 p-4 rounded-lg bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
               />
             </div>
