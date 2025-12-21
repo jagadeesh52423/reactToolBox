@@ -67,6 +67,8 @@ export interface UseJsonVisualizerReturn {
     handleSearchLevelChange: (level: string) => void;
     handleFilterToggle: (enabled: boolean) => void;
     handleFuzzyToggle: (enabled: boolean) => void;
+    handleCaseSensitiveToggle: (enabled: boolean) => void;
+    handleRegexToggle: (enabled: boolean) => void;
     handleSearch: () => void;
 
     // Tree Handlers
@@ -108,7 +110,9 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         searchText: '',
         searchLevel: undefined,
         isFilterEnabled: false,
-        isFuzzyEnabled: false
+        isFuzzyEnabled: false,
+        isCaseSensitive: false,
+        isRegexEnabled: false
     });
 
     // Prettify State
@@ -332,6 +336,26 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         }
     }, [searchOptions]);
 
+    const handleCaseSensitiveToggle = useCallback((enabled: boolean) => {
+        const newOptions = { ...searchOptions, isCaseSensitive: enabled };
+        setSearchOptions(newOptions);
+
+        // Re-trigger search with new options
+        if (searchOptions.searchText.trim() && treeViewRef.current) {
+            treeViewRef.current.search(newOptions);
+        }
+    }, [searchOptions]);
+
+    const handleRegexToggle = useCallback((enabled: boolean) => {
+        const newOptions = { ...searchOptions, isRegexEnabled: enabled };
+        setSearchOptions(newOptions);
+
+        // Re-trigger search with new options
+        if (searchOptions.searchText.trim() && treeViewRef.current) {
+            treeViewRef.current.search(newOptions);
+        }
+    }, [searchOptions]);
+
     const handleSearch = useCallback(() => {
         performSearch();
     }, [performSearch]);
@@ -426,6 +450,8 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         handleSearchLevelChange,
         handleFilterToggle,
         handleFuzzyToggle,
+        handleCaseSensitiveToggle,
+        handleRegexToggle,
         handleSearch,
 
         // Tree Handlers

@@ -133,6 +133,8 @@ export interface SearchOptions {
     searchLevel?: number;
     isFilterEnabled: boolean;
     isFuzzyEnabled: boolean;
+    isCaseSensitive: boolean;
+    isRegexEnabled: boolean;
 }
 
 /**

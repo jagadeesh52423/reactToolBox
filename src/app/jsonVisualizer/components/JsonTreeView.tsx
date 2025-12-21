@@ -107,7 +107,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
         }, []);
 
         const performSearch = useCallback((options: SearchOptions) => {
-            const { searchText, isFilterEnabled, isFuzzyEnabled } = options;
+            const { searchText, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled } = options;
 
             if (!searchText) {
                 setIsHighlighted(false);
@@ -120,7 +120,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 return;
             }
 
-            const hasAnyMatch = searchService.deepSearch(data, searchText, isFuzzyEnabled);
+            const hasAnyMatch = searchService.deepSearch(data, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
             const shouldHighlight = searchService.shouldHighlight(data, level, options);
 
             if (shouldHighlight) {
@@ -147,7 +147,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 Object.entries(data).forEach(([key]) => {
                     const childRef = childrenRefs.current[key];
                     if (childRef?.search) {
-                        const keyMatches = searchService.matches(searchText, key, isFuzzyEnabled);
+                        const keyMatches = searchService.matches(searchText, key, isFuzzyEnabled, isCaseSensitive, isRegexEnabled);
                         const childOptions = keyMatches
                             ? { ...options, isFilterEnabled: false }
                             : options;
