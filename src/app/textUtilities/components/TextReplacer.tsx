@@ -7,6 +7,17 @@ import {
   SparklesIcon,
 } from './Icons';
 
+// File System Access API types
+interface FilePickerAcceptType {
+  description?: string;
+  accept: Record<string, string[]>;
+}
+
+interface SaveFilePickerOptions {
+  suggestedName?: string;
+  types?: FilePickerAcceptType[];
+}
+
 interface ReplacementPair {
   id: string;
   search: string;
@@ -256,22 +267,49 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
     setMatchCount(0);
   }, []);
 
-  // Download output
-  const handleDownload = useCallback(() => {
+  // Download output with Save As dialog
+  const handleDownload = useCallback(async () => {
     if (!outputText) return;
-    const blob = new Blob([outputText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `replaced-${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [outputText]);
 
-  // Save/export replacement pairs to file
-  const handleSaveTokens = useCallback(() => {
+    const defaultName = sourceFileName
+      ? `replaced-${sourceFileName}`
+      : 'replaced-output.txt';
+
+    try {
+      // Use File System Access API if available (Chrome/Edge)
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as Window & { showSaveFilePicker: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle> }).showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{
+            description: 'Text Files',
+            accept: { 'text/plain': ['.txt'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(outputText);
+        await writable.close();
+      } else {
+        // Fallback for browsers without File System Access API
+        const blob = new Blob([outputText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = defaultName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      // User cancelled or error occurred
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Save failed:', err);
+      }
+    }
+  }, [outputText, sourceFileName]);
+
+  // Save/export replacement pairs to file with Save As dialog
+  const handleSaveTokens = useCallback(async () => {
     if (replacementPairs.length === 0) return;
 
     let content: string;
@@ -305,16 +343,40 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
       mimeType = 'text/plain';
     }
 
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tokens-${Date.now()}.${extension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [replacementPairs, tokenFormat]);
+    const defaultName = tokenFileName || `tokens.${extension}`;
+
+    try {
+      // Use File System Access API if available (Chrome/Edge)
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as Window & { showSaveFilePicker: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle> }).showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{
+            description: tokenFormat === 'json' ? 'JSON Files' : tokenFormat === 'csv' ? 'CSV Files' : 'Text Files',
+            accept: { [mimeType]: [`.${extension}`] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(content);
+        await writable.close();
+      } else {
+        // Fallback for browsers without File System Access API
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = defaultName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      // User cancelled or error occurred
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Save failed:', err);
+      }
+    }
+  }, [replacementPairs, tokenFormat, tokenFileName]);
 
   // Stats
   const stats = useMemo(() => ({
