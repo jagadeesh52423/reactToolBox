@@ -25,6 +25,7 @@ export default function JsonVisualizerRefactored() {
         searchOptions,
         indentLevel,
         showPrettifyOptions,
+        isEditorVisible,
         toast,
         treeViewRef,
 
@@ -55,6 +56,9 @@ export default function JsonVisualizerRefactored() {
         handleDelete,
         handleUpdate,
 
+        // UI Handlers
+        toggleEditorVisibility,
+
         // Toast
         clearToast
     } = useJsonVisualizer();
@@ -64,20 +68,26 @@ export default function JsonVisualizerRefactored() {
             {/* Main Content */}
             <main className="flex-1 p-6 overflow-hidden">
                 <div className="w-full h-full">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+                    <div className={`grid gap-6 h-[calc(100vh-200px)] ${
+                        isEditorVisible ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
+                    }`}>
                         {/* Left Panel - Input */}
-                        <JsonInputPanel
-                            jsonInput={jsonInput}
-                            error={error}
-                            indentLevel={indentLevel}
-                            showPrettifyOptions={showPrettifyOptions}
-                            onJsonChange={handleJsonChange}
-                            onPrettify={handlePrettify}
-                            onTogglePrettify={togglePrettifyOptions}
-                            onCopy={handleCopy}
-                            onFileUpload={handleFileUpload}
-                            onDownload={handleDownload}
-                        />
+                        {isEditorVisible && (
+                            <JsonInputPanel
+                                jsonInput={jsonInput}
+                                error={error}
+                                indentLevel={indentLevel}
+                                showPrettifyOptions={showPrettifyOptions}
+                                isVisible={isEditorVisible}
+                                onJsonChange={handleJsonChange}
+                                onPrettify={handlePrettify}
+                                onTogglePrettify={togglePrettifyOptions}
+                                onCopy={handleCopy}
+                                onFileUpload={handleFileUpload}
+                                onDownload={handleDownload}
+                                onToggleVisibility={toggleEditorVisibility}
+                            />
+                        )}
 
                         {/* Right Panel - Viewer */}
                         <JsonViewerPanel
@@ -85,6 +95,7 @@ export default function JsonVisualizerRefactored() {
                             parsedJson={parsedJson}
                             error={error}
                             searchOptions={searchOptions}
+                            isEditorVisible={isEditorVisible}
                             onSearchTextChange={handleSearchTextChange}
                             onSearchLevelChange={handleSearchLevelChange}
                             onFilterToggle={handleFilterToggle}
@@ -96,6 +107,7 @@ export default function JsonVisualizerRefactored() {
                             onCollapseAll={handleCollapseAll}
                             onDelete={handleDelete}
                             onUpdate={handleUpdate}
+                            onToggleEditorVisibility={toggleEditorVisibility}
                         />
                     </div>
                 </div>

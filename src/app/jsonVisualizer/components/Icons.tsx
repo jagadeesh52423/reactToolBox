@@ -27,6 +27,8 @@ export {
     ExpandIcon,
     CollapseIcon,
     FilterIcon,
+    EyeIcon,
+    EyeOffIcon,
 
     // Status Icons
     CheckIcon,

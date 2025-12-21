@@ -43,6 +43,9 @@ export interface UseJsonVisualizerReturn {
     indentLevel: IndentLevel;
     showPrettifyOptions: boolean;
 
+    // UI State
+    isEditorVisible: boolean;
+
     // Toast State
     toast: ToastConfig | null;
 
@@ -76,6 +79,9 @@ export interface UseJsonVisualizerReturn {
     handleCollapseAll: () => void;
     handleDelete: (path: JsonPath) => void;
     handleUpdate: (path: JsonPath, value: JSONValue) => void;
+
+    // UI Handlers
+    toggleEditorVisibility: () => void;
 
     // Toast Handler
     showToast: (config: ToastConfig) => void;
@@ -118,6 +124,9 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
     // Prettify State
     const [indentLevel, setIndentLevel] = useState<IndentLevel>(2);
     const [showPrettifyOptions, setShowPrettifyOptions] = useState(false);
+
+    // UI State
+    const [isEditorVisible, setIsEditorVisible] = useState(true);
 
     // Toast State
     const [toast, setToast] = useState<ToastConfig | null>(null);
@@ -418,6 +427,14 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
     }, [parsedJson, mutationService, parserService, indentLevel, showToast]);
 
     // ========================================================================
+    // UI Handlers
+    // ========================================================================
+
+    const toggleEditorVisibility = useCallback(() => {
+        setIsEditorVisible(prev => !prev);
+    }, []);
+
+    // ========================================================================
     // Return
     // ========================================================================
 
@@ -429,6 +446,7 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         searchOptions,
         indentLevel,
         showPrettifyOptions,
+        isEditorVisible,
         toast,
         treeViewRef,
 
@@ -459,6 +477,9 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         handleCollapseAll,
         handleDelete,
         handleUpdate,
+
+        // UI Handlers
+        toggleEditorVisibility,
 
         // Toast
         showToast,

@@ -4,12 +4,13 @@ import { forwardRef } from 'react';
 import { JSONValue, JsonPath, SearchOptions, JsonTreeViewRef } from '../models/JsonModels';
 import SearchControls from './SearchControls';
 import JsonTreeView from './JsonTreeView';
-import { ExpandIcon, CollapseIcon, BracesIcon } from './Icons';
+import { ExpandIcon, CollapseIcon, BracesIcon, EyeIcon } from './Icons';
 
 interface JsonViewerPanelProps {
     parsedJson: JSONValue | null;
     error: string | null;
     searchOptions: SearchOptions;
+    isEditorVisible: boolean;
     onSearchTextChange: (text: string) => void;
     onSearchLevelChange: (level: string) => void;
     onFilterToggle: (enabled: boolean) => void;
@@ -21,6 +22,7 @@ interface JsonViewerPanelProps {
     onCollapseAll: () => void;
     onDelete: (path: JsonPath) => void;
     onUpdate: (path: JsonPath, value: JSONValue) => void;
+    onToggleEditorVisibility: () => void;
 }
 
 /**
@@ -35,6 +37,7 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
             parsedJson,
             error,
             searchOptions,
+            isEditorVisible,
             onSearchTextChange,
             onSearchLevelChange,
             onFilterToggle,
@@ -45,7 +48,8 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
             onExpandAll,
             onCollapseAll,
             onDelete,
-            onUpdate
+            onUpdate,
+            onToggleEditorVisibility
         },
         ref
     ) => {
@@ -62,6 +66,18 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
 
                     {/* Tree Controls */}
                     <div className="flex items-center gap-1">
+                        {/* Show Editor Button (only when editor is hidden) */}
+                        {!isEditorVisible && (
+                            <button
+                                onClick={onToggleEditorVisibility}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-100/50 dark:bg-indigo-600/20 hover:bg-indigo-200/50 dark:hover:bg-indigo-600/40 border border-indigo-300/30 dark:border-indigo-500/30 transition-all duration-200 mr-1"
+                                title="Show editor"
+                            >
+                                <EyeIcon size={14} />
+                                <span className="text-sm">Show Editor</span>
+                            </button>
+                        )}
+
                         <button
                             onClick={onExpandAll}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 border border-gray-300/30 dark:border-slate-600/30 transition-all duration-200"

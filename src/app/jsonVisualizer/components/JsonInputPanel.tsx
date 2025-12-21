@@ -9,7 +9,9 @@ import {
     ClipboardIcon,
     ClipboardCheckIcon,
     ChevronDownIcon,
-    AlertCircleIcon
+    AlertCircleIcon,
+    EyeIcon,
+    EyeOffIcon
 } from './Icons';
 
 interface JsonInputPanelProps {
@@ -17,12 +19,14 @@ interface JsonInputPanelProps {
     error: string | null;
     indentLevel: IndentLevel;
     showPrettifyOptions: boolean;
+    isVisible: boolean;
     onJsonChange: (value: string) => void;
     onPrettify: (indent: IndentLevel) => void;
     onTogglePrettify: () => void;
     onCopy: () => void;
     onFileUpload: (file: File) => void;
     onDownload: () => void;
+    onToggleVisibility: () => void;
 }
 
 /**
@@ -39,12 +43,14 @@ export default function JsonInputPanel({
     error,
     indentLevel,
     showPrettifyOptions,
+    isVisible,
     onJsonChange,
     onPrettify,
     onTogglePrettify,
     onCopy,
     onFileUpload,
-    onDownload
+    onDownload,
+    onToggleVisibility
 }: JsonInputPanelProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -95,6 +101,17 @@ export default function JsonInputPanel({
 
                 {/* Toolbar */}
                 <div className="flex items-center gap-1">
+                    {/* Visibility Toggle */}
+                    <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
+                        <button
+                            onClick={onToggleVisibility}
+                            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-all duration-200"
+                            title={isVisible ? 'Hide editor' : 'Show editor'}
+                        >
+                            {isVisible ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                        </button>
+                    </div>
+
                     {/* File Operations Group */}
                     <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
                         <input
