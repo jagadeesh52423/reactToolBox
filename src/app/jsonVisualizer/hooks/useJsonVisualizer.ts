@@ -26,6 +26,7 @@ import {
 } from '../models/JsonModels';
 import { getJsonParserService } from '../services/JsonParserService';
 import { getJsonMutationService } from '../services/JsonMutationService';
+import { getJsonSearchService } from '../services/JsonSearchService';
 
 /**
  * Return type for the useJsonVisualizer hook
@@ -38,6 +39,7 @@ export interface UseJsonVisualizerReturn {
 
     // Search State
     searchOptions: SearchOptions;
+    matchCount: number;
 
     // Prettify State
     indentLevel: IndentLevel;
@@ -106,6 +108,7 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
     // Services
     const parserService = useMemo(() => getJsonParserService(), []);
     const mutationService = useMemo(() => getJsonMutationService(), []);
+    const searchService = useMemo(() => getJsonSearchService(), []);
 
     // JSON State
     const [jsonInput, setJsonInput] = useState<string>('');
@@ -120,8 +123,10 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         isFuzzyEnabled: false,
         isCaseSensitive: false,
         isRegexEnabled: false,
-        isKeysOnly: false
+        isKeysOnly: false,
+        regexError: null
     });
+    const [matchCount, setMatchCount] = useState<number>(0);
 
     // Prettify State
     const [indentLevel, setIndentLevel] = useState<IndentLevel>(2);
@@ -295,7 +300,14 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
     }, [searchOptions]);
 
     const handleSearchTextChange = useCallback((text: string) => {
-        setSearchOptions(prev => ({ ...prev, searchText: text }));
+        // Validate regex if enabled
+        let regexError: string | null = null;
+        if (searchOptions.isRegexEnabled && text.trim()) {
+            regexError = searchService.validateRegex(text, searchOptions.isCaseSensitive);
+        }
+
+        const newOptions = { ...searchOptions, searchText: text, regexError };
+        setSearchOptions(newOptions);
 
         // Debounce search
         if (searchTimeoutRef.current) {
@@ -304,23 +316,30 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
 
         if (text.trim()) {
             searchTimeoutRef.current = setTimeout(() => {
+                // Update match count
+                if (parsedJson && !regexError) {
+                    const count = searchService.countMatches(parsedJson, newOptions);
+                    setMatchCount(count);
+                } else {
+                    setMatchCount(0);
+                }
+
                 if (treeViewRef.current) {
-                    treeViewRef.current.search({
-                        ...searchOptions,
-                        searchText: text
-                    });
+                    treeViewRef.current.search(newOptions);
                 }
             }, debounceMs);
         } else {
             // Clear search immediately when empty
+            setMatchCount(0);
             if (treeViewRef.current) {
                 treeViewRef.current.search({
                     ...searchOptions,
-                    searchText: ''
+                    searchText: '',
+                    regexError: null
                 });
             }
         }
-    }, [searchOptions, debounceMs]);
+    }, [searchOptions, debounceMs, parsedJson, searchService]);
 
     const handleSearchLevelChange = useCallback((level: string) => {
         const levelNum = level ? parseInt(level, 10) : undefined;
@@ -341,41 +360,85 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         const newOptions = { ...searchOptions, isFuzzyEnabled: enabled };
         setSearchOptions(newOptions);
 
-        // Re-trigger search with new options
-        if (searchOptions.searchText.trim() && treeViewRef.current) {
-            treeViewRef.current.search(newOptions);
+        // Re-trigger search with new options and update count
+        if (searchOptions.searchText.trim()) {
+            if (parsedJson && !searchOptions.regexError) {
+                const count = searchService.countMatches(parsedJson, newOptions);
+                setMatchCount(count);
+            }
+
+            if (treeViewRef.current) {
+                treeViewRef.current.search(newOptions);
+            }
         }
-    }, [searchOptions]);
+    }, [searchOptions, parsedJson, searchService]);
 
     const handleCaseSensitiveToggle = useCallback((enabled: boolean) => {
-        const newOptions = { ...searchOptions, isCaseSensitive: enabled };
+        // Re-validate regex with new case sensitivity
+        let regexError: string | null = null;
+        if (searchOptions.isRegexEnabled && searchOptions.searchText.trim()) {
+            regexError = searchService.validateRegex(searchOptions.searchText, enabled);
+        }
+
+        const newOptions = { ...searchOptions, isCaseSensitive: enabled, regexError };
         setSearchOptions(newOptions);
 
-        // Re-trigger search with new options
-        if (searchOptions.searchText.trim() && treeViewRef.current) {
-            treeViewRef.current.search(newOptions);
+        // Re-trigger search with new options and update count
+        if (searchOptions.searchText.trim()) {
+            if (parsedJson && !regexError) {
+                const count = searchService.countMatches(parsedJson, newOptions);
+                setMatchCount(count);
+            } else if (regexError) {
+                setMatchCount(0);
+            }
+
+            if (treeViewRef.current) {
+                treeViewRef.current.search(newOptions);
+            }
         }
-    }, [searchOptions]);
+    }, [searchOptions, parsedJson, searchService]);
 
     const handleRegexToggle = useCallback((enabled: boolean) => {
-        const newOptions = { ...searchOptions, isRegexEnabled: enabled };
+        // Validate regex if enabling
+        let regexError: string | null = null;
+        if (enabled && searchOptions.searchText.trim()) {
+            regexError = searchService.validateRegex(searchOptions.searchText, searchOptions.isCaseSensitive);
+        }
+
+        const newOptions = { ...searchOptions, isRegexEnabled: enabled, regexError };
         setSearchOptions(newOptions);
 
-        // Re-trigger search with new options
-        if (searchOptions.searchText.trim() && treeViewRef.current) {
-            treeViewRef.current.search(newOptions);
+        // Re-trigger search with new options and update count
+        if (searchOptions.searchText.trim()) {
+            if (parsedJson && !regexError) {
+                const count = searchService.countMatches(parsedJson, newOptions);
+                setMatchCount(count);
+            } else if (regexError) {
+                setMatchCount(0);
+            }
+
+            if (treeViewRef.current) {
+                treeViewRef.current.search(newOptions);
+            }
         }
-    }, [searchOptions]);
+    }, [searchOptions, parsedJson, searchService]);
 
     const handleKeysOnlyToggle = useCallback((enabled: boolean) => {
         const newOptions = { ...searchOptions, isKeysOnly: enabled };
         setSearchOptions(newOptions);
 
-        // Re-trigger search with new options
-        if (searchOptions.searchText.trim() && treeViewRef.current) {
-            treeViewRef.current.search(newOptions);
+        // Re-trigger search with new options and update count
+        if (searchOptions.searchText.trim()) {
+            if (parsedJson && !searchOptions.regexError) {
+                const count = searchService.countMatches(parsedJson, newOptions);
+                setMatchCount(count);
+            }
+
+            if (treeViewRef.current) {
+                treeViewRef.current.search(newOptions);
+            }
         }
-    }, [searchOptions]);
+    }, [searchOptions, parsedJson, searchService]);
 
     const handleSearch = useCallback(() => {
         performSearch();
@@ -456,6 +519,7 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         parsedJson,
         error,
         searchOptions,
+        matchCount,
         indentLevel,
         showPrettifyOptions,
         isEditorVisible,

@@ -23,6 +23,7 @@ export default function JsonVisualizerRefactored() {
         parsedJson,
         error,
         searchOptions,
+        matchCount,
         indentLevel,
         showPrettifyOptions,
         isEditorVisible,
@@ -96,6 +97,7 @@ export default function JsonVisualizerRefactored() {
                             parsedJson={parsedJson}
                             error={error}
                             searchOptions={searchOptions}
+                            matchCount={matchCount}
                             isEditorVisible={isEditorVisible}
                             onSearchTextChange={handleSearchTextChange}
                             onSearchLevelChange={handleSearchLevelChange}

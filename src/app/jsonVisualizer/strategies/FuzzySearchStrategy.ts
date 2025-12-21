@@ -1,22 +1,77 @@
 /**
  * FuzzySearchStrategy
  *
- * Implements fuzzy matching for search.
- * Characters must appear in order but not necessarily consecutively.
- * Example: "apl" matches "apple", "application", "a_p_l"
+ * Implements fuzzy matching for search using multiple strategies:
+ * 1. Levenshtein distance - catches common typos like "emial" vs "email"
+ * 2. Subsequence matching - characters appear in order but not consecutively
  *
- * Time Complexity: O(n) where n is target length
- * Space Complexity: O(1) for matching, O(k) for positions where k is pattern length
+ * Example: "emial" matches "email" (typo), "apl" matches "apple" (subsequence)
+ *
+ * Time Complexity: O(n*m) for Levenshtein, O(n) for subsequence
+ * Space Complexity: O(min(n,m)) for Levenshtein, O(k) for positions
  */
 
 import { ISearchStrategy } from './ISearchStrategy';
 
+// Default threshold: allow 2 edits for every 5 characters (40% tolerance)
+const DEFAULT_DISTANCE_THRESHOLD = 0.4;
+
 export class FuzzySearchStrategy implements ISearchStrategy {
     readonly name = 'fuzzy';
+    private distanceThreshold: number;
+
+    constructor(distanceThreshold: number = DEFAULT_DISTANCE_THRESHOLD) {
+        this.distanceThreshold = distanceThreshold;
+    }
 
     /**
-     * Check if pattern characters appear in order within target
-     * Case-insensitive matching
+     * Calculate Levenshtein distance between two strings
+     * Uses optimized space complexity O(min(n,m))
+     */
+    private levenshteinDistance(a: string, b: string): number {
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+
+        // Ensure a is the shorter string for space optimization
+        if (a.length > b.length) {
+            [a, b] = [b, a];
+        }
+
+        const aLen = a.length;
+        const bLen = b.length;
+
+        // Previous and current row of distances
+        let prevRow = new Array(aLen + 1);
+        let currRow = new Array(aLen + 1);
+
+        // Initialize first row
+        for (let i = 0; i <= aLen; i++) {
+            prevRow[i] = i;
+        }
+
+        for (let j = 1; j <= bLen; j++) {
+            currRow[0] = j;
+
+            for (let i = 1; i <= aLen; i++) {
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                currRow[i] = Math.min(
+                    currRow[i - 1] + 1,      // insertion
+                    prevRow[i] + 1,           // deletion
+                    prevRow[i - 1] + cost     // substitution
+                );
+            }
+
+            // Swap rows
+            [prevRow, currRow] = [currRow, prevRow];
+        }
+
+        return prevRow[aLen];
+    }
+
+    /**
+     * Check if pattern matches target using combined fuzzy strategies:
+     * 1. Try Levenshtein distance for typo tolerance
+     * 2. Fall back to subsequence matching
      */
     matches(pattern: string, target: string): boolean {
         if (!pattern) return true;
@@ -25,35 +80,137 @@ export class FuzzySearchStrategy implements ISearchStrategy {
         const patternLower = pattern.toLowerCase();
         const targetLower = target.toLowerCase();
 
+        // Strategy 1: Levenshtein distance for typo matching
+        // Check if pattern is similar to any substring of target
+        if (this.matchesWithLevenshtein(patternLower, targetLower)) {
+            return true;
+        }
+
+        // Strategy 2: Subsequence matching (original behavior)
+        return this.matchesSubsequence(patternLower, targetLower);
+    }
+
+    /**
+     * Check if pattern matches any substring of target within Levenshtein threshold
+     */
+    private matchesWithLevenshtein(pattern: string, target: string): boolean {
+        // For very short patterns, require exact or near-exact match
+        const maxDistance = Math.max(1, Math.floor(pattern.length * this.distanceThreshold));
+
+        // If target is shorter than pattern minus max edits, can't match
+        if (target.length < pattern.length - maxDistance) {
+            return false;
+        }
+
+        // Check if the whole target is within distance
+        if (this.levenshteinDistance(pattern, target) <= maxDistance) {
+            return true;
+        }
+
+        // Check substrings of similar length to pattern
+        const windowSize = pattern.length;
+        const minWindow = Math.max(1, windowSize - maxDistance);
+        const maxWindow = windowSize + maxDistance;
+
+        for (let len = minWindow; len <= Math.min(maxWindow, target.length); len++) {
+            for (let i = 0; i <= target.length - len; i++) {
+                const substring = target.substring(i, i + len);
+                if (this.levenshteinDistance(pattern, substring) <= maxDistance) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if pattern characters appear in order within target (subsequence)
+     */
+    private matchesSubsequence(pattern: string, target: string): boolean {
         let patternIndex = 0;
         let targetIndex = 0;
 
-        while (patternIndex < patternLower.length && targetIndex < targetLower.length) {
-            if (patternLower[patternIndex] === targetLower[targetIndex]) {
+        while (patternIndex < pattern.length && targetIndex < target.length) {
+            if (pattern[patternIndex] === target[targetIndex]) {
                 patternIndex++;
             }
             targetIndex++;
         }
 
-        return patternIndex === patternLower.length;
+        return patternIndex === pattern.length;
     }
 
     /**
      * Find positions of fuzzy-matched characters for highlighting
-     * Returns positions where each pattern character was matched
+     * Prioritizes Levenshtein matches, falls back to subsequence positions
      */
     getMatchPositions(pattern: string, target: string): [number, number][] {
         if (!pattern || !target) return [];
 
-        const positions: [number, number][] = [];
         const patternLower = pattern.toLowerCase();
         const targetLower = target.toLowerCase();
+
+        // Try to find Levenshtein match positions first
+        const levenshteinPositions = this.getLevenshteinMatchPositions(patternLower, targetLower);
+        if (levenshteinPositions.length > 0) {
+            return levenshteinPositions;
+        }
+
+        // Fall back to subsequence matching positions
+        return this.getSubsequenceMatchPositions(patternLower, targetLower);
+    }
+
+    /**
+     * Find the best substring match using Levenshtein distance and return its position
+     */
+    private getLevenshteinMatchPositions(pattern: string, target: string): [number, number][] {
+        const maxDistance = Math.max(1, Math.floor(pattern.length * this.distanceThreshold));
+
+        // Check if the whole target is a close match
+        if (this.levenshteinDistance(pattern, target) <= maxDistance) {
+            return [[0, target.length]];
+        }
+
+        // Find best matching substring
+        let bestStart = -1;
+        let bestEnd = -1;
+        let bestDistance = maxDistance + 1;
+
+        const windowSize = pattern.length;
+        const minWindow = Math.max(1, windowSize - maxDistance);
+        const maxWindow = windowSize + maxDistance;
+
+        for (let len = minWindow; len <= Math.min(maxWindow, target.length); len++) {
+            for (let i = 0; i <= target.length - len; i++) {
+                const substring = target.substring(i, i + len);
+                const distance = this.levenshteinDistance(pattern, substring);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestStart = i;
+                    bestEnd = i + len;
+                }
+            }
+        }
+
+        if (bestStart >= 0 && bestDistance <= maxDistance) {
+            return [[bestStart, bestEnd]];
+        }
+
+        return [];
+    }
+
+    /**
+     * Find positions of subsequence-matched characters for highlighting
+     */
+    private getSubsequenceMatchPositions(pattern: string, target: string): [number, number][] {
+        const positions: [number, number][] = [];
 
         let patternIndex = 0;
         let targetIndex = 0;
 
-        while (patternIndex < patternLower.length && targetIndex < targetLower.length) {
-            if (patternLower[patternIndex] === targetLower[targetIndex]) {
+        while (patternIndex < pattern.length && targetIndex < target.length) {
+            if (pattern[patternIndex] === target[targetIndex]) {
                 positions.push([targetIndex, targetIndex + 1]);
                 patternIndex++;
             }
@@ -61,7 +218,7 @@ export class FuzzySearchStrategy implements ISearchStrategy {
         }
 
         // Only return positions if we matched the entire pattern
-        if (patternIndex === patternLower.length) {
+        if (patternIndex === pattern.length) {
             return this.mergeConsecutivePositions(positions);
         }
 

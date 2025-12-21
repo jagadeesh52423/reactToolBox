@@ -10,6 +10,7 @@ interface JsonViewerPanelProps {
     parsedJson: JSONValue | null;
     error: string | null;
     searchOptions: SearchOptions;
+    matchCount: number;
     isEditorVisible: boolean;
     onSearchTextChange: (text: string) => void;
     onSearchLevelChange: (level: string) => void;
@@ -38,6 +39,7 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
             parsedJson,
             error,
             searchOptions,
+            matchCount,
             isEditorVisible,
             onSearchTextChange,
             onSearchLevelChange,
@@ -102,6 +104,7 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                 {/* Search Controls */}
                 <SearchControls
                     searchOptions={searchOptions}
+                    matchCount={matchCount}
                     onSearchTextChange={onSearchTextChange}
                     onSearchLevelChange={onSearchLevelChange}
                     onFilterToggle={onFilterToggle}

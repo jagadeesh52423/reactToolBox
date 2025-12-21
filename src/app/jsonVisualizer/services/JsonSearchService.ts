@@ -30,6 +30,89 @@ export class JsonSearchService {
     }
 
     /**
+     * Validate a regex pattern and return error message if invalid
+     * @param pattern - The regex pattern to validate
+     * @param isCaseSensitive - Whether case-sensitive matching is enabled
+     * @returns Error message if invalid, null if valid
+     */
+    validateRegex(pattern: string, isCaseSensitive: boolean = false): string | null {
+        if (!pattern) return null;
+
+        try {
+            const flags = isCaseSensitive ? 'g' : 'gi';
+            new RegExp(pattern, flags);
+            return null;
+        } catch (e) {
+            if (e instanceof SyntaxError) {
+                // Extract the core error message
+                const message = e.message
+                    .replace('Invalid regular expression: ', '')
+                    .replace(/\/.+\/[gi]*: /, '');
+                return `Invalid regex: ${message}`;
+            }
+            return 'Invalid regex pattern';
+        }
+    }
+
+    /**
+     * Count total matches in JSON data
+     * @param data - The JSON data to search
+     * @param options - Search options
+     * @returns Total number of matches (keys + values)
+     */
+    countMatches(data: JSONValue, options: SearchOptions): number {
+        const { searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = options;
+
+        if (!searchText) return 0;
+
+        // Validate regex first
+        if (isRegexEnabled && this.validateRegex(searchText, isCaseSensitive)) {
+            return 0;
+        }
+
+        return this.countMatchesRecursive(data, searchText, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly);
+    }
+
+    /**
+     * Recursively count matches in JSON tree
+     */
+    private countMatchesRecursive(
+        data: JSONValue,
+        searchText: string,
+        isFuzzy: boolean,
+        isCaseSensitive: boolean,
+        isRegex: boolean,
+        isKeysOnly: boolean
+    ): number {
+        let count = 0;
+
+        if (typeof data !== 'object' || data === null) {
+            // Primitive value
+            if (!isKeysOnly && this.matches(searchText, String(data), isFuzzy, isCaseSensitive, isRegex)) {
+                count++;
+            }
+            return count;
+        }
+
+        // Object or array
+        for (const [key, value] of Object.entries(data)) {
+            // Check key
+            if (this.matches(searchText, key, isFuzzy, isCaseSensitive, isRegex)) {
+                count++;
+            }
+
+            // Check value or recurse
+            if (typeof value === 'object' && value !== null) {
+                count += this.countMatchesRecursive(value, searchText, isFuzzy, isCaseSensitive, isRegex, isKeysOnly);
+            } else if (!isKeysOnly && this.matches(searchText, String(value), isFuzzy, isCaseSensitive, isRegex)) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /**
      * Check if a string matches the search pattern
      * @param searchText - The search pattern
      * @param target - The string to search in

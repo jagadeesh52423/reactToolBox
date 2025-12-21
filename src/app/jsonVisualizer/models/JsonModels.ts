@@ -136,6 +136,7 @@ export interface SearchOptions {
     isCaseSensitive: boolean;
     isRegexEnabled: boolean;
     isKeysOnly: boolean;
+    regexError?: string | null;
 }
 
 /**

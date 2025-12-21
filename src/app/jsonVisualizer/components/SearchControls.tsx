@@ -5,6 +5,7 @@ import { SearchIcon, XIcon, FilterIcon, LayersIcon } from './Icons';
 
 interface SearchControlsProps {
     searchOptions: SearchOptions;
+    matchCount: number;
     onSearchTextChange: (text: string) => void;
     onSearchLevelChange: (level: string) => void;
     onFilterToggle: (enabled: boolean) => void;
@@ -13,7 +14,6 @@ interface SearchControlsProps {
     onRegexToggle: (enabled: boolean) => void;
     onKeysOnlyToggle: (enabled: boolean) => void;
     onSearch: () => void;
-    matchCount?: number;
 }
 
 /**
@@ -27,6 +27,7 @@ interface SearchControlsProps {
  */
 export default function SearchControls({
     searchOptions,
+    matchCount,
     onSearchTextChange,
     onSearchLevelChange,
     onFilterToggle,
@@ -34,10 +35,9 @@ export default function SearchControls({
     onCaseSensitiveToggle,
     onRegexToggle,
     onKeysOnlyToggle,
-    onSearch,
-    matchCount
+    onSearch
 }: SearchControlsProps) {
-    const { searchText, searchLevel, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly } = searchOptions;
+    const { searchText, searchLevel, isFilterEnabled, isFuzzyEnabled, isCaseSensitive, isRegexEnabled, isKeysOnly, regexError } = searchOptions;
 
     const handleClear = () => {
         onSearchTextChange('');
@@ -49,7 +49,7 @@ export default function SearchControls({
             <div className="flex items-center gap-3">
                 {/* Search Input */}
                 <div className="flex-1 relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500">
+                    <div className={`absolute left-3 top-1/2 -translate-y-1/2 ${regexError ? 'text-red-500' : 'text-gray-400 dark:text-slate-500'}`}>
                         <SearchIcon size={18} />
                     </div>
                     <input
@@ -58,7 +58,11 @@ export default function SearchControls({
                         onChange={(e) => onSearchTextChange(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && onSearch()}
                         placeholder="Search keys and values..."
-                        className="w-full pl-10 pr-10 py-2.5 bg-white/50 dark:bg-slate-900/50 border border-gray-300/50 dark:border-slate-600/50 rounded-lg text-gray-800 dark:text-slate-200 text-sm placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/25 transition-all"
+                        className={`w-full pl-10 pr-10 py-2.5 bg-white/50 dark:bg-slate-900/50 border rounded-lg text-gray-800 dark:text-slate-200 text-sm placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none transition-all ${
+                            regexError
+                                ? 'border-red-400 dark:border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500/25'
+                                : 'border-gray-300/50 dark:border-slate-600/50 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/25'
+                        }`}
                     />
                     {searchText && (
                         <button
@@ -105,6 +109,18 @@ export default function SearchControls({
                 </button>
             </div>
 
+            {/* Regex Error Message */}
+            {regexError && (
+                <div className="mt-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                        <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>{regexError}</span>
+                    </p>
+                </div>
+            )}
+
             {/* Options Row */}
             <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -118,7 +134,7 @@ export default function SearchControls({
                                 : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-500 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
                             }
                         `}
-                        title="Match Case (case-sensitive search)"
+                        title="Match Case: Enable case-sensitive search. Works with Regex and Keys Only modes."
                     >
                         <span className="font-mono">Aa</span>
                     </button>
@@ -133,7 +149,7 @@ export default function SearchControls({
                                 : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-500 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
                             }
                         `}
-                        title="Use Regular Expression"
+                        title="Regex: Use regular expression patterns (e.g., ^user.*, [0-9]+). Combine with Match Case for case-sensitive regex. Disables Fuzzy mode."
                     >
                         <span className="font-mono">.*</span>
                     </button>
@@ -148,7 +164,7 @@ export default function SearchControls({
                                 : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-500 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
                             }
                         `}
-                        title="Search keys only (ignore values)"
+                        title="Keys Only: Search only property names, ignore values. Works with all other modes."
                     >
                         <span className="font-mono">{'{k}'}</span>
                     </button>
@@ -156,7 +172,10 @@ export default function SearchControls({
                     <div className="w-px h-5 bg-gray-300 dark:bg-slate-600" />
 
                     {/* Fuzzy Toggle */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
+                    <label
+                        className="flex items-center gap-2 cursor-pointer group"
+                        title="Fuzzy: Matches typos (e.g., 'emial' finds 'email') and subsequences (e.g., 'usr' finds 'user'). Cannot be combined with Regex mode."
+                    >
                         <div
                             className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${
                                 isFuzzyEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-slate-600'
@@ -175,7 +194,10 @@ export default function SearchControls({
                     </label>
 
                     {/* Filter Toggle */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
+                    <label
+                        className="flex items-center gap-2 cursor-pointer group"
+                        title="Filter: Hides all non-matching branches from view. Only nodes containing matches remain visible. Works with all search modes."
+                    >
                         <div
                             className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${
                                 isFilterEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-slate-600'
@@ -196,7 +218,7 @@ export default function SearchControls({
                 </div>
 
                 {/* Match Count */}
-                {searchText && matchCount !== undefined && (
+                {searchText && !regexError && (
                     <div className="text-sm text-gray-500 dark:text-slate-500">
                         <span className="text-gray-700 dark:text-slate-300 font-medium">{matchCount}</span>
                         {' '}match{matchCount !== 1 ? 'es' : ''} found
