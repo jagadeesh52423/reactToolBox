@@ -298,26 +298,36 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                       className={`w-8 h-8 rounded flex items-center justify-center border transition-all ${
                         activeControl?.nodeId === node.id && activeControl?.property === 'fill'
                           ? 'border-blue-400 border-2 shadow-md'
-                          : 'border-gray-300 hover:bg-gray-100'
-                      }`}
+                          : 'border-gray-300 dark:border-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700'
+                      } ${!node.styles.fill ? 'bg-white dark:bg-slate-800' : ''}`}
                       style={{
-                        backgroundColor: node.styles.fill || 'white'
+                        backgroundColor: node.styles.fill || undefined
                       }}
                       title="Background Fill Color (Hold Ctrl/Cmd for multi-select)"
                       onClick={(e) => handleColorControlOpen(node.id, 'fill', e)}
                     >
                       <span className="sr-only">Fill</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19,11.5C19,11.5 17,13.67 17,15A2,2 0 0,0 19,17A2,2 0 0,0 21,15C21,13.67 19,11.5 19,11.5M5.21,10L10,5.21L14.79,10M16.56,8.94L7.62,0L6.21,1.41L8.59,3.79L3.44,8.94C2.85,9.5 2.85,10.47 3.44,11.06L8.94,16.56C9.5,17.15 10.47,17.15 11.06,16.56L16.56,11.06C17.15,10.47 17.15,9.5 16.56,8.94Z"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        {/* Color wheel segments */}
+                        <path d="M12 2a10 10 0 0 1 7.07 2.93l-4.24 4.24A4 4 0 0 0 12 8V2z" className="fill-amber-400"/>
+                        <path d="M19.07 4.93A10 10 0 0 1 22 12h-6a4 4 0 0 0-1.17-2.83l4.24-4.24z" className="fill-orange-500"/>
+                        <path d="M22 12a10 10 0 0 1-2.93 7.07l-4.24-4.24A4 4 0 0 0 16 12h6z" className="fill-red-500"/>
+                        <path d="M19.07 19.07A10 10 0 0 1 12 22v-6a4 4 0 0 0 2.83-1.17l4.24 4.24z" className="fill-pink-500"/>
+                        <path d="M12 22a10 10 0 0 1-7.07-2.93l4.24-4.24A4 4 0 0 0 12 16v6z" className="fill-purple-500"/>
+                        <path d="M4.93 19.07A10 10 0 0 1 2 12h6a4 4 0 0 0 1.17 2.83l-4.24 4.24z" className="fill-blue-500"/>
+                        <path d="M2 12a10 10 0 0 1 2.93-7.07l4.24 4.24A4 4 0 0 0 8 12H2z" className="fill-cyan-500"/>
+                        <path d="M4.93 4.93A10 10 0 0 1 12 2v6a4 4 0 0 0-2.83 1.17L4.93 4.93z" className="fill-green-500"/>
+                        {/* Center circle */}
+                        <circle cx="12" cy="12" r="3" className="fill-white dark:fill-slate-700 stroke-gray-300 dark:stroke-slate-500" strokeWidth="0.5"/>
                       </svg>
                     </button>
 
                     {/* Border Color Button */}
                     <button
-                      className={`w-8 h-8 rounded flex items-center justify-center transition-all ${
+                      className={`w-8 h-8 rounded flex items-center justify-center transition-all text-gray-700 dark:text-slate-200 ${
                         activeControl?.nodeId === node.id && activeControl?.property === 'stroke'
-                          ? 'border-blue-400 border-2 shadow-md bg-blue-50'
-                          : 'hover:bg-gray-100'
+                          ? 'border-blue-400 border-2 shadow-md bg-blue-50 dark:bg-blue-900/30'
+                          : 'hover:bg-gray-100 dark:hover:bg-slate-700'
                       }`}
                       title="Border Color (Hold Ctrl/Cmd for multi-select)"
                       style={{
@@ -338,12 +348,12 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                     <button
                       className={`w-8 h-8 rounded flex items-center justify-center border transition-all ${
                         activeControl?.nodeId === node.id && activeControl?.property === 'color'
-                          ? 'border-blue-400 border-2 shadow-md bg-blue-50'
-                          : 'border-gray-300 hover:bg-gray-100'
-                      }`}
+                          ? 'border-blue-400 border-2 shadow-md bg-blue-50 dark:bg-blue-900/30'
+                          : 'border-gray-300 dark:border-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700'
+                      } ${!node.styles.color ? 'text-gray-900 dark:text-slate-200' : ''}`}
                       title="Text Color (Hold Ctrl/Cmd for multi-select)"
                       style={{
-                        color: node.styles.color || '#000'
+                        color: node.styles.color || undefined
                       }}
                       onClick={(e) => handleColorControlOpen(node.id, 'color', e)}
                     >
@@ -355,7 +365,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
 
                     {/* Border Width Button */}
                     <button
-                      className="w-8 h-8 rounded flex items-center justify-center border hover:bg-gray-100"
+                      className="w-8 h-8 rounded flex items-center justify-center border border-gray-300 dark:border-slate-500 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                       title="Border Width"
                       onClick={() => setActiveControl({nodeId: node.id, property: 'stroke-width'})}
                     >
@@ -377,26 +387,34 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                     className={`w-8 h-8 rounded flex items-center justify-center border transition-all ${
                       activeControl?.nodeId === node.id && activeControl?.property === 'fill'
                         ? 'border-blue-400 border-2 shadow-md'
-                        : 'border-gray-300 hover:bg-gray-100'
-                    }`}
+                        : 'border-gray-300 dark:border-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    } ${!node.styles.fill ? 'bg-white dark:bg-slate-800' : ''}`}
                     style={{
-                      backgroundColor: node.styles.fill || 'white'
+                      backgroundColor: node.styles.fill || undefined
                     }}
                     title="Background Fill Color (Hold Ctrl/Cmd for multi-select)"
                     onClick={(e) => handleColorControlOpen(node.id, 'fill', e)}
                   >
                     <span className="sr-only">Fill</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19,11.5C19,11.5 17,13.67 17,15A2,2 0 0,0 19,17A2,2 0 0,0 21,15C21,13.67 19,11.5 19,11.5M5.21,10L10,5.21L14.79,10M16.56,8.94L7.62,0L6.21,1.41L8.59,3.79L3.44,8.94C2.85,9.5 2.85,10.47 3.44,11.06L8.94,16.56C9.5,17.15 10.47,17.15 11.06,16.56L16.56,11.06C17.15,10.47 17.15,9.5 16.56,8.94Z"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2a10 10 0 0 1 7.07 2.93l-4.24 4.24A4 4 0 0 0 12 8V2z" className="fill-amber-400"/>
+                      <path d="M19.07 4.93A10 10 0 0 1 22 12h-6a4 4 0 0 0-1.17-2.83l4.24-4.24z" className="fill-orange-500"/>
+                      <path d="M22 12a10 10 0 0 1-2.93 7.07l-4.24-4.24A4 4 0 0 0 16 12h6z" className="fill-red-500"/>
+                      <path d="M19.07 19.07A10 10 0 0 1 12 22v-6a4 4 0 0 0 2.83-1.17l4.24 4.24z" className="fill-pink-500"/>
+                      <path d="M12 22a10 10 0 0 1-7.07-2.93l4.24-4.24A4 4 0 0 0 12 16v6z" className="fill-purple-500"/>
+                      <path d="M4.93 19.07A10 10 0 0 1 2 12h6a4 4 0 0 0 1.17 2.83l-4.24 4.24z" className="fill-blue-500"/>
+                      <path d="M2 12a10 10 0 0 1 2.93-7.07l4.24 4.24A4 4 0 0 0 8 12H2z" className="fill-cyan-500"/>
+                      <path d="M4.93 4.93A10 10 0 0 1 12 2v6a4 4 0 0 0-2.83 1.17L4.93 4.93z" className="fill-green-500"/>
+                      <circle cx="12" cy="12" r="3" className="fill-white dark:fill-slate-700 stroke-gray-300 dark:stroke-slate-500" strokeWidth="0.5"/>
                     </svg>
                   </button>
 
                   {/* Border Color Button */}
                   <button
-                    className={`w-8 h-8 rounded flex items-center justify-center transition-all ${
+                    className={`w-8 h-8 rounded flex items-center justify-center transition-all text-gray-700 dark:text-slate-200 ${
                       activeControl?.nodeId === node.id && activeControl?.property === 'stroke'
-                        ? 'border-blue-400 border-2 shadow-md bg-blue-50'
-                        : 'hover:bg-gray-100'
+                        ? 'border-blue-400 border-2 shadow-md bg-blue-50 dark:bg-blue-900/30'
+                        : 'hover:bg-gray-100 dark:hover:bg-slate-700'
                     }`}
                     title="Border Color (Hold Ctrl/Cmd for multi-select)"
                     style={{
@@ -417,12 +435,12 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                   <button
                     className={`w-8 h-8 rounded flex items-center justify-center border transition-all ${
                       activeControl?.nodeId === node.id && activeControl?.property === 'color'
-                        ? 'border-blue-400 border-2 shadow-md bg-blue-50'
-                        : 'border-gray-300 hover:bg-gray-100'
-                    }`}
+                        ? 'border-blue-400 border-2 shadow-md bg-blue-50 dark:bg-blue-900/30'
+                        : 'border-gray-300 dark:border-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    } ${!node.styles.color ? 'text-gray-900 dark:text-slate-200' : ''}`}
                     title="Text Color (Hold Ctrl/Cmd for multi-select)"
                     style={{
-                      color: node.styles.color || '#000'
+                      color: node.styles.color || undefined
                     }}
                     onClick={(e) => handleColorControlOpen(node.id, 'color', e)}
                   >
@@ -434,7 +452,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
 
                   {/* Border Width Button */}
                   <button
-                    className="w-8 h-8 rounded flex items-center justify-center border hover:bg-gray-100"
+                    className="w-8 h-8 rounded flex items-center justify-center border border-gray-300 dark:border-slate-500 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                     title="Border Width"
                     onClick={() => setActiveControl({nodeId: node.id, property: 'stroke-width'})}
                   >
@@ -480,8 +498,16 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                     <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-300">
                       {activeControl.property === 'fill' && (
                         <>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19,11.5C19,11.5 17,13.67 17,15A2,2 0 0,0 19,17A2,2 0 0,0 21,15C21,13.67 19,11.5 19,11.5M5.21,10L10,5.21L14.79,10M16.56,8.94L7.62,0L6.21,1.41L8.59,3.79L3.44,8.94C2.85,9.5 2.85,10.47 3.44,11.06L8.94,16.56C9.5,17.15 10.47,17.15 11.06,16.56L16.56,11.06C17.15,10.47 17.15,9.5 16.56,8.94Z"/>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2a10 10 0 0 1 7.07 2.93l-4.24 4.24A4 4 0 0 0 12 8V2z" className="fill-amber-400"/>
+                            <path d="M19.07 4.93A10 10 0 0 1 22 12h-6a4 4 0 0 0-1.17-2.83l4.24-4.24z" className="fill-orange-500"/>
+                            <path d="M22 12a10 10 0 0 1-2.93 7.07l-4.24-4.24A4 4 0 0 0 16 12h6z" className="fill-red-500"/>
+                            <path d="M19.07 19.07A10 10 0 0 1 12 22v-6a4 4 0 0 0 2.83-1.17l4.24 4.24z" className="fill-pink-500"/>
+                            <path d="M12 22a10 10 0 0 1-7.07-2.93l4.24-4.24A4 4 0 0 0 12 16v6z" className="fill-purple-500"/>
+                            <path d="M4.93 19.07A10 10 0 0 1 2 12h6a4 4 0 0 0 1.17 2.83l-4.24 4.24z" className="fill-blue-500"/>
+                            <path d="M2 12a10 10 0 0 1 2.93-7.07l4.24 4.24A4 4 0 0 0 8 12H2z" className="fill-cyan-500"/>
+                            <path d="M4.93 4.93A10 10 0 0 1 12 2v6a4 4 0 0 0-2.83 1.17L4.93 4.93z" className="fill-green-500"/>
+                            <circle cx="12" cy="12" r="3" className="fill-white dark:fill-slate-600"/>
                           </svg>
                           <span>Background Fill Color</span>
                         </>
@@ -552,7 +578,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                           key={color.code}
                           title={color.name}
                           style={{ backgroundColor: color.code }}
-                          className="w-7 h-7 rounded-full hover:scale-110 transition-transform border border-gray-200"
+                          className="w-7 h-7 rounded-full hover:scale-110 transition-transform border border-gray-200 dark:border-slate-600"
                           onClick={() => handleColorSelect(node.id, activeControl.property, color.code)}
                         />
                       ))}
@@ -570,7 +596,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                         type="color"
                         value={customHex}
                         onChange={(e) => setCustomHex(e.target.value)}
-                        className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
+                        className="w-16 h-10 rounded border border-gray-300 dark:border-slate-600 cursor-pointer"
                       />
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-700 dark:text-slate-300">{customHex}</div>
