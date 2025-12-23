@@ -9,10 +9,10 @@ import {
     ClipboardIcon,
     ClipboardCheckIcon,
     ChevronDownIcon,
-    AlertCircleIcon,
-    EyeIcon,
-    EyeOffIcon
+    AlertCircleIcon
 } from './Icons';
+import PanelHeader from '@/components/common/PanelHeader';
+import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
 
 interface JsonInputPanelProps {
     jsonInput: string;
@@ -91,26 +91,14 @@ export default function JsonInputPanel({
     return (
         <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/50 dark:border-slate-700/50">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                    <span className="ml-3 text-sm font-medium text-gray-600 dark:text-slate-300">JSON Input</span>
+            <PanelHeader title="JSON Input">
+                {/* Visibility Toggle */}
+                <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
+                    <ToggleVisibilityButton
+                        isVisible={isVisible}
+                        onToggle={onToggleVisibility}
+                    />
                 </div>
-
-                {/* Toolbar */}
-                <div className="flex items-center gap-1">
-                    {/* Visibility Toggle */}
-                    <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
-                        <button
-                            onClick={onToggleVisibility}
-                            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-all duration-200"
-                            title={isVisible ? 'Hide editor' : 'Show editor'}
-                        >
-                            {isVisible ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-                        </button>
-                    </div>
 
                     {/* File Operations Group */}
                     <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
@@ -138,10 +126,10 @@ export default function JsonInputPanel({
                         </button>
                     </div>
 
-                    {/* Format Operations Group */}
-                    <div className="flex items-center gap-1 pl-2">
-                        {/* Prettify Dropdown */}
-                        <div className="relative">
+                {/* Format Operations Group */}
+                <div className="flex items-center gap-1 pl-2">
+                    {/* Prettify Dropdown */}
+                    <div className="relative">
                             <button
                                 onClick={onTogglePrettify}
                                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-indigo-700 dark:text-slate-300 hover:text-indigo-900 dark:hover:text-white bg-indigo-100/50 dark:bg-indigo-600/20 hover:bg-indigo-200/50 dark:hover:bg-indigo-600/40 border border-indigo-300/50 dark:border-indigo-500/30 transition-all duration-200"
@@ -203,7 +191,7 @@ export default function JsonInputPanel({
                         </button>
                     </div>
                 </div>
-            </div>
+            </PanelHeader>
 
             {/* Editor with Line Numbers */}
             <div className="flex-1 flex overflow-hidden">

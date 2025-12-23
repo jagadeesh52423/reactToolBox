@@ -213,12 +213,11 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
 
 
   return (
-    <div className="bg-gray-50 border rounded-lg p-4 mb-4">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold">Node Styles</h3>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
               className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${
@@ -270,7 +269,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
       </div>
 
       <div className={viewMode === 'grid'
-          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+          ? "grid grid-cols-1 gap-3"
           : "space-y-3"
         } style={{ overflow: 'visible' }}>
         {nodes.map((node) => (
@@ -291,9 +290,8 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                   <div className="font-medium">{node.id}: {node.label || node.id}</div>
                 </div>
 
-                {/* Colors Section */}
+                {/* Color Controls */}
                 <div className="mb-4">
-                  <div className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Colors</div>
                   <div className="flex space-x-2">
                     {/* Fill Color Button */}
                     <button

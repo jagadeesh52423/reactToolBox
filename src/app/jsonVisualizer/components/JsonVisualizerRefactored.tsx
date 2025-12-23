@@ -66,11 +66,11 @@ export default function JsonVisualizerRefactored() {
     } = useJsonVisualizer();
 
     return (
-        <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
             {/* Main Content */}
-            <main className="flex-1 p-6 overflow-hidden">
+            <main className="flex-1 p-6 overflow-hidden min-h-0">
                 <div className="w-full h-full">
-                    <div className={`grid gap-6 h-[calc(100vh-200px)] ${
+                    <div className={`grid gap-6 h-full ${
                         isEditorVisible ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
                     }`}>
                         {/* Left Panel - Input */}
