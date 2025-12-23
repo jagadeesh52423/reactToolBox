@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import CodeEditor from '@/components/common/CodeEditor';
 
 interface TextInputPanelProps {
   title: string;
@@ -21,16 +22,16 @@ export const TextInputPanel: React.FC<TextInputPanelProps> = ({
   return (
     <div className="w-full">
       <div className="mb-2">
-        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-200">{title}</h2>
       </div>
-      <textarea
-        className="w-full h-60 p-3 border border-gray-300 rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={title}
-      />
-      <div className="text-sm text-gray-600 mt-1">
+      <div className="h-60 border border-gray-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+        <CodeEditor
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+        />
+      </div>
+      <div className="text-sm text-gray-600 dark:text-slate-400 mt-1">
         {value.split('\n').length} lines, {value.length} characters
       </div>
     </div>

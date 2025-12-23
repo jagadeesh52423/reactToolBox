@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useMemo, useCallback } from 'react';
+import CodeEditor from '@/components/common/CodeEditor';
 import {
   toUpperCase, toLowerCase, toTitleCase, toSentenceCase,
   toCamelCase, toPascalCase, toSnakeCase, toKebabCase,
@@ -172,7 +173,7 @@ const TextTransformer: React.FC = () => {
 
           {/* Conditional Rendering based on category */}
           {activeCategory === 'replace' ? (
-            <TextReplacer />
+            <TextReplacer inputText={inputText} onInputChange={setInputText} />
           ) : (
             <>
               {/* Editor Panels */}
@@ -207,12 +208,11 @@ const TextTransformer: React.FC = () => {
                       </>
                     }
                   />
-                  <div className="flex-1 p-4">
-                    <textarea
+                  <div className="h-64">
+                    <CodeEditor
                       value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
+                      onChange={setInputText}
                       placeholder="Enter or paste your text here..."
-                      className="w-full h-64 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
                     />
                   </div>
                 </div>
@@ -233,14 +233,13 @@ const TextTransformer: React.FC = () => {
                       )
                     }
                   />
-                  <div className="flex-1 p-4">
-                    <div className="w-full h-64 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 font-mono text-sm overflow-auto whitespace-pre-wrap">
-                      {outputText || (
-                        <span className="text-gray-400 dark:text-slate-500">
-                          Transformed output will appear here...
-                        </span>
-                      )}
-                    </div>
+                  <div className="h-64">
+                    <CodeEditor
+                      value={outputText}
+                      onChange={() => {}}
+                      placeholder="Transformed output will appear here..."
+                      readOnly
+                    />
                   </div>
                 </div>
               </div>

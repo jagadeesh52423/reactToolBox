@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import CodeEditor from '@/components/common/CodeEditor';
 
 interface HTMLInputProps {
   value: string;
@@ -25,25 +26,25 @@ export const HTMLInput: React.FC<HTMLInputProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-between items-center">
-        <label className="font-medium text-lg">HTML Input</label>
+        <label className="font-medium text-lg dark:text-slate-200">HTML Input</label>
         <button
           onClick={onClear}
-          className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          className="px-3 py-1 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 rounded text-sm transition-colors"
           aria-label="Clear input"
         >
           Clear
         </button>
       </div>
 
-      <textarea
-        className="w-full h-64 p-3 border border-gray-300 rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Paste your HTML code here..."
-        aria-label="HTML input textarea"
-      />
+      <div className="h-64 border border-gray-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+        <CodeEditor
+          value={value}
+          onChange={onChange}
+          placeholder="Paste your HTML code here..."
+        />
+      </div>
 
-      <div className="text-sm text-gray-600 flex gap-4">
+      <div className="text-sm text-gray-600 dark:text-slate-400 flex gap-4">
         <span>{stats.characters} characters</span>
         <span>{stats.lines} lines</span>
         <span>{stats.tags} tags</span>

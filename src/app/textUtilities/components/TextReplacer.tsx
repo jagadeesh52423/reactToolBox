@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useCallback, useRef, useMemo } from 'react';
+import CodeEditor from '@/components/common/CodeEditor';
 import {
   CopyIcon,
   TrashIcon,
@@ -27,12 +28,9 @@ interface ReplacementPair {
 }
 
 interface ReplacerProps {
-  onBack?: () => void;
+  inputText: string;
+  onInputChange: (value: string) => void;
 }
-
-const DEFAULT_TEXT = `Hello {{name}}! Welcome to {{company}}.
-Your order #{{orderId}} has been confirmed.
-We will deliver to {{address}} within {{days}} business days.`;
 
 const DEFAULT_TOKENS = `name=>John Doe
 company=>Acme Inc.
@@ -40,8 +38,7 @@ orderId=>12345
 address=>123 Main Street
 days=>3-5`;
 
-const TextReplacer: React.FC<ReplacerProps> = () => {
-  const [inputText, setInputText] = useState(DEFAULT_TEXT);
+const TextReplacer: React.FC<ReplacerProps> = ({ inputText, onInputChange }) => {
   const [outputText, setOutputText] = useState('');
   const [replacementPairs, setReplacementPairs] = useState<ReplacementPair[]>([]);
   const [tokenFileContent, setTokenFileContent] = useState(DEFAULT_TOKENS);
@@ -131,7 +128,7 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
-      setInputText(content);
+      onInputChange(content);
       setSourceFileName(file.name);
       setError(null);
     };
@@ -257,7 +254,7 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
 
   // Clear all
   const handleClear = useCallback(() => {
-    setInputText('');
+    onInputChange('');
     setOutputText('');
     setReplacementPairs([]);
     setTokenFileContent('');
@@ -479,12 +476,11 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
                 </>
               }
             />
-            <div className="p-4">
-              <textarea
+            <div className="h-48">
+              <CodeEditor
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={onInputChange}
                 placeholder="Enter or paste your source text here, or load from file..."
-                className="w-full h-48 p-4 rounded-lg bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
               />
             </div>
           </div>
@@ -519,12 +515,11 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
                 </>
               }
             />
-            <div className="p-4">
-              <textarea
+            <div className="h-32">
+              <CodeEditor
                 value={tokenFileContent}
-                onChange={(e) => setTokenFileContent(e.target.value)}
+                onChange={setTokenFileContent}
                 placeholder={`Enter replacement tokens (${tokenFormat === 'keyValue' ? 'key=>value per line' : tokenFormat === 'json' ? '{"key": "value"}' : 'search,replace per line'})...`}
-                className="w-full h-32 p-4 rounded-lg bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200"
               />
             </div>
           </div>
@@ -641,14 +636,13 @@ const TextReplacer: React.FC<ReplacerProps> = () => {
                 )
               }
             />
-            <div className="p-4">
-              <div className="w-full h-48 p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200/50 dark:border-slate-700/50 text-gray-900 dark:text-slate-100 font-mono text-sm overflow-auto whitespace-pre-wrap">
-                {outputText || (
-                  <span className="text-gray-400 dark:text-slate-500">
-                    Replaced output will appear here...
-                  </span>
-                )}
-              </div>
+            <div className="h-48">
+              <CodeEditor
+                value={outputText}
+                onChange={() => {}}
+                placeholder="Replaced output will appear here..."
+                readOnly
+              />
             </div>
           </div>
         </div>

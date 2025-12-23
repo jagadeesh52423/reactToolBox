@@ -41,11 +41,11 @@ export default function CodeEditor({
   }, []);
 
   return (
-    <div className={`flex-1 flex overflow-hidden ${className}`}>
+    <div className={`h-full w-full flex overflow-hidden ${className}`}>
       {/* Line Numbers */}
       <div
         ref={lineNumbersRef}
-        className="w-12 bg-gray-100/50 dark:bg-slate-900/50 border-r border-gray-200/30 dark:border-slate-700/30 overflow-hidden select-none"
+        className="w-12 bg-gray-100/50 dark:bg-slate-900/50 border-r border-gray-200/30 dark:border-slate-700/30 overflow-hidden select-none flex-shrink-0"
         style={{ overflowY: 'hidden' }}
       >
         <div className="py-4 pr-3 text-right">
@@ -68,7 +68,7 @@ export default function CodeEditor({
         onChange={(e) => onChange(e.target.value)}
         onScroll={handleScroll}
         readOnly={readOnly}
-        className="flex-1 px-4 py-4 font-mono text-sm bg-transparent text-gray-900 dark:text-slate-100 resize-none outline-none"
+        className="flex-1 h-full px-4 py-4 font-mono text-sm bg-transparent text-gray-900 dark:text-slate-100 resize-none outline-none overflow-auto"
         placeholder={placeholder}
         spellCheck={false}
         style={{
