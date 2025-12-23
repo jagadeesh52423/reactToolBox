@@ -91,7 +91,7 @@ const SampleDiagrams: React.FC<SampleDiagramsProps> = ({ onSelectSample }) => {
       {/* Dropdown trigger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-left bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-left bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
       >
         <span>{selectedSample || 'Select a sample diagram'}</span>
         <svg
@@ -111,13 +111,13 @@ const SampleDiagrams: React.FC<SampleDiagramsProps> = ({ onSelectSample }) => {
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg">
           <ul className="py-1 overflow-auto max-h-60">
             {SAMPLE_DIAGRAMS.map((sample, index) => (
               <li key={index}>
                 <button
                   onClick={() => handleSelectSample(sample.code, sample.name)}
-                  className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 focus:outline-none"
+                  className="block w-full px-4 py-2 text-sm text-left text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none"
                 >
                   {sample.name}
                 </button>

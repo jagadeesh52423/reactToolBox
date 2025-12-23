@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useMemo, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import { IndentLevel, INDENT_LEVELS } from '../models/JsonModels';
 import {
     FolderOpenIcon,
@@ -13,6 +13,7 @@ import {
 } from './Icons';
 import PanelHeader from '@/components/common/PanelHeader';
 import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
+import CodeEditor from '@/components/common/CodeEditor';
 
 interface JsonInputPanelProps {
     jsonInput: string;
@@ -53,22 +54,7 @@ export default function JsonInputPanel({
     onToggleVisibility
 }: JsonInputPanelProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const lineNumbersRef = useRef<HTMLDivElement>(null);
     const [copied, setCopied] = useState(false);
-
-    // Calculate line numbers
-    const lineNumbers = useMemo(() => {
-        const lines = jsonInput.split('\n');
-        return lines.map((_, i) => i + 1);
-    }, [jsonInput]);
-
-    // Sync scroll between line numbers and textarea
-    const handleScroll = useCallback(() => {
-        if (lineNumbersRef.current && textareaRef.current) {
-            lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
-        }
-    }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -100,8 +86,8 @@ export default function JsonInputPanel({
                     />
                 </div>
 
-                    {/* File Operations Group */}
-                    <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
+                {/* File Operations Group */}
+                <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -189,42 +175,15 @@ export default function JsonInputPanel({
                                 </>
                             )}
                         </button>
-                    </div>
                 </div>
             </PanelHeader>
 
-            {/* Editor with Line Numbers */}
-            <div className="flex-1 flex overflow-hidden">
-                {/* Line Numbers */}
-                <div
-                    ref={lineNumbersRef}
-                    className="w-12 bg-gray-100/50 dark:bg-slate-900/50 border-r border-gray-200/30 dark:border-slate-700/30 overflow-hidden select-none"
-                    style={{ overflowY: 'hidden' }}
-                >
-                    <div className="py-4 pr-3 text-right">
-                        {lineNumbers.map((num) => (
-                            <div
-                                key={num}
-                                className="text-gray-400 dark:text-slate-600 text-sm font-mono leading-6 h-6"
-                            >
-                                {num}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Textarea */}
-                <textarea
-                    ref={textareaRef}
-                    className="flex-1 p-4 font-mono text-sm leading-6 bg-transparent text-gray-800 dark:text-slate-200 focus:outline-none resize-none placeholder-gray-400 dark:placeholder-slate-600"
-                    value={jsonInput}
-                    onChange={(e) => onJsonChange(e.target.value)}
-                    onScroll={handleScroll}
-                    placeholder="Paste your JSON here..."
-                    spellCheck={false}
-                    style={{ tabSize: 2 }}
-                />
-            </div>
+            {/* Code Editor */}
+            <CodeEditor
+                value={jsonInput}
+                onChange={onJsonChange}
+                placeholder="Paste your JSON here..."
+            />
 
             {/* Error Display */}
             {error && (

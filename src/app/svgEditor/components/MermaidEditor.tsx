@@ -1,17 +1,11 @@
 'use client';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import mermaid from 'mermaid';
 import SampleDiagrams from '../components/SampleDiagrams';
 import NodeStylePanel from './NodeStylePanel';
 import PanelHeader from '@/components/common/PanelHeader';
 import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
-
-// Dynamically import Monaco Editor to avoid SSR issues
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
-  ssr: false,
-  loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded">Loading editor...</div>
-});
+import CodeEditor from '@/components/common/CodeEditor';
 
 // Updated the default diagram with more spacing and simpler structure
 const DEFAULT_DIAGRAM = `graph TD
@@ -26,10 +20,8 @@ const MermaidEditor: React.FC = () => {
   const [isRendering, setIsRendering] = useState(false);
   const [svgContent, setSvgContent] = useState<string>('');
   const [renderTrigger, setRenderTrigger] = useState(0);
-  const [mounted, setMounted] = useState(false);
   const [diagramBgColor, setDiagramBgColor] = useState('#ffffff');
   const [isEditorVisible, setIsEditorVisible] = useState(true);
-  const editorRef = useRef<HTMLTextAreaElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const renderCounterRef = useRef(0);
 
@@ -38,14 +30,8 @@ const MermaidEditor: React.FC = () => {
     setIsEditorVisible(prev => !prev);
   };
 
-  // Ensure client-side mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
   // Initialize mermaid with improved configuration
   useEffect(() => {
-    if (!mounted) return;
 
     try {
       mermaid.initialize({
@@ -68,11 +54,11 @@ const MermaidEditor: React.FC = () => {
     } catch (err) {
       console.error("Failed to initialize mermaid:", err);
     }
-  }, [mounted]);
+  }, []);
 
   // Auto-render diagram on initial load
   useEffect(() => {
-    if (mounted && code.trim()) {
+    if (code.trim()) {
       // Delay to ensure mermaid is fully initialized
       const timer = setTimeout(() => {
         setRenderTrigger(prev => prev + 1);
@@ -80,11 +66,11 @@ const MermaidEditor: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [mounted, code]);
+  }, [code]);
   
   // Separate effect for rendering to handle DOM updates safely
   useEffect(() => {
-    if (!mounted || !renderTrigger || !code.trim()) return;
+    if (!renderTrigger || !code.trim()) return;
     
     const renderSvg = async () => {
       setIsRendering(true);
@@ -143,9 +129,9 @@ const MermaidEditor: React.FC = () => {
         setIsRendering(false);
       }
     };
-    
+
     renderSvg();
-  }, [mounted, renderTrigger, code]);
+  }, [renderTrigger, code]);
   
   // Separate effect to update the DOM with SVG content after React updates
   useEffect(() => {
@@ -438,15 +424,13 @@ const MermaidEditor: React.FC = () => {
           {/* Background Color Control */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Background:</label>
-            {mounted && (
-              <input
-                type="color"
-                value={diagramBgColor}
-                onChange={(e) => setDiagramBgColor(e.target.value)}
-                className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                title="Diagram Background Color"
-              />
-            )}
+            <input
+              type="color"
+              value={diagramBgColor}
+              onChange={(e) => setDiagramBgColor(e.target.value)}
+              className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+              title="Diagram Background Color"
+            />
           </div>
         </div>
         <div className="flex gap-2">
@@ -486,47 +470,12 @@ const MermaidEditor: React.FC = () => {
                     </div>
                   </PanelHeader>
 
-                  {/* Monaco Editor */}
-                  <div className="flex-1 overflow-hidden">
-                    {mounted && (
-                      <MonacoEditor
-                        height="100%"
-                        defaultLanguage="mermaid"
-                        language="mermaid"
-                        theme="vs"
-                        value={code}
-                        onChange={(value) => setCode(value || '')}
-                        options={{
-                          minimap: { enabled: false },
-                          scrollBeyondLastLine: false,
-                          fontSize: 14,
-                          lineNumbers: 'on',
-                          roundedSelection: false,
-                          selectOnLineNumbers: true,
-                          wordWrap: 'on',
-                          automaticLayout: true,
-                          tabSize: 2,
-                          insertSpaces: true,
-                          folding: true,
-                          foldingStrategy: 'indentation',
-                          renderLineHighlight: 'all',
-                          cursorBlinking: 'smooth',
-                          smoothScrolling: true,
-                          contextmenu: true,
-                          mouseWheelZoom: true,
-                          multiCursorModifier: 'ctrlCmd',
-                          bracketPairColorization: {
-                            enabled: true,
-                          },
-                        }}
-                      />
-                    )}
-                    {!mounted && (
-                      <div className="w-full h-full bg-gray-100 dark:bg-slate-800 animate-pulse rounded flex items-center justify-center">
-                        <span className="text-gray-500 dark:text-slate-400">Loading editor...</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Code Editor */}
+                  <CodeEditor
+                    value={code}
+                    onChange={setCode}
+                    placeholder="Enter your Mermaid diagram code here..."
+                  />
                 </div>
               </div>
             )}

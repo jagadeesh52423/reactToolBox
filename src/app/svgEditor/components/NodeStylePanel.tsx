@@ -222,8 +222,8 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
               onClick={() => setViewMode('grid')}
               className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${
                 viewMode === 'grid'
-                  ? 'bg-white text-gray-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-slate-600 text-gray-700 dark:text-slate-100 shadow-sm'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
               }`}
               title="Grid View"
             >
@@ -236,8 +236,8 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
               onClick={() => setViewMode('list')}
               className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${
                 viewMode === 'list'
-                  ? 'bg-white text-gray-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-slate-600 text-gray-700 dark:text-slate-100 shadow-sm'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
               }`}
               title="List View"
             >
@@ -250,12 +250,12 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
 
           {selectedNodes.length > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded">
+              <span className="text-sm text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
                 {selectedNodes.length} selected
               </span>
               <button
                 onClick={() => setSelectedNodes([])}
-                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
+                className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-slate-700"
               >
                 Clear
               </button>
@@ -264,8 +264,8 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
         </div>
       </div>
 
-      <div className="text-xs text-gray-600 mb-3">
-        💡 Hold <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl</kbd>/<kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Cmd</kbd> while clicking to select multiple nodes
+      <div className="text-xs text-gray-600 dark:text-slate-400 mb-3">
+        💡 Hold <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-slate-700 dark:text-slate-300 rounded text-xs">Ctrl</kbd>/<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-slate-700 dark:text-slate-300 rounded text-xs">Cmd</kbd> while clicking to select multiple nodes
       </div>
 
       <div className={viewMode === 'grid'
@@ -279,15 +279,15 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
               viewMode === 'grid' ? 'p-3' : 'p-2'
             } ${
               selectedNodes.includes(node.id)
-                ? 'border-blue-400 border-2 bg-blue-50 shadow-md'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-blue-400 dark:border-blue-500 border-2 bg-blue-50 dark:bg-blue-900/20 shadow-md'
+                : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-500'
             }`}
           >
             {viewMode === 'grid' ? (
               // Grid View Layout
               <>
                 <div className="flex justify-between items-center mb-3">
-                  <div className="font-medium">{node.id}: {node.label || node.id}</div>
+                  <div className="font-medium text-gray-900 dark:text-slate-100">{node.id}: {node.label || node.id}</div>
                 </div>
 
                 {/* Color Controls */}
@@ -370,7 +370,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
             ) : (
               // List View Layout
               <div className="flex items-center justify-between">
-                <div className="font-medium">{node.id}: {node.label || node.id}</div>
+                <div className="font-medium text-gray-900 dark:text-slate-100">{node.id}: {node.label || node.id}</div>
                 <div className="flex space-x-2">
                   {/* Fill Color Button */}
                   <button
@@ -455,7 +455,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
               activeControl.property === 'color') && (
               <div
                 ref={colorPickerRef}
-                className="absolute bg-white border rounded-lg shadow-xl z-50"
+                className="absolute bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-xl z-50"
                 style={{
                   width: '320px',
                   top: '100%',
@@ -466,7 +466,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
               >
                 {/* Chat bubble arrow pointing up to the button */}
                 <div
-                  className="absolute -top-2 w-4 h-4 bg-white border-l border-t transform rotate-45 z-10"
+                  className="absolute -top-2 w-4 h-4 bg-white dark:bg-slate-800 border-l border-t border-gray-200 dark:border-slate-600 transform rotate-45 z-10"
                   style={{
                     left: activeControl.property === 'fill' ? '20px' :
                           activeControl.property === 'stroke' ? '60px' :
@@ -475,9 +475,9 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                 ></div>
 
                 {/* Header showing what we're changing */}
-                <div className="bg-blue-50 px-4 py-2 rounded-t-lg border-b">
+                <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-t-lg border-b border-gray-200 dark:border-slate-600">
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                    <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-300">
                       {activeControl.property === 'fill' && (
                         <>
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -505,14 +505,14 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                     </div>
                     <div className="flex items-center gap-2">
                       {selectedNodes.length > 1 ? (
-                        <div className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded flex items-center gap-1">
+                        <div className="text-xs text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-2 py-1 rounded flex items-center gap-1">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
                           </svg>
                           Bulk: {selectedNodes.length} nodes
                         </div>
                       ) : (
-                        <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
                           {node.id}
                         </div>
                       )}
@@ -522,21 +522,21 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
 
                 <div className="p-3">
                 {/* Tab buttons */}
-                <div className="flex mb-3 border-b">
+                <div className="flex mb-3 border-b border-gray-200 dark:border-slate-600">
                   <button
-                    className={`px-3 py-1 text-sm ${activeTab === 'presets' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+                    className={`px-3 py-1 text-sm ${activeTab === 'presets' ? 'border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'}`}
                     onClick={() => setActiveTab('presets')}
                   >
                     Presets
                   </button>
                   <button
-                    className={`px-3 py-1 text-sm ${activeTab === 'picker' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+                    className={`px-3 py-1 text-sm ${activeTab === 'picker' ? 'border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'}`}
                     onClick={() => setActiveTab('picker')}
                   >
                     Color Picker
                   </button>
                   <button
-                    className={`px-3 py-1 text-sm ${activeTab === 'hex' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+                    className={`px-3 py-1 text-sm ${activeTab === 'hex' ? 'border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'}`}
                     onClick={() => setActiveTab('hex')}
                   >
                     Hex Input
@@ -557,7 +557,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                         />
                       ))}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                       <p>Click any preset color to apply</p>
                     </div>
                   </div>
@@ -573,16 +573,16 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                         className="w-16 h-10 rounded border border-gray-300 cursor-pointer"
                       />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-700">{customHex}</div>
+                        <div className="text-sm font-medium text-gray-700 dark:text-slate-300">{customHex}</div>
                         <button
                           onClick={() => handleColorPickerChange(node.id, activeControl.property, customHex)}
-                          className="mt-1 px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                          className="mt-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-900/50"
                         >
                           Apply Color
                         </button>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                       <p>Click the color square to open the color picker</p>
                     </div>
                   </div>
@@ -598,12 +598,12 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                           onChange={(e) => setHexInput(e.target.value)}
                           onKeyDown={(e) => handleHexKeyDown(e, node.id, activeControl.property)}
                           placeholder="Enter hex color (e.g., FF5733)"
-                          className="flex-1 px-2 py-1 border rounded text-sm"
+                          className="flex-1 px-2 py-1 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                           maxLength={7}
                         />
                         <button
                           onClick={() => handleHexSubmit(node.id, activeControl.property)}
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
+                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50"
                         >
                           Apply
                         </button>
@@ -611,7 +611,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                       {hexInput && (
                         <div className="flex items-center gap-2 mt-2">
                           <div
-                            className="w-6 h-6 rounded border border-gray-300"
+                            className="w-6 h-6 rounded border border-gray-300 dark:border-slate-600"
                             style={{
                               backgroundColor: (() => {
                                 const normalizedHex = hexInput.startsWith('#') ? hexInput : `#${hexInput}`;
@@ -619,7 +619,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                               })()
                             }}
                           ></div>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 dark:text-slate-400">
                             {(() => {
                               const normalizedHex = hexInput.startsWith('#') ? hexInput : `#${hexInput}`;
                               return isValidHexColor(normalizedHex) ? 'Valid color' : 'Invalid format';
@@ -628,7 +628,7 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                       <p>Enter with or without # (e.g., FF5733 or #FF5733)</p>
                       <p>Press Enter or click Apply</p>
                     </div>
@@ -639,14 +639,14 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
             )}
             
             {/* Border Width Slider */}
-            {activeControl && activeControl.nodeId === node.id && 
+            {activeControl && activeControl.nodeId === node.id &&
              activeControl.property === 'stroke-width' && (
-              <div 
+              <div
                 ref={sliderRef}
-                className="absolute top-full left-0 mt-1 p-3 bg-white border rounded-lg shadow-lg z-30"
+                className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg z-30"
                 style={{ width: '200px' }}
               >
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Border Width: {node.styles['stroke-width']?.replace('px', '') || '1'} px
                 </label>
                 <input
@@ -658,8 +658,8 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
                   className="w-full"
                 />
                 <div className="flex justify-between mt-1">
-                  <span className="text-xs">1px</span>
-                  <span className="text-xs">10px</span>
+                  <span className="text-xs text-gray-600 dark:text-slate-400">1px</span>
+                  <span className="text-xs text-gray-600 dark:text-slate-400">10px</span>
                 </div>
               </div>
             )}
