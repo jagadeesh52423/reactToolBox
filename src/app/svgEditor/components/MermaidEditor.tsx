@@ -56,13 +56,16 @@ const MermaidEditor: React.FC = () => {
     }
   }, []);
 
-  // Auto-render diagram on initial load
+  // Auto-render diagram with debounce (wait for user to stop typing)
   useEffect(() => {
+    // Clear error immediately when user starts typing
+    setError('');
+
     if (code.trim()) {
-      // Delay to ensure mermaid is fully initialized
+      // Wait 2 seconds after user stops typing before rendering
       const timer = setTimeout(() => {
         setRenderTrigger(prev => prev + 1);
-      }, 100);
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
@@ -287,27 +290,13 @@ const MermaidEditor: React.FC = () => {
   const nodes = useMemo(() => {
     const nodesMap = new Map<string, {id: string; label: string; styles: Record<string, string>}>();
 
-    // Regular expression to match node definitions in a flowchart
-    const nodeRegex = /\b([A-Za-z0-9_]+)(\[([^\]]*)\]|\{([^\}]*)\}|\(([^\)]*)\))/g;
-    let match;
-
-    while ((match = nodeRegex.exec(code)) !== null) {
-      const id = match[1];
-      const label = match[3] || match[4] || match[5] || id;
-
-      // Skip if we've already processed this node ID
-      if (nodesMap.has(id)) {
-        continue;
-      }
-
-      // Check for styles for this node
-      const styleRegex = new RegExp(`style\\s+${id}\\s+([^\\n]+)`, 'i');
+    // Helper function to get styles for a node
+    const getNodeStyles = (nodeId: string): Record<string, string> => {
+      const styleRegex = new RegExp(`style\\s+${nodeId}\\s+([^\\n]+)`, 'i');
       const styleMatch = code.match(styleRegex);
-
       const styles: Record<string, string> = {};
       if (styleMatch) {
         const styleStr = styleMatch[1];
-        // Parse style string to object
         styleStr.split(',').forEach(pair => {
           const [prop, val] = pair.split(':').map(s => s.trim());
           if (prop && val) {
@@ -315,12 +304,41 @@ const MermaidEditor: React.FC = () => {
           }
         });
       }
+      return styles;
+    };
 
-      nodesMap.set(id, {
-        id,
-        label,
-        styles
-      });
+    // Helper function to add a node if not already present
+    const addNode = (id: string, label?: string) => {
+      if (!nodesMap.has(id) && id.length > 0) {
+        // Skip keywords
+        const keywords = ['graph', 'subgraph', 'end', 'style', 'classDef', 'class', 'click', 'TD', 'TB', 'BT', 'RL', 'LR'];
+        if (keywords.includes(id.toUpperCase()) || keywords.includes(id)) {
+          return;
+        }
+        nodesMap.set(id, {
+          id,
+          label: label || id,
+          styles: getNodeStyles(id)
+        });
+      }
+    };
+
+    // 1. Match nodes with explicit labels: A[label], B{label}, C(label), D((label)), E([label]), F[[label]], G[(label)]
+    const labeledNodeRegex = /\b([A-Za-z][A-Za-z0-9_]*)(?:\[\[([^\]]*)\]\]|\[\(([^\)]*)\)\]|\(\[([^\]]*)\]\)|\[([^\]]*)\]|\{([^\}]*)\}|\(\(([^\)]*)\)\)|\(([^\)]*)\))/g;
+    let match;
+
+    while ((match = labeledNodeRegex.exec(code)) !== null) {
+      const id = match[1];
+      const label = match[2] || match[3] || match[4] || match[5] || match[6] || match[7] || match[8] || id;
+      addNode(id, label);
+    }
+
+    // 2. Match nodes in relationship lines without explicit labels: A --> B, C --- D, E -.-> F
+    const relationshipRegex = /\b([A-Za-z][A-Za-z0-9_]*)\s*(?:-->|---|-\.-|==>|--[^>]|-.->|<-->|<--->)\s*(?:\|[^|]*\|)?\s*([A-Za-z][A-Za-z0-9_]*)\b/g;
+
+    while ((match = relationshipRegex.exec(code)) !== null) {
+      addNode(match[1]);
+      addNode(match[2]);
     }
 
     return Array.from(nodesMap.values());
