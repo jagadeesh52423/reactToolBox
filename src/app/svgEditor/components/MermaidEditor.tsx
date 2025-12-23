@@ -255,10 +255,6 @@ const MermaidEditor: React.FC = () => {
     setCode(processedCode);
     setError('');
     setSvgContent('');
-    
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
   };
 
   // Parse style string into a map of property-value pairs
@@ -481,7 +477,11 @@ const MermaidEditor: React.FC = () => {
             )}
 
             {/* Middle Panel - Diagram Preview */}
-            <div className={`${isEditorVisible ? 'lg:col-span-5' : 'lg:col-span-9'} min-h-0`}>
+            <div className={`${
+              isEditorVisible
+                ? (svgContent ? 'lg:col-span-5' : 'lg:col-span-8')
+                : (svgContent ? 'lg:col-span-9' : 'lg:col-span-12')
+            } min-h-0`}>
               <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                 <PanelHeader title="Diagram Preview">
                   {!isEditorVisible && (
