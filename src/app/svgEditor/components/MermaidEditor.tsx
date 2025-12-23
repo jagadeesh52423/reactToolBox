@@ -56,16 +56,13 @@ const MermaidEditor: React.FC = () => {
     }
   }, []);
 
-  // Auto-render diagram with debounce (wait for user to stop typing)
+  // Auto-render diagram on code change
   useEffect(() => {
-    // Clear error immediately when user starts typing
-    setError('');
-
     if (code.trim()) {
-      // Wait 2 seconds after user stops typing before rendering
+      // Delay to ensure mermaid is fully initialized
       const timer = setTimeout(() => {
         setRenderTrigger(prev => prev + 1);
-      }, 2000);
+      }, 100);
 
       return () => clearTimeout(timer);
     }
