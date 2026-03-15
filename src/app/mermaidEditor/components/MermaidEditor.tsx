@@ -4,12 +4,243 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import mermaid from 'mermaid';
 import SampleDiagrams from '../components/SampleDiagrams';
 import NodeStylePanel from './NodeStylePanel';
+import EdgeStylePanel from './EdgeStylePanel';
 import PanelHeader from '@/components/common/PanelHeader';
 import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
-import MermaidCodeEditor from './MermaidCodeEditor';
+import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
+import type { editor } from 'monaco-editor';
 import ThemeSelector from './ThemeSelector';
 import { CUSTOM_THEMES, type CustomTheme, getThemeById } from '../themes';
 import type { GradientDef } from '../themes';
+
+// Monaco: register Mermaid language and themes before editor mounts
+let mermaidLanguageRegistered = false;
+
+const handleEditorWillMount: BeforeMount = (monaco) => {
+  if (mermaidLanguageRegistered) return;
+  mermaidLanguageRegistered = true;
+
+  monaco.languages.register({ id: 'mermaid' });
+
+  monaco.languages.setMonarchTokensProvider('mermaid', {
+    keywords: [
+      'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram',
+      'stateDiagram-v2', 'erDiagram', 'gantt', 'pie', 'gitgraph', 'mindmap',
+      'timeline', 'journey', 'quadrantChart', 'sankey-beta', 'xychart-beta',
+      'subgraph', 'end', 'participant', 'actor', 'activate', 'deactivate',
+      'note', 'loop', 'alt', 'else', 'opt', 'par', 'critical', 'break',
+      'rect', 'class', 'section', 'title', 'dateFormat', 'axisFormat',
+    ],
+    directions: ['TD', 'TB', 'LR', 'RL', 'BT', 'DT', 'BR', 'left of', 'right of', 'over'],
+    styleKeywords: ['style', 'classDef', 'linkStyle', 'click'],
+
+    tokenizer: {
+      root: [
+        // Comments
+        [/%%.*$/, 'comment'],
+        // Style directives
+        [/\b(style|classDef|linkStyle|click)\b/, 'keyword.style'],
+        // Arrows (order matters — longer first)
+        [/--?>|==?>|-.->|<-->|<--->|--x|--o|===|---/, 'operator.arrow'],
+        // Edge labels |text|
+        [/\|[^|]*\|/, 'string.label'],
+        // Node shapes: [text], (text), {text}, ((text)), [[text]], >text]
+        [/\[\[.*?\]\]/, 'string.node'],
+        [/\(\(.*?\)\)/, 'string.node'],
+        [/\[.*?\]/, 'string.node'],
+        [/\(.*?\)/, 'string.node'],
+        [/\{.*?\}/, 'string.node'],
+        // Quoted strings
+        [/"[^"]*"/, 'string'],
+        [/'[^']*'/, 'string'],
+        // Directions
+        [/\b(TD|TB|LR|RL|BT|DT|BR)\b/, 'keyword.direction'],
+        // Keywords
+        [/\b(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|pie|gitgraph|mindmap|timeline|journey|quadrantChart|sankey-beta|xychart-beta|subgraph|end|participant|actor|activate|deactivate|note|loop|alt|else|opt|par|critical|break|rect|class|section|title|dateFormat|axisFormat)\b/, 'keyword'],
+        // Hex colors
+        [/#[0-9a-fA-F]{3,8}\b/, 'number.hex'],
+        // Numbers
+        [/\b\d+(\.\d+)?\b/, 'number'],
+        // Identifiers
+        [/[A-Za-z_]\w*/, 'identifier'],
+      ],
+    },
+  });
+
+  // Light theme
+  monaco.editor.defineTheme('mermaid-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '0000ff', fontStyle: 'bold' },
+      { token: 'keyword.direction', foreground: 'af00db' },
+      { token: 'keyword.style', foreground: 'e06c00', fontStyle: 'bold' },
+      { token: 'operator.arrow', foreground: 'd63200', fontStyle: 'bold' },
+      { token: 'string.label', foreground: 'a31515' },
+      { token: 'string.node', foreground: '0070c1' },
+      { token: 'string', foreground: 'a31515' },
+      { token: 'number.hex', foreground: '098658' },
+      { token: 'number', foreground: '098658' },
+    ],
+    colors: {},
+  });
+
+  // Dark theme
+  monaco.editor.defineTheme('mermaid-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '569cd6', fontStyle: 'bold' },
+      { token: 'keyword.direction', foreground: 'c586c0' },
+      { token: 'keyword.style', foreground: 'ce9178', fontStyle: 'bold' },
+      { token: 'operator.arrow', foreground: 'd7ba7d', fontStyle: 'bold' },
+      { token: 'string.label', foreground: 'ce9178' },
+      { token: 'string.node', foreground: '9cdcfe' },
+      { token: 'string', foreground: 'ce9178' },
+      { token: 'number.hex', foreground: 'b5cea8' },
+      { token: 'number', foreground: 'b5cea8' },
+    ],
+    colors: {},
+  });
+};
+
+// Edge gradient type for per-edge gradient definitions
+interface EdgeGradientDef {
+  edgeIndex: number;
+  property: string; // 'stroke' | 'color'
+  stops: Array<{ offset: string; color: string }>;
+}
+
+// Node gradient type for per-node gradient definitions
+interface NodeGradientDef {
+  nodeId: string;
+  property: string; // 'fill' | 'stroke' | 'color'
+  stops: Array<{ offset: string; color: string }>;
+}
+
+// Helper: ensure <defs> exists in SVG, create a linearGradient, return gradient ID
+const injectLinearGradient = (
+  svgElement: SVGSVGElement,
+  gradId: string,
+  stops: Array<{ offset: string; color: string }>,
+  targetElement: SVGGraphicsElement,
+) => {
+  let defsElement = svgElement.querySelector('defs');
+  if (!defsElement) {
+    defsElement = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    svgElement.insertBefore(defsElement, svgElement.firstChild);
+  }
+
+  // Remove existing gradient with same ID
+  const existing = defsElement.querySelector(`#${gradId}`);
+  if (existing) existing.remove();
+
+  const bbox = targetElement.getBBox();
+  const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+  gradient.setAttribute('id', gradId);
+  gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+  gradient.setAttribute('x1', String(bbox.x));
+  gradient.setAttribute('y1', String(bbox.y));
+  gradient.setAttribute('x2', String(bbox.x + bbox.width));
+  gradient.setAttribute('y2', String(bbox.y + bbox.height));
+
+  stops.forEach(stop => {
+    const stopEl = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stopEl.setAttribute('offset', stop.offset);
+    stopEl.setAttribute('stop-color', stop.color);
+    gradient.appendChild(stopEl);
+  });
+
+  defsElement.appendChild(gradient);
+  return `url(#${gradId})`;
+};
+
+// Apply per-edge gradient colors via SVG injection (post-render)
+const applyEdgeGradients = (svgElement: SVGSVGElement, edgeGradients: EdgeGradientDef[]) => {
+  if (edgeGradients.length === 0) return;
+
+  const edgePaths = svgElement.querySelectorAll('.edgePath path');
+  const edgeLabels = svgElement.querySelectorAll('.edgeLabel');
+
+  edgeGradients.forEach(({ edgeIndex, property, stops }) => {
+    if (stops.length < 2) return;
+
+    if ((property || 'stroke') === 'stroke') {
+      const edgePath = edgePaths[edgeIndex] as SVGPathElement | undefined;
+      if (!edgePath) return;
+      const gradUrl = injectLinearGradient(svgElement, `edgeGrad-${edgeIndex}`, stops, edgePath);
+      edgePath.setAttribute('stroke', gradUrl);
+    } else if (property === 'color') {
+      // Apply gradient to edge label text
+      const labelGroup = edgeLabels[edgeIndex] as SVGGraphicsElement | undefined;
+      if (!labelGroup) return;
+      const textEls = labelGroup.querySelectorAll('span, text, foreignObject *');
+      if (textEls.length === 0) return;
+      const gradUrl = injectLinearGradient(svgElement, `edgeTextGrad-${edgeIndex}`, stops, labelGroup);
+      // For foreignObject HTML labels, use CSS background-clip approach
+      textEls.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        if (htmlEl.style) {
+          htmlEl.style.backgroundImage = `linear-gradient(to right, ${stops.map(s => `${s.color} ${s.offset}`).join(', ')})`;
+          htmlEl.style.webkitBackgroundClip = 'text';
+          htmlEl.style.backgroundClip = 'text';
+          htmlEl.style.webkitTextFillColor = 'transparent';
+          htmlEl.style.color = 'transparent';
+        }
+      });
+    }
+  });
+};
+
+// Apply per-node gradient colors via SVG injection (post-render)
+const applyNodeGradients = (svgElement: SVGSVGElement, nodeGradients: NodeGradientDef[]) => {
+  if (nodeGradients.length === 0) return;
+
+  // Find all node groups — Mermaid gives nodes IDs like "flowchart-A-0"
+  const nodeGroups = svgElement.querySelectorAll('.node');
+
+  nodeGradients.forEach(({ nodeId, property, stops }) => {
+    if (stops.length < 2) return;
+
+    // Find the node group containing this nodeId
+    const groupsArr = Array.from(nodeGroups);
+    const group = groupsArr.find(g => {
+      const id = g.getAttribute('id') || '';
+      return id.includes(`-${nodeId}-`) || id.endsWith(`-${nodeId}`);
+    });
+    if (!group) return;
+
+    if (property === 'fill' || property === 'stroke') {
+      const shape = group.querySelector('rect, circle, ellipse, polygon, path') as SVGGraphicsElement | null;
+      if (!shape) return;
+      const gradUrl = injectLinearGradient(svgElement, `nodeGrad-${nodeId}-${property}`, stops, shape);
+      shape.setAttribute(property, gradUrl);
+    } else if (property === 'color') {
+      const foreignObj = group.querySelector('foreignObject');
+      if (foreignObj) {
+        const textEls = foreignObj.querySelectorAll('span, div, p');
+        textEls.forEach((el: Element) => {
+          const htmlEl = el as HTMLElement;
+          if (htmlEl.style) {
+            htmlEl.style.backgroundImage = `linear-gradient(to right, ${stops.map(s => `${s.color} ${s.offset}`).join(', ')})`;
+            htmlEl.style.webkitBackgroundClip = 'text';
+            htmlEl.style.backgroundClip = 'text';
+            htmlEl.style.webkitTextFillColor = 'transparent';
+            htmlEl.style.color = 'transparent';
+          }
+        });
+      } else {
+        const textEl = group.querySelector('text') as SVGGraphicsElement | null;
+        if (textEl) {
+          const gradUrl = injectLinearGradient(svgElement, `nodeGrad-${nodeId}-text`, stops, textEl);
+          textEl.setAttribute('fill', gradUrl);
+        }
+      }
+    }
+  });
+};
 
 // Updated the default diagram with more spacing and simpler structure
 const DEFAULT_DIAGRAM = `graph TD
@@ -103,11 +334,32 @@ const MermaidEditor: React.FC = () => {
   const [renderTrigger, setRenderTrigger] = useState(0);
   const [diagramBgColor, setDiagramBgColor] = useState('#ffffff');
   const [isEditorVisible, setIsEditorVisible] = useState(true);
+  const [activeStyleTab, setActiveStyleTab] = useState<'nodes' | 'edges'>('nodes');
+  const [edgeGradients, setEdgeGradients] = useLocalStorage<EdgeGradientDef[]>('reactToolBox_mermaidEditor_edgeGradients', []);
+  const [nodeGradients, setNodeGradients] = useLocalStorage<NodeGradientDef[]>('reactToolBox_mermaidEditor_nodeGradients', []);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const renderCounterRef = useRef(0);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const [monacoTheme, setMonacoTheme] = useState('mermaid-light');
 
   // Get current theme - memoized to avoid new object reference every render
   const currentTheme = useMemo(() => getThemeById(selectedThemeId) || CUSTOM_THEMES[0], [selectedThemeId]);
+
+  // Detect dark mode and switch Monaco theme
+  useEffect(() => {
+    const html = document.documentElement;
+    const updateTheme = () => {
+      setMonacoTheme(html.classList.contains('dark') ? 'mermaid-dark' : 'mermaid-light');
+    };
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(html, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const handleEditorMount: OnMount = (monacoEditor) => {
+    editorRef.current = monacoEditor;
+  };
 
   // Toggle editor visibility
   const toggleEditorVisibility = () => {
@@ -262,6 +514,22 @@ const MermaidEditor: React.FC = () => {
             applyThemeGradients(svgElement, currentTheme.gradients, currentTheme.gradientTargets);
           }
         }
+
+        // Apply per-edge gradients
+        if (edgeGradients.length > 0) {
+          const svgElement = wrapper.querySelector('svg');
+          if (svgElement) {
+            applyEdgeGradients(svgElement, edgeGradients);
+          }
+        }
+
+        // Apply per-node gradients
+        if (nodeGradients.length > 0) {
+          const svgElement = wrapper.querySelector('svg');
+          if (svgElement) {
+            applyNodeGradients(svgElement, nodeGradients);
+          }
+        }
       }
     };
 
@@ -275,7 +543,7 @@ const MermaidEditor: React.FC = () => {
       }
     };
     // currentTheme is derived from selectedThemeId but React hooks requires it in deps
-  }, [svgContent, selectedThemeId, currentTheme]);
+  }, [svgContent, selectedThemeId, currentTheme, edgeGradients, nodeGradients]);
 
   // Apply background color to the SVG container
   useEffect(() => {
@@ -454,7 +722,59 @@ const MermaidEditor: React.FC = () => {
 
     return Array.from(nodesMap.values());
   }, [code]);
-  
+
+  // Extract edges from the current diagram code
+  const edges = useMemo(() => {
+    const edgesArray: Array<{
+      index: number;
+      from: string;
+      to: string;
+      label: string;
+      styles: Record<string, string>;
+    }> = [];
+
+    // Helper function to get styles for an edge by index
+    const getEdgeStyles = (edgeIndex: number): Record<string, string> => {
+      const linkStyleRegex = new RegExp(`linkStyle\\s+${edgeIndex}\\s+([^\\n]+)`, 'i');
+      const linkStyleMatch = code.match(linkStyleRegex);
+      const styles: Record<string, string> = {};
+      if (linkStyleMatch) {
+        const styleStr = linkStyleMatch[1];
+        styleStr.split(',').forEach(pair => {
+          const [prop, val] = pair.split(':').map(s => s.trim());
+          if (prop && val) {
+            styles[prop] = val;
+          }
+        });
+      }
+      return styles;
+    };
+
+    // Parse edges IN ORDER to match 0-based indexing used by linkStyle
+    // Match: A --> B, A -->|Label| B, A ---|Label| B, etc.
+    const edgeRegex = /\b([A-Za-z][A-Za-z0-9_]*)(?:\s*(?:\[\[.*?\]\]|\(\(.*?\)\)|\[.*?\]|\(.*?\)|\{.*?\}|>.*?\]))?[\s\n]*(-->|---|==>|-.->|<-->|<--->)[\s\n]*(?:\|([^|]*)\|)?[\s\n]*([A-Za-z][A-Za-z0-9_]*)\b/g;
+    let match;
+    let edgeIndex = 0;
+
+    while ((match = edgeRegex.exec(code)) !== null) {
+      const from = match[1];
+      const to = match[4];
+      const label = match[3] || '';
+
+      edgesArray.push({
+        index: edgeIndex,
+        from,
+        to,
+        label,
+        styles: getEdgeStyles(edgeIndex)
+      });
+
+      edgeIndex++;
+    }
+
+    return edgesArray;
+  }, [code]);
+
   // Apply style change from the NodeStylePanel
   const handleNodeStyleChange = (nodeId: string, property: string, value: string) => {
     // Use functional update to prevent race conditions in bulk operations
@@ -543,6 +863,169 @@ const MermaidEditor: React.FC = () => {
     }, 100);
   };
 
+  // Apply style change from the EdgeStylePanel
+  const handleEdgeStyleChange = (edgeIndex: number, property: string, value: string) => {
+    setCode(currentCode => {
+      const existingLinkStyleRegex = new RegExp(`linkStyle\\s+${edgeIndex}\\s+([^\\n]+)`, 'i');
+      const existingLinkStyleMatch = currentCode.match(existingLinkStyleRegex);
+
+      let newCode = currentCode;
+
+      if (existingLinkStyleMatch) {
+        // Parse existing style
+        const existingStyles = parseStyleString(existingLinkStyleMatch[1]);
+
+        // Update with new property value
+        existingStyles[property] = value;
+
+        // CRITICAL: Ensure fill:none is always present (mermaid requirement)
+        if (!existingStyles['fill']) {
+          existingStyles['fill'] = 'none';
+        }
+
+        // Create the new linkStyle declaration
+        const newLinkStyleDeclaration = `linkStyle ${edgeIndex} ${styleObjToString(existingStyles)}`;
+
+        // Replace in the code
+        newCode = currentCode.replace(existingLinkStyleRegex, newLinkStyleDeclaration);
+      } else {
+        // No existing linkStyle, create a new one
+        const styleObj: Record<string, string> = {
+          [property]: value,
+          fill: 'none' // CRITICAL: Always include fill:none
+        };
+
+        const linkStyleDeclaration = `linkStyle ${edgeIndex} ${styleObjToString(styleObj)}`;
+
+        if (currentCode.includes('linkStyle ')) {
+          // Find the last linkStyle declaration
+          const lines = currentCode.split('\n');
+          let lastLinkStyleIndex = -1;
+
+          for (let i = lines.length - 1; i >= 0; i--) {
+            if (lines[i].trim().startsWith('linkStyle ')) {
+              lastLinkStyleIndex = i;
+              break;
+            }
+          }
+
+          if (lastLinkStyleIndex !== -1) {
+            // Insert after the last linkStyle
+            lines.splice(lastLinkStyleIndex + 1, 0, linkStyleDeclaration);
+            newCode = lines.join('\n');
+          } else {
+            // Couldn't find the linkStyle section, append to end
+            newCode = `${currentCode}\n\n${linkStyleDeclaration}`;
+          }
+        } else {
+          // No existing linkStyles, append to the end with a blank line
+          newCode = `${currentCode}\n\n${linkStyleDeclaration}`;
+        }
+      }
+
+      return newCode;
+    });
+
+    setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+    }, 100);
+  };
+
+  // Change edge label
+  const handleEdgeLabelChange = (edgeIndex: number, newLabel: string) => {
+    setCode(currentCode => {
+      // Parse edges in order to find the Nth edge
+      const edgeRegex = /\b([A-Za-z][A-Za-z0-9_]*)(?:\s*(?:\[\[.*?\]\]|\(\(.*?\)\)|\[.*?\]|\(.*?\)|\{.*?\}|>.*?\]))?[\s\n]*(-->|---|==>|-.->|<-->|<--->)[\s\n]*(?:\|([^|]*)\|)?[\s\n]*([A-Za-z][A-Za-z0-9_]*)\b/g;
+      let match;
+      let currentIndex = 0;
+      let newCode = currentCode;
+
+      // Reset regex to start from beginning
+      edgeRegex.lastIndex = 0;
+
+      while ((match = edgeRegex.exec(currentCode)) !== null) {
+        if (currentIndex === edgeIndex) {
+          // Found the target edge
+          const fullMatch = match[0];
+          const from = match[1];
+          const arrow = match[2];
+          const to = match[4];
+          const oldLabel = match[3] || '';
+
+          let replacement: string;
+          if (newLabel.trim()) {
+            // Add or update label
+            replacement = `${from} ${arrow}|${newLabel}| ${to}`;
+          } else {
+            // Remove label
+            replacement = `${from} ${arrow} ${to}`;
+          }
+
+          // Replace this specific occurrence
+          newCode = currentCode.slice(0, match.index) + replacement + currentCode.slice(match.index + fullMatch.length);
+          break;
+        }
+
+        currentIndex++;
+      }
+
+      return newCode;
+    });
+
+    setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+    }, 100);
+  };
+
+  // Remove linkStyle declarations for the given edge indices
+  const handleResetEdgeStyles = (edgeIndices: number[]) => {
+    setCode(currentCode => {
+      const lines = currentCode.split('\n');
+      const filtered = lines.filter(line => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('linkStyle ')) return true;
+        // Check if this linkStyle line targets any of the edgeIndices
+        return !edgeIndices.some(idx => {
+          const regex = new RegExp(`^linkStyle\\s+${idx}\\s`);
+          return regex.test(trimmed);
+        });
+      });
+      // Clean up any trailing empty lines left behind
+      let result = filtered.join('\n');
+      result = result.replace(/\n{3,}/g, '\n\n').trimEnd();
+      return result;
+    });
+    setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+    }, 100);
+  };
+
+  const handleEdgeGradientChange = (edgeIndex: number, property: string, stops: Array<{ offset: string; color: string }>) => {
+    setEdgeGradients(prev => {
+      const existing = prev.filter(g => !(g.edgeIndex === edgeIndex && g.property === property));
+      return [...existing, { edgeIndex, property, stops }];
+    });
+    setTimeout(() => { setRenderTrigger(prev => prev + 1); }, 100);
+  };
+
+  const handleEdgeGradientRemove = (edgeIndices: number[]) => {
+    setEdgeGradients(prev => prev.filter(g => !edgeIndices.includes(g.edgeIndex)));
+    setTimeout(() => { setRenderTrigger(prev => prev + 1); }, 100);
+  };
+
+  const handleNodeGradientChange = (nodeId: string, property: string, stops: Array<{ offset: string; color: string }>) => {
+    setNodeGradients(prev => {
+      const existing = prev.filter(g => !(g.nodeId === nodeId && g.property === property));
+      return [...existing, { nodeId, property, stops }];
+    });
+    setTimeout(() => { setRenderTrigger(prev => prev + 1); }, 100);
+  };
+
+  const handleNodeGradientRemove = (nodeIds: string[]) => {
+    setNodeGradients(prev => prev.filter(g => !nodeIds.includes(g.nodeId)));
+    setTimeout(() => { setRenderTrigger(prev => prev + 1); }, 100);
+  };
+
   return (
     <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Controls Bar */}
@@ -627,12 +1110,35 @@ const MermaidEditor: React.FC = () => {
                     </div>
                   </PanelHeader>
 
-                  {/* Mermaid Code Editor with Syntax Highlighting */}
-                  <MermaidCodeEditor
-                    value={code}
-                    onChange={setCode}
-                    placeholder="Enter your Mermaid diagram code here..."
-                  />
+                  {/* Monaco Code Editor with Mermaid syntax highlighting */}
+                  <div className="flex-1 min-h-0">
+                    <Editor
+                      height="100%"
+                      language="mermaid"
+                      theme={monacoTheme}
+                      value={code}
+                      onChange={(val) => setCode(val || '')}
+                      beforeMount={handleEditorWillMount}
+                      onMount={handleEditorMount}
+                      options={{
+                        minimap: { enabled: false },
+                        lineNumbers: 'on',
+                        wordWrap: 'on',
+                        scrollBeyondLastLine: false,
+                        fontSize: 14,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        renderLineHighlight: 'line',
+                        overviewRulerLanes: 0,
+                        hideCursorInOverviewRuler: true,
+                        scrollbar: {
+                          verticalScrollbarSize: 8,
+                          horizontalScrollbarSize: 8,
+                        },
+                        padding: { top: 8 },
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -692,22 +1198,70 @@ const MermaidEditor: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Panel - Node Styles (Vertical) */}
+            {/* Right Panel - Node & Edge Styles (Tabbed) */}
             {svgContent && (
               <div className="lg:col-span-3 min-h-0">
                 <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
-                  <PanelHeader title="Node Styles" />
+                  {/* Tabbed Header */}
+                  <div className="flex items-center border-b border-gray-200/50 dark:border-slate-700/50 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-slate-800/50 dark:to-slate-800/30">
+                    <button
+                      onClick={() => setActiveStyleTab('nodes')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-all ${
+                        activeStyleTab === 'nodes'
+                          ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-white/50 dark:bg-slate-900/50'
+                          : 'text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 hover:bg-white/30 dark:hover:bg-slate-900/30'
+                      }`}
+                    >
+                      Nodes ({nodes.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveStyleTab('edges')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-all ${
+                        activeStyleTab === 'edges'
+                          ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-white/50 dark:bg-slate-900/50'
+                          : 'text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 hover:bg-white/30 dark:hover:bg-slate-900/30'
+                      }`}
+                    >
+                      Edges ({edges.length})
+                    </button>
+                  </div>
+
+                  {/* Tab Content */}
                   <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 custom-scrollbar min-h-0">
-                    <NodeStylePanel
-                      nodes={nodes}
-                      onStyleChange={handleNodeStyleChange}
-                      onResetStyles={handleResetStyles}
-                      themeDefaults={{
-                        fill: currentTheme.themeVariables?.primaryColor || currentTheme.previewColors?.[0],
-                        stroke: currentTheme.themeVariables?.primaryBorderColor || currentTheme.previewColors?.[1],
-                        color: currentTheme.themeVariables?.primaryTextColor || currentTheme.previewColors?.[2],
-                      }}
-                    />
+                    {activeStyleTab === 'nodes' ? (
+                      <NodeStylePanel
+                        nodes={nodes}
+                        onStyleChange={handleNodeStyleChange}
+                        onResetStyles={(nodeIds) => {
+                          handleResetStyles(nodeIds);
+                          handleNodeGradientRemove(nodeIds);
+                        }}
+                        themeDefaults={{
+                          fill: currentTheme.themeVariables?.primaryColor || currentTheme.previewColors?.[0],
+                          stroke: currentTheme.themeVariables?.primaryBorderColor || currentTheme.previewColors?.[1],
+                          color: currentTheme.themeVariables?.primaryTextColor || currentTheme.previewColors?.[2],
+                        }}
+                        nodeGradients={nodeGradients}
+                        onGradientChange={handleNodeGradientChange}
+                        onGradientRemove={handleNodeGradientRemove}
+                      />
+                    ) : (
+                      <EdgeStylePanel
+                        edges={edges}
+                        onStyleChange={handleEdgeStyleChange}
+                        onLabelChange={handleEdgeLabelChange}
+                        onResetStyles={(indices) => {
+                          handleResetEdgeStyles(indices);
+                          handleEdgeGradientRemove(indices);
+                        }}
+                        themeDefaults={{
+                          stroke: currentTheme.themeVariables?.lineColor || currentTheme.previewColors?.[1],
+                        }}
+                        edgeGradients={edgeGradients}
+                        onGradientChange={handleEdgeGradientChange}
+                        onGradientRemove={handleEdgeGradientRemove}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
