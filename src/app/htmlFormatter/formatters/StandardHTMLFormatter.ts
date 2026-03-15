@@ -55,6 +55,9 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
       case TokenType.TEXT:
         this.handleText(token, options);
         break;
+      case TokenType.RAW_TEXT:
+        this.handleRawText(token, options);
+        break;
       default:
         this.result += token.content;
     }
@@ -142,6 +145,61 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
     }
   }
 
+  /**
+   * Handles raw text content (script, style, textarea, pre)
+   * Preserves whitespace and formatting, but re-indents the block
+   */
+  private handleRawText(token: HTMLToken, options: FormatOptions): void {
+    const content = token.content;
+    if (!content) return;
+
+    // Check if this is simple single-line content (keep inline)
+    const trimmedContent = content.trim();
+    const isSingleLine = !trimmedContent.includes('\n');
+
+    if (isSingleLine) {
+      // Keep on same line as opening tag
+      this.result += trimmedContent;
+      return;
+    }
+
+    // Multi-line content: re-indent properly
+    const baseIndent = this.getIndentation();
+    const lines = content.split('\n');
+
+    // Find the minimum indentation in the original content (excluding empty lines)
+    let minIndent = Infinity;
+    for (const line of lines) {
+      if (line.trim()) {
+        const leadingSpaces = line.match(/^(\s*)/)?.[1].length || 0;
+        minIndent = Math.min(minIndent, leadingSpaces);
+      }
+    }
+    if (minIndent === Infinity) minIndent = 0;
+
+    // Re-indent each line
+    const reindentedLines = lines.map((line) => {
+      if (!line.trim()) {
+        return ''; // Empty lines stay empty
+      }
+      // Remove the original minimum indent and add our base indent
+      const trimmedLine = line.slice(minIndent);
+      return baseIndent + trimmedLine;
+    });
+
+    // Add newline before content if not already present
+    if (!this.result.endsWith('\n')) {
+      this.result += '\n';
+    }
+
+    this.result += reindentedLines.join('\n');
+
+    // Ensure we end with a newline
+    if (!this.result.endsWith('\n')) {
+      this.result += '\n';
+    }
+  }
+
   private isInInlineContext(): boolean {
     // Look backward to see if we have unclosed inline tags
     for (let i = this.currentIndex - 1; i >= 0; i--) {
@@ -210,6 +268,13 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
                 innerToken.type === TokenType.TAG_OPEN
               ) {
                 return false;
+              }
+              // If we find RAW_TEXT with multiple lines, treat as block
+              if (innerToken.type === TokenType.RAW_TEXT) {
+                const content = innerToken.content;
+                if (content.includes('\n') && content.trim().split('\n').length > 1) {
+                  return false;
+                }
               }
             }
             // All content is inline or text

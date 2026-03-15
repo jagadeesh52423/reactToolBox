@@ -6,6 +6,7 @@ export enum TokenType {
   TAG_CLOSE = 'TAG_CLOSE',
   TAG_SELF_CLOSING = 'TAG_SELF_CLOSING',
   TEXT = 'TEXT',
+  RAW_TEXT = 'RAW_TEXT', // Content inside script, style, textarea, pre - preserve whitespace
   COMMENT = 'COMMENT',
   DOCTYPE = 'DOCTYPE',
   UNKNOWN = 'UNKNOWN',

@@ -53,6 +53,48 @@ const tools: Tool[] = [
     description: 'Create beautiful diagrams with Mermaid syntax and download as SVG',
     icon: '📊',
   },
+  {
+    name: 'Base64 Codec',
+    path: '/base64',
+    description: 'Encode and decode Base64 text and files',
+    icon: 'B64',
+  },
+  {
+    name: 'Regex Tester',
+    path: '/regexTester',
+    description: 'Test and debug regular expressions with live matching',
+    icon: '.*',
+  },
+  {
+    name: 'Cron Parser',
+    path: '/cronParser',
+    description: 'Parse cron expressions and see next run times',
+    icon: '@:',
+  },
+  {
+    name: 'UUID Generator',
+    path: '/uuidGenerator',
+    description: 'Generate UUIDs, nanoids, and other unique IDs',
+    icon: '#!',
+  },
+  {
+    name: 'Markdown Preview',
+    path: '/markdownPreview',
+    description: 'Live markdown editor with rendered preview',
+    icon: 'MD',
+  },
+  {
+    name: 'CSV Converter',
+    path: '/csvConverter',
+    description: 'Convert between CSV, JSON, and YAML formats',
+    icon: ',.;',
+  },
+  {
+    name: 'Timestamp Converter',
+    path: '/timestampConverter',
+    description: 'Convert between Unix timestamps and date formats',
+    icon: 'T#',
+  },
 ];
 
 interface ToolsNavigationProps {

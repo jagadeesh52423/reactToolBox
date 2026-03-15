@@ -8,6 +8,9 @@ import { HTMLTagConfig } from '../config/HTMLTagConfig';
 export class HTMLTokenizer {
   private tagConfig: HTMLTagConfig;
 
+  // Raw text elements - content should not be parsed as HTML
+  private static readonly RAW_TEXT_TAGS = new Set(['script', 'style', 'textarea', 'pre']);
+
   constructor() {
     this.tagConfig = HTMLTagConfig.getInstance();
   }
@@ -18,47 +21,140 @@ export class HTMLTokenizer {
    * @returns Array of HTMLToken objects
    */
   public tokenize(html: string): HTMLToken[] {
-    // Normalize whitespace
-    const normalized = this.normalizeWhitespace(html);
+    const tokens: HTMLToken[] = [];
+    let pos = 0;
+    const len = html.length;
 
-    // Split into raw tokens (tags and text)
-    const rawTokens = normalized.split(/(<[^>]*>)/g).filter(token => token.length > 0);
+    while (pos < len) {
+      // Look for the next tag
+      const tagStart = html.indexOf('<', pos);
 
-    // Convert raw tokens to structured tokens
-    return rawTokens
-      .map(token => this.createToken(token))
-      .filter(token => token !== null) as HTMLToken[];
+      if (tagStart === -1) {
+        // No more tags, rest is text
+        const text = html.slice(pos);
+        const normalizedText = this.normalizeTextWhitespace(text, false, false);
+        if (normalizedText) {
+          tokens.push({
+            type: TokenType.TEXT,
+            content: normalizedText,
+          });
+        }
+        break;
+      }
+
+      // Add text before the tag
+      if (tagStart > pos) {
+        const text = html.slice(pos, tagStart);
+        // Determine if we need to preserve leading/trailing spaces
+        const prevToken = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+        const preserveLeading = prevToken !== null && this.isInlineToken(prevToken);
+
+        // Peek at next tag to see if it's inline
+        const nextTagEnd = html.indexOf('>', tagStart);
+        const nextTag = nextTagEnd !== -1 ? html.slice(tagStart, nextTagEnd + 1) : '';
+        const nextTagName = this.extractTagName(nextTag);
+        const preserveTrailing = !!(nextTagName && this.tagConfig.isInline(nextTagName));
+
+        const normalizedText = this.normalizeTextWhitespace(text, preserveLeading, preserveTrailing);
+        if (normalizedText) {
+          tokens.push({
+            type: TokenType.TEXT,
+            content: normalizedText,
+          });
+        }
+      }
+
+      // Find end of tag
+      const tagEnd = html.indexOf('>', tagStart);
+      if (tagEnd === -1) {
+        // Malformed HTML - treat rest as text
+        const text = html.slice(tagStart);
+        tokens.push({
+          type: TokenType.TEXT,
+          content: text,
+        });
+        break;
+      }
+
+      const tag = html.slice(tagStart, tagEnd + 1);
+      const token = this.parseTag(tag);
+      tokens.push(token);
+
+      pos = tagEnd + 1;
+
+      // Check if this is a raw text element opening tag
+      if (token.type === TokenType.TAG_OPEN && token.tagName &&
+          HTMLTokenizer.RAW_TEXT_TAGS.has(token.tagName)) {
+        // Find the closing tag and preserve content
+        const closeTagPattern = new RegExp(`</${token.tagName}>`, 'i');
+        const closeMatch = html.slice(pos).match(closeTagPattern);
+
+        if (closeMatch && closeMatch.index !== undefined) {
+          const rawContent = html.slice(pos, pos + closeMatch.index);
+
+          // Add raw content as a special token (preserve whitespace)
+          if (rawContent) {
+            tokens.push({
+              type: TokenType.RAW_TEXT,
+              content: rawContent,
+              tagName: token.tagName,
+            });
+          }
+
+          // Add the closing tag
+          const closeTag = closeMatch[0];
+          tokens.push({
+            type: TokenType.TAG_CLOSE,
+            content: closeTag,
+            tagName: token.tagName,
+            displayType: this.tagConfig.getDisplayType(token.tagName),
+          });
+
+          pos = pos + closeMatch.index + closeTag.length;
+        }
+      }
+    }
+
+    return tokens;
   }
 
   /**
-   * Normalizes whitespace in HTML while preserving important spaces
+   * Check if a token is an inline element
    */
-  private normalizeWhitespace(html: string): string {
-    return html
-      .replace(/\r\n/g, '\n') // Normalize line endings
-      .replace(/\s+/g, ' ') // Collapse multiple spaces
+  private isInlineToken(token: HTMLToken): boolean {
+    if (token.type === TokenType.TEXT) return true;
+    if (token.displayType === TagDisplayType.INLINE) return true;
+    if (token.tagName && this.tagConfig.isInline(token.tagName)) return true;
+    return false;
+  }
+
+  /**
+   * Normalizes whitespace in text content while preserving important spaces
+   * @param text - The text to normalize
+   * @param preserveLeading - Keep at least one leading space if original had whitespace
+   * @param preserveTrailing - Keep at least one trailing space if original had whitespace
+   */
+  private normalizeTextWhitespace(text: string, preserveLeading: boolean, preserveTrailing: boolean): string {
+    const hadLeadingSpace = /^\s/.test(text);
+    const hadTrailingSpace = /\s$/.test(text);
+
+    // Normalize internal whitespace
+    let normalized = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\s+/g, ' ')
       .trim();
-  }
 
-  /**
-   * Creates a structured token from a raw string token
-   */
-  private createToken(rawToken: string): HTMLToken | null {
-    const trimmed = rawToken.trim();
-    if (!trimmed) {
-      return null;
+    if (!normalized) return '';
+
+    // Restore important spaces for inline content
+    if (preserveLeading && hadLeadingSpace) {
+      normalized = ' ' + normalized;
+    }
+    if (preserveTrailing && hadTrailingSpace) {
+      normalized = normalized + ' ';
     }
 
-    // Check if it's a tag
-    if (trimmed.startsWith('<')) {
-      return this.parseTag(trimmed);
-    }
-
-    // It's text content
-    return {
-      type: TokenType.TEXT,
-      content: rawToken, // Preserve original spacing for text
-    };
+    return normalized;
   }
 
   /**
@@ -77,6 +173,14 @@ export class HTMLTokenizer {
     if (tag.startsWith('<!--')) {
       return {
         type: TokenType.COMMENT,
+        content: tag,
+      };
+    }
+
+    // CDATA section
+    if (tag.startsWith('<![CDATA[')) {
+      return {
+        type: TokenType.TEXT,
         content: tag,
       };
     }
@@ -109,7 +213,7 @@ export class HTMLTokenizer {
    * Extracts tag name from a tag string
    */
   private extractTagName(tag: string): string {
-    const match = tag.match(/<\/?([a-zA-Z][a-zA-Z0-9]*)/i);
+    const match = tag.match(/<\/?([a-zA-Z][a-zA-Z0-9-]*)/i);
     return match ? match[1].toLowerCase() : '';
   }
 
@@ -117,7 +221,7 @@ export class HTMLTokenizer {
    * Extracts attributes from a tag string
    */
   private extractAttributes(tag: string): string {
-    const match = tag.match(/<[a-zA-Z][a-zA-Z0-9]*\s+([^>]*?)\/?>$/i);
+    const match = tag.match(/<[a-zA-Z][a-zA-Z0-9-]*\s+([^>]*?)\/?>$/i);
     return match ? match[1].trim() : '';
   }
 }

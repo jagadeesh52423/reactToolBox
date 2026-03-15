@@ -23,19 +23,20 @@ export class HTMLTagConfig {
     this.inlineTags = new Set([
       'a', 'abbr', 'acronym', 'b', 'bdo', 'big', 'br', 'button',
       'cite', 'code', 'dfn', 'em', 'i', 'img', 'input', 'kbd',
-      'label', 'map', 'object', 'q', 'samp', 'script', 'select',
-      'small', 'span', 'strong', 'sub', 'sup', 'textarea', 'tt',
-      'var', 'mark', 'time',
+      'label', 'map', 'object', 'q', 'samp', 'select',
+      'small', 'span', 'strong', 'sub', 'sup', 'tt',
+      'var', 'mark', 'time', 'data', 'ruby', 'rt', 'rp', 'bdi',
     ]);
 
-    // Block elements
+    // Block elements (including raw text containers like script, style, textarea, pre)
     this.blockTags = new Set([
       'address', 'article', 'aside', 'blockquote', 'canvas', 'dd', 'div',
       'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'html',
       'li', 'main', 'nav', 'noscript', 'ol', 'output', 'p', 'pre',
       'section', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr',
-      'ul', 'video', 'body', 'head', 'title', 'style',
+      'ul', 'video', 'body', 'head', 'title', 'style', 'script', 'textarea',
+      'details', 'summary', 'dialog', 'template', 'slot',
     ]);
   }
 

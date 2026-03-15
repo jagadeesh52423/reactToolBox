@@ -55,42 +55,46 @@ const TextDiffViewer: React.FC = () => {
   } = useTextCompare(DEFAULT_TEXT_LEFT, DEFAULT_TEXT_RIGHT);
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Input Panels */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <TextInputPanel
-          title="Original Text"
-          value={leftText}
-          onChange={setLeftText}
-          placeholder="Enter original text here..."
-        />
-        <TextInputPanel
-          title="Modified Text"
-          value={rightText}
-          onChange={setRightText}
-          placeholder="Enter modified text here..."
-        />
-      </div>
+    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <main className="flex-1 p-6 overflow-auto min-h-0">
+        <div className="flex flex-col gap-4">
+          {/* Input Panels */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            <TextInputPanel
+              title="Original Text"
+              value={leftText}
+              onChange={setLeftText}
+              placeholder="Enter original text here..."
+            />
+            <TextInputPanel
+              title="Modified Text"
+              value={rightText}
+              onChange={setRightText}
+              placeholder="Enter modified text here..."
+            />
+          </div>
 
-      {/* Controls */}
-      <CompareControls
-        onCompare={computeDiff}
-        onSwap={swapTexts}
-        onReset={resetTexts}
-        options={options}
-        onOptionsChange={updateOptions}
-        disabled={!leftText && !rightText}
-      />
+          {/* Controls */}
+          <CompareControls
+            onCompare={computeDiff}
+            onSwap={swapTexts}
+            onReset={resetTexts}
+            options={options}
+            onOptionsChange={updateOptions}
+            disabled={!leftText && !rightText}
+          />
 
-      {/* Statistics */}
-      {showDiff && statistics && (
-        <DiffStatisticsDisplay statistics={statistics} />
-      )}
+          {/* Statistics */}
+          {showDiff && statistics && (
+            <DiffStatisticsDisplay statistics={statistics} />
+          )}
 
-      {/* Diff Result */}
-      {showDiff && diffResult && (
-        <DiffResultDisplay diffResult={diffResult} compareService={compareService} />
-      )}
+          {/* Diff Result */}
+          {showDiff && diffResult && (
+            <DiffResultDisplay diffResult={diffResult} compareService={compareService} />
+          )}
+        </div>
+      </main>
     </div>
   );
 };

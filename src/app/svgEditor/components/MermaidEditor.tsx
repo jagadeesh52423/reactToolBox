@@ -59,10 +59,10 @@ const MermaidEditor: React.FC = () => {
   // Auto-render diagram on code change
   useEffect(() => {
     if (code.trim()) {
-      // Delay to ensure mermaid is fully initialized
+      // Debounce rendering to avoid excessive CPU usage while typing
       const timer = setTimeout(() => {
         setRenderTrigger(prev => prev + 1);
-      }, 100);
+      }, 500);
 
       return () => clearTimeout(timer);
     }

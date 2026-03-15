@@ -145,10 +145,10 @@ const TextTransformer: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="w-full">
+      <main className="flex-1 p-6 overflow-hidden min-h-0 flex flex-col">
+        <div className="w-full flex-1 flex flex-col min-h-0">
           {/* Category Tabs */}
           <div className="flex flex-wrap gap-2 mb-6">
             {(Object.keys(CATEGORY_CONFIG) as Category[]).map((cat) => {
@@ -177,9 +177,9 @@ const TextTransformer: React.FC = () => {
           ) : (
             <>
               {/* Editor Panels */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4 flex-1 min-h-0 grid-rows-[1fr]">
                 {/* Input Panel */}
-                <div className="flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+                <div className="flex flex-col min-h-0 bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                   <PanelHeader
                     title="Input Text"
                     actions={
@@ -208,7 +208,7 @@ const TextTransformer: React.FC = () => {
                       </>
                     }
                   />
-                  <div className="h-64">
+                  <div className="flex-1 min-h-[150px]">
                     <CodeEditor
                       value={inputText}
                       onChange={setInputText}
@@ -218,7 +218,7 @@ const TextTransformer: React.FC = () => {
                 </div>
 
                 {/* Output Panel */}
-                <div className="flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+                <div className="flex flex-col min-h-0 bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                   <PanelHeader
                     title={lastTransform ? `Output - ${lastTransform}` : 'Output'}
                     actions={
@@ -233,7 +233,7 @@ const TextTransformer: React.FC = () => {
                       )
                     }
                   />
-                  <div className="h-64">
+                  <div className="flex-1 min-h-[150px]">
                     <CodeEditor
                       value={outputText}
                       onChange={() => {}}

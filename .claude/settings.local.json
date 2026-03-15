@@ -3,8 +3,18 @@
     "allow": [
       "Bash(mkdir:*)",
       "WebSearch",
-      "WebFetch(domain:mermaid.js.org)"
+      "WebFetch(domain:mermaid.js.org)",
+      "Bash(npx next:*)",
+      "Bash(git stash:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   },
-  "enableAllProjectMcpServers": false
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "atlassian",
+    "mongodb",
+    "redash",
+    "mermaid-svg"
+  ]
 }

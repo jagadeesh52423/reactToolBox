@@ -219,9 +219,9 @@ const JsonComparer: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
-      <main className="flex-1 p-6 overflow-auto">
+      <main className="flex-1 p-6 overflow-auto flex flex-col">
         {/* Error Banner */}
         {error && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 flex items-center gap-3">
@@ -231,9 +231,9 @@ const JsonComparer: React.FC = () => {
         )}
 
         {/* JSON Editors */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6 relative">
+        <div className="flex flex-col lg:flex-row gap-4 mb-4 relative h-[45%] min-h-[200px]">
           {/* Left JSON Panel */}
-          <div className="flex-1 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             <PanelHeader title="Left JSON" onFormat={() => fixAndFormatJson('left')} />
             <div className="flex-1 p-4">
               <JsonEditor
@@ -256,7 +256,7 @@ const JsonComparer: React.FC = () => {
           </div>
 
           {/* Right JSON Panel */}
-          <div className="flex-1 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             <PanelHeader title="Right JSON" onFormat={() => fixAndFormatJson('right')} />
             <div className="flex-1 p-4">
               <JsonEditor
@@ -281,7 +281,7 @@ const JsonComparer: React.FC = () => {
 
         {/* Diff Results */}
         {showDiff && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             {/* Diff Panel Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/50 dark:border-slate-700/50">
               <div className="flex items-center gap-2">
@@ -321,7 +321,7 @@ const JsonComparer: React.FC = () => {
             </div>
 
             {/* Diff Content */}
-            <div className="p-4 max-h-[600px] overflow-auto">
+            <div className="p-4 flex-1 overflow-auto">
               {viewMode === 'table' ? (
                 <DiffViewer left={fixedLeftJson} right={fixedRightJson} />
               ) : (

@@ -1,13 +1,18 @@
 'use client';
-import React from 'react';
-import MermaidEditor from './components/MermaidEditor';
+import dynamic from 'next/dynamic';
+
+const MermaidEditor = dynamic(() => import('./components/MermaidEditor'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[calc(100vh-140px)] flex items-center justify-center bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="text-center text-gray-500 dark:text-gray-400">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3"></div>
+        <div className="text-sm">Loading Mermaid Editor...</div>
+      </div>
+    </div>
+  ),
+});
 
 export default function MermaidEditorPage() {
-  return (
-    <main className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Mermaid Editor</h1>
-      <p className="mb-4">Create beautiful diagrams with Mermaid syntax and download them as SVG images.</p>
-      <MermaidEditor />
-    </main>
-  );
+  return <MermaidEditor />;
 }

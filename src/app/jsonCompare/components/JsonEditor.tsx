@@ -14,7 +14,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`h-64 border border-gray-200/50 dark:border-slate-700/50 rounded-lg bg-white dark:bg-slate-900 overflow-hidden ${className}`}>
+    <div className={`h-full border border-gray-200/50 dark:border-slate-700/50 rounded-lg bg-white dark:bg-slate-900 overflow-hidden ${className}`}>
       <CodeEditor
         value={value}
         onChange={onChange}

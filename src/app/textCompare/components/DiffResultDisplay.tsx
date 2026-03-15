@@ -30,7 +30,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
             </svg>
             Original Text
           </div>
-          <div className="max-h-96 overflow-auto">
+          <div className="overflow-auto">
             {diffResult.left.map((line, index) => {
               // Compute word-level diff for changed lines
               const rightLine = diffResult.right[index];
@@ -58,7 +58,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
             </svg>
             Modified Text
           </div>
-          <div className="max-h-96 overflow-auto">
+          <div className="overflow-auto">
             {diffResult.right.map((line, index) => {
               // Compute word-level diff for changed lines
               const leftLine = diffResult.left[index];
