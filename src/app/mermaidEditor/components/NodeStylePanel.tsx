@@ -26,6 +26,7 @@ interface NodeStylePanelProps {
   }>;
   onStyleChange: (nodeId: string, styleProperty: string, value: string) => void;
   onResetStyles: (nodeIds: string[]) => void;
+  onResetAllStyles: () => void;
   themeDefaults?: ThemeDefaults;
   nodeGradients: NodeGradientDef[];
   onGradientChange: (nodeId: string, property: string, stops: GradientStop[]) => void;
@@ -61,7 +62,7 @@ const DEFAULT_GRADIENT_STOPS: GradientStop[] = [
 type StyleProperty = 'fill' | 'stroke' | 'color' | 'stroke-width';
 
 const NodeStylePanel: React.FC<NodeStylePanelProps> = ({
-  nodes, onStyleChange, onResetStyles, themeDefaults,
+  nodes, onStyleChange, onResetStyles, onResetAllStyles, themeDefaults,
   nodeGradients, onGradientChange, onGradientRemove,
   renderMode = 'standard',
 }) => {
@@ -251,15 +252,12 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({
               return (
                 <button
                   onClick={() => {
-                    const targetIds = hasSelection
-                      ? selectedNodes.filter(id => nodesWithStyles.some(n => n.id === id) || nodeGradients.some(g => g.nodeId === id))
-                      : [...new Set([...nodesWithStyles.map(n => n.id), ...nodeGradients.map(g => g.nodeId)])];
-                    if (targetIds.length > 0) { onResetStyles(targetIds); setActiveStyleProperty(null); }
+                    onResetAllStyles();
+                    setActiveStyleProperty(null);
                   }}
-                  disabled={!hasAnyOverrides}
-                  className={`text-xs px-2 py-1 rounded border ${hasAnyOverrides ? 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-800/40' : 'text-gray-400 dark:text-slate-600 border-gray-200 dark:border-slate-700 cursor-not-allowed opacity-50'}`}
-                  title="Remove manual style overrides so theme styles apply"
-                >Reset Styles</button>
+                  className="text-xs px-2 py-1 rounded border text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-800/40"
+                  title="Remove all manual style overrides (nodes &amp; edges) so theme styles apply"
+                >Reset Manual Styles</button>
               );
             })()}
           </div>

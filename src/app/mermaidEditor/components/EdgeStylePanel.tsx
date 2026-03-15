@@ -27,6 +27,7 @@ interface EdgeStylePanelProps {
   onStyleChange: (edgeIndex: number, styleProperty: string, value: string) => void;
   onLabelChange: (edgeIndex: number, newLabel: string) => void;
   onResetStyles: (edgeIndices: number[]) => void;
+  onResetAllStyles: () => void;
   themeDefaults?: ThemeDefaults;
   edgeGradients: EdgeGradientDef[];
   onGradientChange: (edgeIndex: number, property: string, stops: GradientStop[]) => void;
@@ -62,7 +63,7 @@ const DEFAULT_GRADIENT_STOPS: GradientStop[] = [
 type StyleProperty = 'stroke' | 'color' | 'stroke-width';
 
 const EdgeStylePanel: React.FC<EdgeStylePanelProps> = ({
-  edges, onStyleChange, onLabelChange, onResetStyles, themeDefaults,
+  edges, onStyleChange, onLabelChange, onResetStyles, onResetAllStyles, themeDefaults,
   edgeGradients, onGradientChange, onGradientRemove,
   renderMode = 'standard',
 }) => {
@@ -266,15 +267,12 @@ const EdgeStylePanel: React.FC<EdgeStylePanelProps> = ({
               return (
                 <button
                   onClick={() => {
-                    const targetIndices = hasSelection
-                      ? selectedEdges.filter(idx => edgesWithStyles.some(e => e.index === idx) || edgeGradients.some(g => g.edgeIndex === idx))
-                      : [...new Set([...edgesWithStyles.map(e => e.index), ...edgeGradients.map(g => g.edgeIndex)])];
-                    if (targetIndices.length > 0) { onResetStyles(targetIndices); setActiveStyleProperty(null); }
+                    onResetAllStyles();
+                    setActiveStyleProperty(null);
                   }}
-                  disabled={!hasAnyOverrides}
-                  className={`text-xs px-2 py-1 rounded border ${hasAnyOverrides ? 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-800/40' : 'text-gray-400 dark:text-slate-600 border-gray-200 dark:border-slate-700 cursor-not-allowed opacity-50'}`}
-                  title="Remove manual style overrides so theme styles apply"
-                >Reset Styles</button>
+                  className="text-xs px-2 py-1 rounded border text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-800/40"
+                  title="Remove all manual style overrides (nodes &amp; edges) so theme styles apply"
+                >Reset Manual Styles</button>
               );
             })()}
           </div>

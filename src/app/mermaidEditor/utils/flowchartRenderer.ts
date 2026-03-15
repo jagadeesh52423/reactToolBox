@@ -47,19 +47,19 @@ interface LayoutResult {
 
 // ── Constants ──
 
-const FONT_SIZE = 14;
+const FONT_SIZE = 12;
 const FONT_FAMILY = 'Inter, system-ui, -apple-system, sans-serif';
-const CHAR_WIDTH = 8.2; // approximate width per char at font-size 14
-const NODE_PADDING_X = 32;
-const NODE_PADDING_Y = 20;
-const MIN_NODE_WIDTH = 100;
-const MIN_NODE_HEIGHT = 46;
-const DIAMOND_SCALE = 1.45; // diamonds need extra space for diagonal text
-const EDGE_LABEL_FONT_SIZE = 11;
-const EDGE_LABEL_PADDING = 6;
-const LEGEND_HEIGHT = 40;
-const LEGEND_ITEM_GAP = 20;
-const SUBGRAPH_PADDING = 30;
+const CHAR_WIDTH = 7; // approximate width per char at font-size 12
+const NODE_PADDING_X = 20;
+const NODE_PADDING_Y = 14;
+const MIN_NODE_WIDTH = 80;
+const MIN_NODE_HEIGHT = 36;
+const DIAMOND_SCALE = 1.4;
+const EDGE_LABEL_FONT_SIZE = 10;
+const EDGE_LABEL_PADDING = 4;
+const LEGEND_HEIGHT = 32;
+const LEGEND_ITEM_GAP = 14;
+const SUBGRAPH_PADDING = 20;
 
 // ── Helpers ──
 
@@ -118,11 +118,11 @@ function layoutGraph(graph: FlowGraph): LayoutResult {
   const rankdir = graph.direction === 'TD' ? 'TB' : graph.direction;
   g.setGraph({
     rankdir,
-    nodesep: 60,
-    ranksep: 80,
-    marginx: 50,
-    marginy: 50,
-    edgesep: 30,
+    nodesep: 40,
+    ranksep: 50,
+    marginx: 30,
+    marginy: 30,
+    edgesep: 20,
   });
   g.setDefaultEdgeLabel(() => ({}));
 
@@ -239,7 +239,7 @@ function layoutGraph(graph: FlowGraph): LayoutResult {
   }
 
   // Add padding around the computed bounds
-  const pad = 40;
+  const pad = 25;
   if (minX === Infinity) {
     // Fallback if no nodes
     const graphData = g.graph();
@@ -331,6 +331,76 @@ function renderNodeShape(
     default:
       return `<rect x="${left}" y="${top}" width="${width}" height="${height}" rx="6" fill="url(#${gradientId})"${strokeAttr}/>`;
   }
+}
+
+// ── Edge endpoint clipping ──
+
+/**
+ * Clip a point (inside a node) to the node boundary along the direction
+ * from `from` toward `to`. Returns the intersection on the node border.
+ */
+function clipToNodeBorder(
+  nodeCenter: { x: number; y: number },
+  nodeWidth: number,
+  nodeHeight: number,
+  shape: string,
+  from: { x: number; y: number }
+): { x: number; y: number } {
+  const dx = from.x - nodeCenter.x;
+  const dy = from.y - nodeCenter.y;
+  if (dx === 0 && dy === 0) return { ...nodeCenter };
+
+  const hw = nodeWidth / 2;
+  const hh = nodeHeight / 2;
+
+  if (shape === 'diamond') {
+    // Diamond: |x/hw| + |y/hh| = 1
+    // Parametric intersection along direction (dx, dy) from center
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const t = 1 / (adx / hw + ady / hh);
+    return {
+      x: nodeCenter.x + dx * t,
+      y: nodeCenter.y + dy * t,
+    };
+  }
+
+  if (shape === 'circle') {
+    // Ellipse: (x/hw)^2 + (y/hh)^2 = 1
+    const angle = Math.atan2(dy, dx);
+    return {
+      x: nodeCenter.x + hw * Math.cos(angle),
+      y: nodeCenter.y + hh * Math.sin(angle),
+    };
+  }
+
+  if (shape === 'stadium') {
+    // Pill: rectangle with semicircle ends (rx = hh)
+    const rx = Math.min(hh, hw);
+    // Check if the line exits through the rounded end or the flat side
+    const angle = Math.atan2(dy, dx);
+    // For simplicity, treat as ellipse with slightly reduced radii
+    const effectiveHw = hw - 2;
+    const effectiveHh = hh - 2;
+    const t = Math.min(
+      effectiveHw / Math.max(Math.abs(dx), 0.001),
+      effectiveHh / Math.max(Math.abs(dy), 0.001)
+    );
+    return {
+      x: nodeCenter.x + dx * t,
+      y: nodeCenter.y + dy * t,
+    };
+  }
+
+  // Default rectangle intersection (works for rect, rounded, subroutine, etc.)
+  const t = Math.min(
+    hw / Math.max(Math.abs(dx), 0.001),
+    hh / Math.max(Math.abs(dy), 0.001)
+  );
+  return {
+    x: nodeCenter.x + dx * t,
+    y: nodeCenter.y + dy * t,
+  };
 }
 
 // ── Edge path builder ──
@@ -444,19 +514,11 @@ export function renderFlowchartSVG(
     parts.push('    </filter>');
   }
 
-  // Arrow markers for each edge color
+  // Arrow markers for each edge color — filled triangles
   for (const color of edgeColors) {
     const markerId = `fcr-arrow-${color.replace('#', '')}`;
-    parts.push(`    <marker id="${markerId}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">`);
-    parts.push(`      <path d="M2 1.5L8 5L2 8.5" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`);
-    parts.push('    </marker>');
-  }
-
-  // Bi-directional arrow marker (filled)
-  for (const color of edgeColors) {
-    const markerId = `fcr-arrow-bi-${color.replace('#', '')}`;
-    parts.push(`    <marker id="${markerId}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">`);
-    parts.push(`      <path d="M2 1.5L8 5L2 8.5" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`);
+    parts.push(`    <marker id="${markerId}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">`);
+    parts.push(`      <path d="M0 0L10 5L0 10Z" fill="${color}"/>`);
     parts.push('    </marker>');
   }
 
@@ -531,6 +593,12 @@ export function renderFlowchartSVG(
     parts.push('  </g>');
   }
 
+  // Build a lookup for layout nodes by ID (for edge clipping)
+  const layoutNodeMap = new Map<string, LayoutNode>();
+  for (const ln of layout.nodes) {
+    layoutNodeMap.set(ln.id, ln);
+  }
+
   // ── Edges (render before nodes so nodes are on top) ──
   for (let i = 0; i < layout.edges.length; i++) {
     const le = layout.edges[i];
@@ -552,8 +620,34 @@ export function renderFlowchartSVG(
     }
     const markerId = `fcr-arrow-${markerColor.replace('#', '')}`;
 
+    // Clip edge endpoints to node boundaries so arrows sit on the border
+    const clippedPoints = [...le.points];
+    const sourceNode = layoutNodeMap.get(le.from);
+    const targetNode = layoutNodeMap.get(le.to);
+
+    if (sourceNode && clippedPoints.length >= 2) {
+      const nextPt = clippedPoints[1];
+      clippedPoints[0] = clipToNodeBorder(
+        { x: sourceNode.x, y: sourceNode.y },
+        sourceNode.width,
+        sourceNode.height,
+        sourceNode.node.shape,
+        nextPt
+      );
+    }
+    if (targetNode && clippedPoints.length >= 2) {
+      const prevPt = clippedPoints[clippedPoints.length - 2];
+      clippedPoints[clippedPoints.length - 1] = clipToNodeBorder(
+        { x: targetNode.x, y: targetNode.y },
+        targetNode.width,
+        targetNode.height,
+        targetNode.node.shape,
+        prevPt
+      );
+    }
+
     // Edge path
-    const pathD = buildSmoothPath(le.points);
+    const pathD = buildSmoothPath(clippedPoints);
     if (!pathD) continue;
 
     let strokeDasharray = '';

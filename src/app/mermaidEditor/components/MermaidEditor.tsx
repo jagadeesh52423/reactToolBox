@@ -1,7 +1,16 @@
 'use client';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import mermaid from 'mermaid';
+import type MermaidAPI from 'mermaid';
+
+let mermaidInstance: typeof MermaidAPI | null = null;
+const getMermaid = async () => {
+  if (!mermaidInstance) {
+    const mod = await import('mermaid');
+    mermaidInstance = mod.default;
+  }
+  return mermaidInstance;
+};
 import SampleDiagrams from '../components/SampleDiagrams';
 import NodeStylePanel from './NodeStylePanel';
 import EdgeStylePanel from './EdgeStylePanel';
@@ -386,36 +395,40 @@ const MermaidEditor: React.FC = () => {
 
   // Initialize mermaid with improved configuration
   useEffect(() => {
-    try {
-      const config: any = {
-        startOnLoad: false,
-        theme: currentTheme.mermaidTheme || 'base',
-        securityLevel: 'loose',
-        er: { useMaxWidth: false },
-        flowchart: {
-          useMaxWidth: false,
-          htmlLabels: true,
-          curve: 'basis',
-          rankSpacing: 80,
-          nodeSpacing: 50,
-          diagramPadding: 8,
-        },
-        sequence: { useMaxWidth: false },
-        gantt: { useMaxWidth: false },
-        logLevel: 'fatal',
-      };
+    const initMermaid = async () => {
+      try {
+        const m = await getMermaid();
+        const config: any = {
+          startOnLoad: false,
+          theme: currentTheme.mermaidTheme || 'base',
+          securityLevel: 'loose',
+          er: { useMaxWidth: false },
+          flowchart: {
+            useMaxWidth: false,
+            htmlLabels: true,
+            curve: 'basis',
+            rankSpacing: 80,
+            nodeSpacing: 50,
+            diagramPadding: 8,
+          },
+          sequence: { useMaxWidth: false },
+          gantt: { useMaxWidth: false },
+          logLevel: 'fatal',
+        };
 
-      // Add theme variables if present
-      if (currentTheme.themeVariables) {
-        config.themeVariables = currentTheme.themeVariables;
+        // Add theme variables if present
+        if (currentTheme.themeVariables) {
+          config.themeVariables = currentTheme.themeVariables;
+        }
+
+        m.initialize(config);
+        // Trigger re-render when theme changes
+        setRenderTrigger(prev => prev + 1);
+      } catch (err) {
+        console.error("Failed to initialize mermaid:", err);
       }
-
-      mermaid.initialize(config);
-      // Trigger re-render when theme changes
-      setRenderTrigger(prev => prev + 1);
-    } catch (err) {
-      console.error("Failed to initialize mermaid:", err);
-    }
+    };
+    initMermaid();
     // currentTheme is derived from selectedThemeId (getThemeById(selectedThemeId))
     // so it changes whenever selectedThemeId changes - we include it to satisfy React hooks rules
   }, [selectedThemeId, currentTheme]);
@@ -506,9 +519,10 @@ const MermaidEditor: React.FC = () => {
         document.body.appendChild(tempContainer);
 
         // Use a counter instead of Date.now() to avoid hydration issues
+        const m = await getMermaid();
         renderCounterRef.current += 1;
         const id = `mermaid-${renderCounterRef.current}`;
-        const { svg } = await mermaid.render(id, processedCode, tempContainer);
+        const { svg } = await m.render(id, processedCode, tempContainer);
 
         // Store the SVG content in state
         setSvgContent(svg);
@@ -1113,6 +1127,20 @@ const MermaidEditor: React.FC = () => {
     setTimeout(() => { setRenderTrigger(prev => prev + 1); }, 100);
   };
 
+  // Reset ALL manual styles (both nodes and edges) in one click
+  const handleResetAllStyles = () => {
+    // Reset node styles from code
+    const allNodeIds = nodes.map(n => n.id);
+    handleResetStyles(allNodeIds);
+    // Reset edge styles from code
+    const allEdgeIndices = edges.map(e => e.index);
+    handleResetEdgeStyles(allEdgeIndices);
+    // Reset gradient overrides
+    setNodeGradients([]);
+    setEdgeGradients([]);
+    setTimeout(() => { setRenderTrigger(prev => prev + 1); }, 100);
+  };
+
   return (
     <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Controls Bar */}
@@ -1371,6 +1399,7 @@ const MermaidEditor: React.FC = () => {
                           handleResetStyles(nodeIds);
                           handleNodeGradientRemove(nodeIds);
                         }}
+                        onResetAllStyles={handleResetAllStyles}
                         themeDefaults={{
                           fill: currentTheme.themeVariables?.primaryColor || currentTheme.previewColors?.[0],
                           stroke: currentTheme.themeVariables?.primaryBorderColor || currentTheme.previewColors?.[1],
@@ -1390,6 +1419,7 @@ const MermaidEditor: React.FC = () => {
                           handleResetEdgeStyles(indices);
                           handleEdgeGradientRemove(indices);
                         }}
+                        onResetAllStyles={handleResetAllStyles}
                         themeDefaults={{
                           stroke: currentTheme.themeVariables?.lineColor || currentTheme.previewColors?.[1],
                         }}
