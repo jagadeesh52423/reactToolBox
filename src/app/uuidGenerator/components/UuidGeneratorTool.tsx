@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import GeneratorPanel from './GeneratorPanel';
 import OutputPanel from './OutputPanel';
 import { IdType, FormatOptions, generateBatch, getIdTypeLabel } from '../utils/idGenerators';
@@ -19,8 +20,8 @@ interface HistoryEntry {
  * Two-panel layout: GeneratorPanel (settings) + OutputPanel (results).
  */
 export default function UuidGeneratorTool() {
-  const [idType, setIdType] = useState<IdType>('uuid-v4');
-  const [quantity, setQuantity] = useState<number>(1);
+  const [idType, setIdType] = useLocalStorage<IdType>('reactToolBox_uuidGenerator_type', 'uuid-v4');
+  const [quantity, setQuantity] = useLocalStorage<number>('reactToolBox_uuidGenerator_qty', 1);
   const [format, setFormat] = useState<FormatOptions>({
     hyphens: true,
     uppercase: false,
@@ -78,7 +79,7 @@ export default function UuidGeneratorTool() {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-hidden min-h-0">
         <div className="w-full h-full">

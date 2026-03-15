@@ -2,6 +2,8 @@
 
 import React, { useState, useCallback } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
+import { useFileIO } from '@/hooks/useFileIO';
+import { DownloadIcon } from '@/components/shared/Icons';
 import { ConversionResult } from '../utils/timestampUtils';
 
 interface ResultsPanelProps {
@@ -17,6 +19,7 @@ interface ResultsPanelProps {
  */
 export default function ResultsPanel({ conversions }: ResultsPanelProps) {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
+  const { downloadFile } = useFileIO();
 
   const handleCopy = useCallback(async (value: string, label: string) => {
     try {
@@ -28,9 +31,25 @@ export default function ResultsPanel({ conversions }: ResultsPanelProps) {
     }
   }, []);
 
+  const handleDownload = useCallback(() => {
+    if (conversions.length === 0) return;
+    const lines = conversions.map((c) => `${c.label}: ${c.value}`);
+    downloadFile(lines.join('\n'), 'timestamp-conversions.txt');
+  }, [conversions, downloadFile]);
+
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
-      <PanelHeader title="Conversions" />
+      <PanelHeader title="Conversions">
+        {conversions.length > 0 && (
+          <button
+            onClick={handleDownload}
+            className="p-1.5 rounded hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors"
+            title="Download conversions"
+          >
+            <DownloadIcon size={14} className="text-gray-500 dark:text-gray-400" />
+          </button>
+        )}
+      </PanelHeader>
 
       <div className="flex-1 overflow-auto p-4">
         {conversions.length === 0 ? (

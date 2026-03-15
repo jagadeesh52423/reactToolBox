@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
+import { useFileIO } from '@/hooks/useFileIO';
+import { DownloadIcon } from '@/components/shared/Icons';
 
 interface HistoryEntry {
   ids: string[];
@@ -33,12 +35,25 @@ export default function OutputPanel({
   onClear,
 }: OutputPanelProps) {
   const [showHistory, setShowHistory] = useState(false);
+  const { downloadFile } = useFileIO();
+
+  const handleDownload = useCallback(() => {
+    if (generatedIds.length === 0) return;
+    downloadFile(generatedIds.join('\n'), 'generated-ids.txt');
+  }, [generatedIds, downloadFile]);
 
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
       <PanelHeader title="Generated IDs">
         {generatedIds.length > 0 && (
           <>
+            <button
+              onClick={handleDownload}
+              className="p-1.5 rounded hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors"
+              title="Download generated IDs"
+            >
+              <DownloadIcon size={14} className="text-gray-500 dark:text-gray-400" />
+            </button>
             <button
               onClick={onCopyAll}
               className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"

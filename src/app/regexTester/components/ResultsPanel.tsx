@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
+import { useFileIO } from '@/hooks/useFileIO';
+import { DownloadIcon } from '@/components/shared/Icons';
 
 interface MatchInfo {
     fullMatch: string;
@@ -23,13 +25,44 @@ interface ResultsPanelProps {
  * capture groups, and named groups in a scrollable card layout.
  */
 export default function ResultsPanel({ matches, pattern, testString }: ResultsPanelProps) {
+    const { downloadFile } = useFileIO();
+
+    const handleDownload = useCallback(() => {
+        const lines = matches.map((m, i) => {
+            let entry = `Match ${i + 1}: "${m.fullMatch}" at index ${m.index}`;
+            if (m.captures.length > 0) {
+                entry += `\n  Captures: ${m.captures.map((c, j) => `$${j + 1}="${c}"`).join(', ')}`;
+            }
+            if (m.groups && Object.keys(m.groups).length > 0) {
+                entry += `\n  Groups: ${Object.entries(m.groups).map(([k, v]) => `${k}="${v}"`).join(', ')}`;
+            }
+            return entry;
+        });
+        const report = [
+            `Pattern: /${pattern}/`,
+            `Total matches: ${matches.length}`,
+            '',
+            ...lines,
+        ].join('\n');
+        downloadFile(report, 'regex-matches.txt');
+    }, [matches, pattern, downloadFile]);
+
     return (
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col h-full">
             <PanelHeader title="Results">
                 {matches.length > 0 && (
+                    <>
+                    <button
+                        onClick={handleDownload}
+                        className="p-1.5 rounded hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors"
+                        title="Download matches"
+                    >
+                        <DownloadIcon size={14} className="text-gray-500 dark:text-gray-400" />
+                    </button>
                     <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                         {matches.length} match{matches.length !== 1 ? 'es' : ''}
                     </span>
+                    </>
                 )}
             </PanelHeader>
 

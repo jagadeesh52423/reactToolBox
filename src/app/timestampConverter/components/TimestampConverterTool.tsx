@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import InputPanel from './InputPanel';
 import ResultsPanel from './ResultsPanel';
 import {
@@ -18,9 +20,36 @@ import {
  * delegates rendering to InputPanel and ResultsPanel.
  */
 export default function TimestampConverterTool() {
-  const [input, setInput] = useState<string>('');
+  const searchParams = useSearchParams();
+  const urlTs = searchParams.get('ts');
+
+  const [storedInput, setStoredInput] = useLocalStorage<string>('reactToolBox_timestamp_input', '');
+  const [storedTz, setStoredTz] = useLocalStorage<string>('reactToolBox_timestamp_tz', getLocalTimezone());
+
+  const [input, setInputRaw] = useState<string>(urlTs || '');
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [timezone, setTimezone] = useState<string>(getLocalTimezone());
+  const [timezone, setTimezoneRaw] = useState<string>(getLocalTimezone());
+
+  // Restore from localStorage when no URL param is present (after hydration)
+  useEffect(() => {
+    if (!urlTs && storedInput) {
+      setInputRaw(storedInput);
+    }
+    if (storedTz && storedTz !== getLocalTimezone()) {
+      setTimezoneRaw(storedTz);
+    }
+  }, [storedInput, storedTz, urlTs]);
+
+  // Wrap setters to also persist to localStorage
+  const setInput = useCallback((value: string) => {
+    setInputRaw(value);
+    setStoredInput(value);
+  }, [setStoredInput]);
+
+  const setTimezone = useCallback((value: string) => {
+    setTimezoneRaw(value);
+    setStoredTz(value);
+  }, [setStoredTz]);
   const [error, setError] = useState<string | null>(null);
 
   // Live-updating clock
@@ -65,7 +94,7 @@ export default function TimestampConverterTool() {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <main className="flex-1 p-6 overflow-hidden min-h-0">
         <div className="w-full h-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">

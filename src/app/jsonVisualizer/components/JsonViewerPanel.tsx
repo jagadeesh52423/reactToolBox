@@ -4,7 +4,7 @@ import { forwardRef } from 'react';
 import { JSONValue, JsonPath, SearchOptions, JsonTreeViewRef } from '../models/JsonModels';
 import SearchControls from './SearchControls';
 import JsonTreeView from './JsonTreeView';
-import { ExpandIcon, CollapseIcon, BracesIcon } from './Icons';
+import { ExpandIcon, CollapseIcon, BracesIcon } from '@/components/shared/Icons';
 import PanelHeader from '@/components/common/PanelHeader';
 
 interface JsonViewerPanelProps {

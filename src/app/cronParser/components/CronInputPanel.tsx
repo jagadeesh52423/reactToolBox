@@ -3,38 +3,57 @@
 import React from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
 import CronPresets from './CronPresets';
+import { CronFieldCount } from '../utils/cronUtils';
 
 interface BuilderValues {
+  second: string;
   minute: string;
   hour: string;
   dayOfMonth: string;
   month: string;
   dayOfWeek: string;
+  year: string;
 }
 
 interface CronInputPanelProps {
   expression: string;
   builderValues: BuilderValues;
+  fieldCount: CronFieldCount;
   onExpressionChange: (expression: string) => void;
-  onBuilderChange: (field: keyof BuilderValues, value: string) => void;
+  onBuilderChange: (field: string, value: string) => void;
   onPresetSelect: (expression: string) => void;
+  onFieldCountChange: (count: CronFieldCount) => void;
   error: string | null;
 }
 
-/**
- * Builder field configuration for the 5 cron fields.
- * Each defines the label, key, placeholder, and set of common dropdown options.
- */
-const BUILDER_FIELDS: Array<{
+interface BuilderField {
   key: keyof BuilderValues;
   label: string;
   placeholder: string;
   options: Array<{ label: string; value: string }>;
-}> = [
+  visibleIn: CronFieldCount[];
+}
+
+const BUILDER_FIELDS: BuilderField[] = [
+  {
+    key: 'second',
+    label: 'Second',
+    placeholder: '0-59',
+    visibleIn: [6, 7],
+    options: [
+      { label: 'At :00 (0)', value: '0' },
+      { label: 'Every second (*)', value: '*' },
+      { label: 'Every 5 sec (*/5)', value: '*/5' },
+      { label: 'Every 10 sec (*/10)', value: '*/10' },
+      { label: 'Every 15 sec (*/15)', value: '*/15' },
+      { label: 'Every 30 sec (*/30)', value: '*/30' },
+    ],
+  },
   {
     key: 'minute',
     label: 'Minute',
     placeholder: '0-59',
+    visibleIn: [5, 6, 7],
     options: [
       { label: 'Every minute (*)', value: '*' },
       { label: 'Every 5 min (*/5)', value: '*/5' },
@@ -51,6 +70,7 @@ const BUILDER_FIELDS: Array<{
     key: 'hour',
     label: 'Hour',
     placeholder: '0-23',
+    visibleIn: [5, 6, 7],
     options: [
       { label: 'Every hour (*)', value: '*' },
       { label: 'Every 2 hours (*/2)', value: '*/2' },
@@ -67,6 +87,7 @@ const BUILDER_FIELDS: Array<{
     key: 'dayOfMonth',
     label: 'Day of Month',
     placeholder: '1-31',
+    visibleIn: [5, 6, 7],
     options: [
       { label: 'Every day (*)', value: '*' },
       { label: '1st (1)', value: '1' },
@@ -78,7 +99,8 @@ const BUILDER_FIELDS: Array<{
   {
     key: 'month',
     label: 'Month',
-    placeholder: '1-12',
+    placeholder: '1-12 or JAN-DEC',
+    visibleIn: [5, 6, 7],
     options: [
       { label: 'Every month (*)', value: '*' },
       { label: 'January (1)', value: '1' },
@@ -93,7 +115,8 @@ const BUILDER_FIELDS: Array<{
   {
     key: 'dayOfWeek',
     label: 'Day of Week',
-    placeholder: '0-6 (Sun-Sat)',
+    placeholder: '0-6 or SUN-SAT',
+    visibleIn: [5, 6, 7],
     options: [
       { label: 'Every day (*)', value: '*' },
       { label: 'Sunday (0)', value: '0' },
@@ -107,27 +130,65 @@ const BUILDER_FIELDS: Array<{
       { label: 'Weekends (0,6)', value: '0,6' },
     ],
   },
+  {
+    key: 'year',
+    label: 'Year',
+    placeholder: '1970-2099',
+    visibleIn: [7],
+    options: [
+      { label: 'Every year (*)', value: '*' },
+      { label: '2025', value: '2025' },
+      { label: '2026', value: '2026' },
+      { label: '2027', value: '2027' },
+      { label: '2025-2030', value: '2025-2030' },
+    ],
+  },
 ];
 
-/**
- * CronInputPanel Component
- *
- * Left panel containing the raw cron expression input, preset buttons,
- * and an interactive builder with 5 dropdown rows for bidirectional sync.
- */
+const FIELD_LABELS: Record<CronFieldCount, string[]> = {
+  5: ['minute', 'hour', 'day(month)', 'month', 'day(week)'],
+  6: ['second', 'minute', 'hour', 'day(month)', 'month', 'day(week)'],
+  7: ['second', 'minute', 'hour', 'day(month)', 'month', 'day(week)', 'year'],
+};
+
 export default function CronInputPanel({
   expression,
   builderValues,
+  fieldCount,
   onExpressionChange,
   onBuilderChange,
   onPresetSelect,
+  onFieldCountChange,
   error,
 }: CronInputPanelProps) {
+  const visibleFields = BUILDER_FIELDS.filter(f => f.visibleIn.includes(fieldCount));
+
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
       <PanelHeader title="Cron Expression" />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Field Count Selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Mode:</span>
+          <div className="flex rounded-lg bg-gray-100 dark:bg-slate-700/50 p-0.5">
+            {([5, 6, 7] as CronFieldCount[]).map((count) => (
+              <button
+                key={count}
+                type="button"
+                onClick={() => onFieldCountChange(count)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  fieldCount === count
+                    ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {count === 5 ? 'Standard (5)' : count === 6 ? 'Seconds (6)' : 'Full (7)'}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Raw Expression Input */}
         <div>
           <label htmlFor="cron-expression" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
@@ -138,7 +199,7 @@ export default function CronInputPanel({
             type="text"
             value={expression}
             onChange={(e) => onExpressionChange(e.target.value)}
-            placeholder="* * * * *"
+            placeholder={fieldCount === 5 ? '* * * * *' : fieldCount === 6 ? '0 * * * * *' : '0 * * * * * *'}
             aria-label="Cron expression input"
             className={`w-full px-4 py-3 rounded-lg font-mono text-lg bg-white dark:bg-slate-800 border text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-colors ${
               error
@@ -147,14 +208,11 @@ export default function CronInputPanel({
             }`}
           />
           <div className="flex justify-between mt-1.5 text-[10px] font-mono text-gray-400 dark:text-gray-500 px-1">
-            <span>minute</span>
-            <span>hour</span>
-            <span>day(month)</span>
-            <span>month</span>
-            <span>day(week)</span>
+            {FIELD_LABELS[fieldCount].map((label) => (
+              <span key={label}>{label}</span>
+            ))}
           </div>
 
-          {/* Error Display */}
           {error && (
             <div className="mt-2 p-3 rounded border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/30 text-red-500 dark:text-red-400 text-sm">
               {error}
@@ -162,8 +220,13 @@ export default function CronInputPanel({
           )}
         </div>
 
+        {/* Named Values Hint */}
+        <div className="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
+          Supports named values: MON-SUN for days, JAN-DEC for months
+        </div>
+
         {/* Presets */}
-        <CronPresets onSelect={onPresetSelect} currentExpression={expression} />
+        <CronPresets onSelect={onPresetSelect} currentExpression={expression} fieldCount={fieldCount} />
 
         {/* Interactive Builder */}
         <div>
@@ -171,7 +234,7 @@ export default function CronInputPanel({
             Interactive Builder
           </label>
           <div className="space-y-2">
-            {BUILDER_FIELDS.map((field) => (
+            {visibleFields.map((field) => (
               <div
                 key={field.key}
                 className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-gray-200/50 dark:border-slate-700/50"

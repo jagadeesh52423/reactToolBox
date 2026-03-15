@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { JSONValue } from '../models/JsonModels';
-import { DatabaseIcon, LayersIcon, HashIcon, CheckIcon, AlertCircleIcon } from './Icons';
+import { DatabaseIcon, LayersIcon, HashIcon, CheckIcon, AlertCircleIcon } from '@/components/shared/Icons';
 
 interface JsonStats {
     size: string;

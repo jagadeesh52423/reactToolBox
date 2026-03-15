@@ -16,7 +16,7 @@ import {
     TrashIcon,
     BracesIcon,
     BracketsIcon
-} from './Icons';
+} from '@/components/shared/Icons';
 
 interface ContextMenuState {
     visible: boolean;

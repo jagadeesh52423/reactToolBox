@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { ClipboardIcon } from './Icons';
+import { ClipboardIcon } from '@/components/shared/Icons';
 
 export interface ContextMenuItem {
     label: string;

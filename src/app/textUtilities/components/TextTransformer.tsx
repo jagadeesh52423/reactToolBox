@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useMemo, useCallback } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import CodeEditor from '@/components/common/CodeEditor';
 import {
   toUpperCase, toLowerCase, toTitleCase, toSentenceCase,
@@ -19,8 +20,9 @@ import {
   HashIcon,
   SparklesIcon,
   ReplaceIcon
-} from './Icons';
+} from '@/components/shared/Icons';
 import TextReplacer from './TextReplacer';
+import PanelHeader from '@/components/common/PanelHeader';
 
 const DEFAULT_TEXT = `Hello World! This is some sample text.
 It has multiple lines and some extra   spaces.
@@ -75,7 +77,7 @@ const CATEGORY_CONFIG: Record<Category, { label: string; icon: React.ReactNode; 
 };
 
 const TextTransformer: React.FC = () => {
-  const [inputText, setInputText] = useState(DEFAULT_TEXT);
+  const [inputText, setInputText] = useLocalStorage<string>('reactToolBox_textUtilities_input', DEFAULT_TEXT);
   const [outputText, setOutputText] = useState('');
   const [activeCategory, setActiveCategory] = useState<Category>('case');
   const [copiedInput, setCopiedInput] = useState(false);
@@ -129,23 +131,8 @@ const TextTransformer: React.FC = () => {
     [activeCategory]
   );
 
-  // Panel header component
-  const PanelHeader = ({ title, actions }: { title: string; actions?: React.ReactNode }) => (
-    <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/50 dark:border-slate-700/50">
-      <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-full bg-red-500/80" />
-        <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-        <div className="w-3 h-3 rounded-full bg-green-500/80" />
-        <span className="ml-3 text-sm font-medium text-gray-600 dark:text-slate-300">
-          {title}
-        </span>
-      </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
-    </div>
-  );
-
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-hidden min-h-0 flex flex-col">
         <div className="w-full flex-1 flex flex-col min-h-0">
@@ -180,34 +167,29 @@ const TextTransformer: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4 flex-1 min-h-0 grid-rows-[1fr]">
                 {/* Input Panel */}
                 <div className="flex flex-col min-h-0 bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
-                  <PanelHeader
-                    title="Input Text"
-                    actions={
-                      <>
-                        <button
-                          onClick={handlePaste}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
-                        >
-                          <SparklesIcon size={14} />
-                          <span>Paste</span>
-                        </button>
-                        <button
-                          onClick={handleCopyInput}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
-                        >
-                          {copiedInput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-                          <span>{copiedInput ? 'Copied!' : 'Copy'}</span>
-                        </button>
-                        <button
-                          onClick={handleClear}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-900/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 border border-red-200/50 dark:border-red-500/30 transition-all duration-200 text-xs font-medium"
-                        >
-                          <TrashIcon size={14} />
-                          <span>Clear</span>
-                        </button>
-                      </>
-                    }
-                  />
+                  <PanelHeader title="Input Text">
+                    <button
+                      onClick={handlePaste}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
+                    >
+                      <SparklesIcon size={14} />
+                      <span>Paste</span>
+                    </button>
+                    <button
+                      onClick={handleCopyInput}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-600/30 border border-gray-200/50 dark:border-slate-600/30 transition-all duration-200 text-xs font-medium"
+                    >
+                      {copiedInput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+                      <span>{copiedInput ? 'Copied!' : 'Copy'}</span>
+                    </button>
+                    <button
+                      onClick={handleClear}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-900/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 border border-red-200/50 dark:border-red-500/30 transition-all duration-200 text-xs font-medium"
+                    >
+                      <TrashIcon size={14} />
+                      <span>Clear</span>
+                    </button>
+                  </PanelHeader>
                   <div className="flex-1 min-h-[150px]">
                     <CodeEditor
                       value={inputText}
@@ -219,20 +201,17 @@ const TextTransformer: React.FC = () => {
 
                 {/* Output Panel */}
                 <div className="flex flex-col min-h-0 bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
-                  <PanelHeader
-                    title={lastTransform ? `Output - ${lastTransform}` : 'Output'}
-                    actions={
-                      outputText && (
-                        <button
-                          onClick={handleCopyOutput}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 border border-indigo-200/50 dark:border-indigo-500/30 transition-all duration-200 text-xs font-medium"
-                        >
-                          {copiedOutput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-                          <span>{copiedOutput ? 'Copied!' : 'Copy'}</span>
-                        </button>
-                      )
-                    }
-                  />
+                  <PanelHeader title={lastTransform ? `Output - ${lastTransform}` : 'Output'}>
+                    {outputText && (
+                      <button
+                        onClick={handleCopyOutput}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 border border-indigo-200/50 dark:border-indigo-500/30 transition-all duration-200 text-xs font-medium"
+                      >
+                        {copiedOutput ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+                        <span>{copiedOutput ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    )}
+                  </PanelHeader>
                   <div className="flex-1 min-h-[150px]">
                     <CodeEditor
                       value={outputText}

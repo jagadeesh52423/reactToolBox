@@ -4,27 +4,51 @@ import DiffViewer from './DiffViewer';
 import StructuredDiffViewer from './StructuredDiffViewer';
 import JsonEditor from './JsonEditor';
 import CompareStatusBar, { CompareStats } from './CompareStatusBar';
+import { useFileIO } from '@/hooks/useFileIO';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import {
   ArrowsRightLeftIcon,
   GitCompareIcon,
   SparklesIcon,
   TableIcon,
   TreeIcon,
-  AlertCircleIcon
-} from './Icons';
+  AlertCircleIcon,
+  DownloadIcon,
+} from '@/components/shared/Icons';
 
 const DEFAULT_LEFT = { name: "John", age: 30, address: { city: "New York", zip: 10001 } };
 const DEFAULT_RIGHT = { name: "John", age: 31, address: { city: "Boston", zip: "02108" } };
 
 const JsonComparer: React.FC = () => {
-  const [leftJson, setLeftJson] = useState<string>(JSON.stringify(DEFAULT_LEFT, null, 2));
-  const [rightJson, setRightJson] = useState<string>(JSON.stringify(DEFAULT_RIGHT, null, 2));
+  const [leftJson, setLeftJson] = useLocalStorage<string>('reactToolBox_jsonCompare_left', JSON.stringify(DEFAULT_LEFT, null, 2));
+  const [rightJson, setRightJson] = useLocalStorage<string>('reactToolBox_jsonCompare_right', JSON.stringify(DEFAULT_RIGHT, null, 2));
   const [error, setError] = useState<string>('');
   const [showDiff, setShowDiff] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'table' | 'structured'>('structured');
   const [fixedLeftJson, setFixedLeftJson] = useState<string>('');
   const [fixedRightJson, setFixedRightJson] = useState<string>('');
   const [stats, setStats] = useState<CompareStats | null>(null);
+  const { downloadFile } = useFileIO();
+
+  const handleDownloadDiff = useCallback(() => {
+    if (!stats || !fixedLeftJson || !fixedRightJson) return;
+    const report = [
+      '=== JSON Compare Report ===',
+      `Date: ${new Date().toISOString()}`,
+      '',
+      `Additions: ${stats.additions}`,
+      `Deletions: ${stats.deletions}`,
+      `Modifications: ${stats.modifications}`,
+      `Unchanged: ${stats.unchanged}`,
+      '',
+      '--- Left JSON ---',
+      fixedLeftJson,
+      '',
+      '--- Right JSON ---',
+      fixedRightJson,
+    ].join('\n');
+    downloadFile(report, 'json-compare-report.txt');
+  }, [stats, fixedLeftJson, fixedRightJson, downloadFile]);
 
   const validateJson = (json: string): { isValid: boolean; error?: string } => {
     try {
@@ -219,7 +243,7 @@ const JsonComparer: React.FC = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-auto flex flex-col">
         {/* Error Banner */}
@@ -293,7 +317,15 @@ const JsonComparer: React.FC = () => {
                 </span>
               </div>
 
-              {/* View Mode Toggle */}
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadDiff}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+                  title="Download diff report"
+                >
+                  <DownloadIcon size={16} />
+                </button>
               <div className="flex items-center bg-gray-100/50 dark:bg-slate-700/30 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('table')}
@@ -317,6 +349,7 @@ const JsonComparer: React.FC = () => {
                   <TreeIcon size={16} />
                   <span>Tree</span>
                 </button>
+              </div>
               </div>
             </div>
 

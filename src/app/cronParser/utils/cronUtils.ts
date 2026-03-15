@@ -2,8 +2,13 @@
  * Cron Expression Parser Utilities
  *
  * Pure functions for parsing cron expressions, generating human-readable
- * descriptions, and calculating next run times. Supports standard 5-field
- * cron format: minute hour day-of-month month day-of-week.
+ * descriptions, and calculating next run times.
+ *
+ * Supports:
+ * - 5-field standard: minute hour day-of-month month day-of-week
+ * - 6-field with seconds: second minute hour day-of-month month day-of-week
+ * - 7-field with seconds+year: second minute hour day-of-month month day-of-week year
+ * - Named days (MON-SUN, Mon-Sun) and months (JAN-DEC, Jan-Dec)
  */
 
 const MONTH_NAMES = [
@@ -22,37 +27,68 @@ const SHORT_MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
+/** Maps named days to numeric values (case-insensitive). */
+const NAMED_DAYS: Record<string, number> = {
+  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+};
+
+/** Maps named months to numeric values (case-insensitive). */
+const NAMED_MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
 interface FieldRange {
   min: number;
   max: number;
 }
 
 const FIELD_RANGES: Record<string, FieldRange> = {
+  second: { min: 0, max: 59 },
   minute: { min: 0, max: 59 },
   hour: { min: 0, max: 23 },
   dayOfMonth: { min: 1, max: 31 },
   month: { min: 1, max: 12 },
   dayOfWeek: { min: 0, max: 6 },
+  year: { min: 1970, max: 2099 },
 };
+
+export type CronFieldCount = 5 | 6 | 7;
+
+export interface CronFields {
+  second: string;
+  minute: string;
+  hour: string;
+  dayOfMonth: string;
+  month: string;
+  dayOfWeek: string;
+  year: string;
+}
 
 export interface CronParseResult {
   isValid: boolean;
   description: string;
   error: string | null;
-  fields: {
-    minute: string;
-    hour: string;
-    dayOfMonth: string;
-    month: string;
-    dayOfWeek: string;
-  } | null;
+  fields: CronFields | null;
+  fieldCount: CronFieldCount;
+}
+
+/**
+ * Replaces named day/month tokens with their numeric equivalents.
+ * E.g. "MON-FRI" -> "1-5", "JAN,MAR" -> "1,3"
+ */
+function replaceNamedValues(field: string, nameMap: Record<string, number>): string {
+  return field.replace(/[A-Za-z]{3}/g, (match) => {
+    const num = nameMap[match.toLowerCase()];
+    return num !== undefined ? String(num) : match;
+  });
 }
 
 /**
  * Expands a single cron field into the set of matching integer values.
  * Supports: *, N, N-M, N/S, N-M/S, and comma-separated combinations.
  */
-function expandField(field: string, range: FieldRange): number[] | null {
+export function expandField(field: string, range: FieldRange): number[] | null {
   const values = new Set<number>();
   const parts = field.split(',');
 
@@ -139,29 +175,55 @@ function validateField(field: string, range: FieldRange): boolean {
 }
 
 /**
- * Parses a cron expression and returns validation result, description, and parsed fields.
+ * Detects field count and parses a cron expression.
+ * - 5 fields: minute hour dom month dow
+ * - 6 fields: second minute hour dom month dow
+ * - 7 fields: second minute hour dom month dow year
  */
 export function parseCronExpression(expression: string): CronParseResult {
   const trimmed = expression.trim();
   if (!trimmed) {
-    return { isValid: false, description: '', error: 'Expression is empty', fields: null };
+    return { isValid: false, description: '', error: 'Expression is empty', fields: null, fieldCount: 5 };
   }
 
   const parts = trimmed.split(/\s+/);
-  if (parts.length !== 5) {
+  const count = parts.length;
+
+  if (count < 5 || count > 7) {
     return {
       isValid: false,
       description: '',
-      error: `Expected 5 fields but got ${parts.length}. Format: minute hour day-of-month month day-of-week`,
+      error: `Expected 5, 6, or 7 fields but got ${count}. Formats: [sec] min hour dom month dow [year]`,
       fields: null,
+      fieldCount: 5,
     };
   }
 
-  const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
-  const fields = { minute, hour, dayOfMonth, month, dayOfWeek };
+  const fieldCount = count as CronFieldCount;
+
+  // Normalize named values before parsing
+  let second: string, minute: string, hour: string, dayOfMonth: string, month: string, dayOfWeek: string, year: string;
+
+  if (count === 5) {
+    [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    second = '0';
+    year = '*';
+  } else if (count === 6) {
+    [second, minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    year = '*';
+  } else {
+    [second, minute, hour, dayOfMonth, month, dayOfWeek, year] = parts;
+  }
+
+  // Replace named values
+  month = replaceNamedValues(month, NAMED_MONTHS);
+  dayOfWeek = replaceNamedValues(dayOfWeek, NAMED_DAYS);
+
+  const fields: CronFields = { second, minute, hour, dayOfMonth, month, dayOfWeek, year };
 
   // Validate each field
-  const fieldNames: Array<{ key: keyof typeof FIELD_RANGES; label: string; value: string }> = [
+  const fieldChecks: Array<{ key: string; label: string; value: string }> = [
+    { key: 'second', label: 'Second', value: second },
     { key: 'minute', label: 'Minute', value: minute },
     { key: 'hour', label: 'Hour', value: hour },
     { key: 'dayOfMonth', label: 'Day of month', value: dayOfMonth },
@@ -169,33 +231,45 @@ export function parseCronExpression(expression: string): CronParseResult {
     { key: 'dayOfWeek', label: 'Day of week', value: dayOfWeek },
   ];
 
-  for (const { key, label, value } of fieldNames) {
+  // Only validate year if 7 fields
+  if (count === 7) {
+    fieldChecks.push({ key: 'year', label: 'Year', value: year });
+  }
+
+  for (const { key, label, value } of fieldChecks) {
     if (!validateField(value, FIELD_RANGES[key])) {
       return {
         isValid: false,
         description: '',
         error: `Invalid ${label} field: "${value}" (allowed: ${FIELD_RANGES[key].min}-${FIELD_RANGES[key].max})`,
         fields,
+        fieldCount,
       };
     }
   }
 
-  const description = generateDescription(fields);
+  const description = generateDescription(fields, fieldCount);
 
-  return { isValid: true, description, error: null, fields };
+  return { isValid: true, description, error: null, fields, fieldCount };
 }
 
 /**
  * Generates a human-readable description of a cron expression.
  */
-function generateDescription(fields: {
-  minute: string;
-  hour: string;
-  dayOfMonth: string;
-  month: string;
-  dayOfWeek: string;
-}): string {
+function generateDescription(fields: CronFields, fieldCount: CronFieldCount): string {
   const parts: string[] = [];
+
+  // Seconds part (only for 6/7-field)
+  if (fieldCount >= 6 && fields.second !== '0') {
+    if (fields.second === '*') {
+      parts.push('Every second');
+    } else if (/^\*\/\d+$/.test(fields.second)) {
+      const step = fields.second.split('/')[1];
+      parts.push(`Every ${step} seconds`);
+    } else {
+      parts.push(`At second ${fields.second}`);
+    }
+  }
 
   // Time part
   const timePart = describeTime(fields.minute, fields.hour);
@@ -240,6 +314,11 @@ function generateDescription(fields: {
     }
   }
 
+  // Year part (only for 7-field)
+  if (fieldCount === 7 && fields.year !== '*') {
+    parts.push(`in year ${fields.year}`);
+  }
+
   return parts.join(', ');
 }
 
@@ -247,58 +326,47 @@ function generateDescription(fields: {
  * Describes the time portion (minute + hour) of a cron expression.
  */
 function describeTime(minute: string, hour: string): string {
-  // Every minute
   if (minute === '*' && hour === '*') {
     return 'Every minute';
   }
 
-  // Every N minutes, every hour
   if (/^\*\/\d+$/.test(minute) && hour === '*') {
     const step = minute.split('/')[1];
     return `Every ${step} minutes`;
   }
 
-  // Specific minute, every hour
   if (/^\d+$/.test(minute) && hour === '*') {
     return `At minute ${minute} of every hour`;
   }
 
-  // Every minute of specific hour
   if (minute === '*' && /^\d+$/.test(hour)) {
     const h = parseInt(hour, 10);
     return `Every minute from ${formatHour(h)}`;
   }
 
-  // Every N minutes of specific hour
   if (/^\*\/\d+$/.test(minute) && /^\d+$/.test(hour)) {
     const step = minute.split('/')[1];
     const h = parseInt(hour, 10);
     return `Every ${step} minutes starting at ${formatHour(h)}`;
   }
 
-  // Specific minute and hour
   if (/^\d+$/.test(minute) && /^\d+$/.test(hour)) {
     const h = parseInt(hour, 10);
     const m = parseInt(minute, 10);
     return `At ${formatTime(h, m)}`;
   }
 
-  // Every N hours
   if (/^\d+$/.test(minute) && /^\*\/\d+$/.test(hour)) {
     const m = parseInt(minute, 10);
     const step = hour.split('/')[1];
     return `At minute ${m} every ${step} hours`;
   }
 
-  // Fallback for complex expressions
   const minuteDesc = minute === '*' ? 'every minute' : `minute ${minute}`;
   const hourDesc = hour === '*' ? 'every hour' : `hour ${hour}`;
   return `At ${minuteDesc}, ${hourDesc}`;
 }
 
-/**
- * Formats an hour value as 12-hour AM/PM.
- */
 function formatHour(h: number): string {
   if (h === 0) return '12:00 AM';
   if (h === 12) return '12:00 PM';
@@ -306,9 +374,6 @@ function formatHour(h: number): string {
   return `${h - 12}:00 PM`;
 }
 
-/**
- * Formats hour and minute as 12-hour time.
- */
 function formatTime(h: number, m: number): string {
   const minuteStr = m.toString().padStart(2, '0');
   if (h === 0) return `12:${minuteStr} AM`;
@@ -319,73 +384,92 @@ function formatTime(h: number, m: number): string {
 
 /**
  * Calculates the next N run times for a given cron expression.
- * Starting from the current time, iterates minute by minute and checks
- * if each candidate matches all 5 fields.
- *
- * Uses skip-ahead optimization to avoid checking every single minute.
- * Caps search at 366 days to prevent infinite loops.
+ * Supports 5, 6, and 7 field expressions.
+ * Uses skip-ahead optimization. Caps search at 366 days.
  */
 export function getNextRuns(expression: string, count: number = 10, from?: Date): Date[] {
   const parseResult = parseCronExpression(expression);
   if (!parseResult.isValid || !parseResult.fields) return [];
 
-  const { fields } = parseResult;
+  const { fields, fieldCount } = parseResult;
+  const secondVals = expandField(fields.second, FIELD_RANGES.second)!;
   const minuteVals = expandField(fields.minute, FIELD_RANGES.minute)!;
   const hourVals = expandField(fields.hour, FIELD_RANGES.hour)!;
   const dayOfMonthVals = expandField(fields.dayOfMonth, FIELD_RANGES.dayOfMonth)!;
   const monthVals = expandField(fields.month, FIELD_RANGES.month)!;
   const dayOfWeekVals = expandField(fields.dayOfWeek, FIELD_RANGES.dayOfWeek)!;
+  const yearVals = fieldCount === 7 ? expandField(fields.year, FIELD_RANGES.year) : null;
+
+  const hasSeconds = fieldCount >= 6 && !(secondVals.length === 1 && secondVals[0] === 0);
 
   const results: Date[] = [];
   const start = from ? new Date(from) : new Date();
 
-  // Round up to the next full minute
-  start.setSeconds(0, 0);
-  start.setMinutes(start.getMinutes() + 1);
+  if (hasSeconds) {
+    // Round up to next second
+    start.setMilliseconds(0);
+    start.setSeconds(start.getSeconds() + 1);
+  } else {
+    // Round up to the next full minute
+    start.setSeconds(0, 0);
+    start.setMinutes(start.getMinutes() + 1);
+  }
 
   const candidate = new Date(start);
   const maxDate = new Date(start);
   maxDate.setDate(maxDate.getDate() + 366);
 
   while (candidate <= maxDate && results.length < count) {
-    const month = candidate.getMonth() + 1; // 1-12
-    const dayOfMonth = candidate.getDate();
-    const dayOfWeek = candidate.getDay(); // 0-6
-    const hour = candidate.getHours();
-    const minute = candidate.getMinutes();
+    const cYear = candidate.getFullYear();
+    const cMonth = candidate.getMonth() + 1;
+    const cDayOfMonth = candidate.getDate();
+    const cDayOfWeek = candidate.getDay();
+    const cHour = candidate.getHours();
+    const cMinute = candidate.getMinutes();
+    const cSecond = candidate.getSeconds();
 
-    // Check month first (biggest skip potential)
-    if (!monthVals.includes(month)) {
-      // Skip to next matching month
+    // Check year (if 7-field)
+    if (yearVals && !yearVals.includes(cYear)) {
+      // Skip to next year
+      candidate.setFullYear(cYear + 1, 0, 1);
+      candidate.setHours(0, 0, 0, 0);
+      continue;
+    }
+
+    if (!monthVals.includes(cMonth)) {
       candidate.setMonth(candidate.getMonth() + 1, 1);
       candidate.setHours(0, 0, 0, 0);
       continue;
     }
 
-    // Check day of month and day of week
-    if (!dayOfMonthVals.includes(dayOfMonth) || !dayOfWeekVals.includes(dayOfWeek)) {
-      // Skip to next day
+    if (!dayOfMonthVals.includes(cDayOfMonth) || !dayOfWeekVals.includes(cDayOfWeek)) {
       candidate.setDate(candidate.getDate() + 1);
       candidate.setHours(0, 0, 0, 0);
       continue;
     }
 
-    // Check hour
-    if (!hourVals.includes(hour)) {
-      // Skip to next hour
+    if (!hourVals.includes(cHour)) {
       candidate.setHours(candidate.getHours() + 1, 0, 0, 0);
       continue;
     }
 
-    // Check minute
-    if (!minuteVals.includes(minute)) {
+    if (!minuteVals.includes(cMinute)) {
       candidate.setMinutes(candidate.getMinutes() + 1, 0, 0);
       continue;
     }
 
-    // All fields match
+    if (hasSeconds && !secondVals.includes(cSecond)) {
+      candidate.setSeconds(candidate.getSeconds() + 1, 0);
+      continue;
+    }
+
     results.push(new Date(candidate));
-    candidate.setMinutes(candidate.getMinutes() + 1, 0, 0);
+
+    if (hasSeconds) {
+      candidate.setSeconds(candidate.getSeconds() + 1, 0);
+    } else {
+      candidate.setMinutes(candidate.getMinutes() + 1, 0, 0);
+    }
   }
 
   return results;
@@ -393,8 +477,9 @@ export function getNextRuns(expression: string, count: number = 10, from?: Date)
 
 /**
  * Formats a Date as a human-readable string for display.
+ * Includes seconds if the expression uses seconds.
  */
-export function formatRunDate(date: Date): string {
+export function formatRunDate(date: Date, showSeconds: boolean = false): string {
   const dayName = DAY_NAMES[date.getDay()];
   const monthName = MONTH_NAMES[date.getMonth() + 1];
   const day = date.getDate();
@@ -403,40 +488,92 @@ export function formatRunDate(date: Date): string {
   const minutes = date.getMinutes();
   const timeStr = formatTime(hours, minutes);
 
+  if (showSeconds) {
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    return `${dayName}, ${monthName} ${day}, ${year} at ${timeStr}:${seconds}`;
+  }
+
   return `${dayName}, ${monthName} ${day}, ${year} at ${timeStr}`;
 }
 
 /**
  * Converts builder values into a cron expression string.
+ * Supports 5, 6, and 7 field modes.
  */
 export function builderToExpression(values: {
+  second?: string;
   minute: string;
   hour: string;
   dayOfMonth: string;
   month: string;
   dayOfWeek: string;
-}): string {
+  year?: string;
+}, fieldCount: CronFieldCount = 5): string {
+  if (fieldCount === 7) {
+    return `${values.second || '0'} ${values.minute} ${values.hour} ${values.dayOfMonth} ${values.month} ${values.dayOfWeek} ${values.year || '*'}`;
+  }
+  if (fieldCount === 6) {
+    return `${values.second || '0'} ${values.minute} ${values.hour} ${values.dayOfMonth} ${values.month} ${values.dayOfWeek}`;
+  }
   return `${values.minute} ${values.hour} ${values.dayOfMonth} ${values.month} ${values.dayOfWeek}`;
 }
 
 /**
  * Converts a cron expression string into builder-compatible values.
- * Returns null if the expression cannot be split into exactly 5 fields.
+ * Returns null if the expression cannot be split into 5, 6, or 7 fields.
  */
 export function expressionToBuilder(expression: string): {
+  second: string;
   minute: string;
   hour: string;
   dayOfMonth: string;
   month: string;
   dayOfWeek: string;
+  year: string;
 } | null {
   const parts = expression.trim().split(/\s+/);
-  if (parts.length !== 5) return null;
-  return {
-    minute: parts[0],
-    hour: parts[1],
-    dayOfMonth: parts[2],
-    month: parts[3],
-    dayOfWeek: parts[4],
-  };
+  if (parts.length === 5) {
+    return {
+      second: '0',
+      minute: parts[0],
+      hour: parts[1],
+      dayOfMonth: parts[2],
+      month: parts[3],
+      dayOfWeek: parts[4],
+      year: '*',
+    };
+  }
+  if (parts.length === 6) {
+    return {
+      second: parts[0],
+      minute: parts[1],
+      hour: parts[2],
+      dayOfMonth: parts[3],
+      month: parts[4],
+      dayOfWeek: parts[5],
+      year: '*',
+    };
+  }
+  if (parts.length === 7) {
+    return {
+      second: parts[0],
+      minute: parts[1],
+      hour: parts[2],
+      dayOfMonth: parts[3],
+      month: parts[4],
+      dayOfWeek: parts[5],
+      year: parts[6],
+    };
+  }
+  return null;
+}
+
+/**
+ * Detects the field count from an expression string.
+ */
+export function detectFieldCount(expression: string): CronFieldCount {
+  const count = expression.trim().split(/\s+/).length;
+  if (count === 6) return 6;
+  if (count === 7) return 7;
+  return 5;
 }

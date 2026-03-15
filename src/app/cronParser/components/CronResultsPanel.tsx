@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
-import { formatRunDate } from '../utils/cronUtils';
+import { useFileIO } from '@/hooks/useFileIO';
+import { DownloadIcon } from '@/components/shared/Icons';
+import { formatRunDate, CronFieldCount } from '../utils/cronUtils';
 
 interface CronResultsPanelProps {
   description: string;
@@ -10,6 +12,7 @@ interface CronResultsPanelProps {
   isValid: boolean;
   expression: string;
   error: string | null;
+  fieldCount: CronFieldCount;
 }
 
 /**
@@ -24,12 +27,37 @@ export default function CronResultsPanel({
   isValid,
   expression,
   error,
+  fieldCount,
 }: CronResultsPanelProps) {
   const hasExpression = expression.trim().length > 0;
+  const showSeconds = fieldCount >= 6;
+  const { downloadFile } = useFileIO();
+
+  const handleDownload = useCallback(() => {
+    if (!isValid || nextRuns.length === 0) return;
+    const report = [
+      `Expression: ${expression}`,
+      `Description: ${description}`,
+      '',
+      `Next ${nextRuns.length} runs:`,
+      ...nextRuns.map((r, i) => `  ${i + 1}. ${formatRunDate(r, showSeconds)}`),
+    ].join('\n');
+    downloadFile(report, 'cron-schedule.txt');
+  }, [isValid, nextRuns, expression, description, downloadFile]);
 
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
-      <PanelHeader title="Schedule Details" />
+      <PanelHeader title="Schedule Details">
+        {isValid && nextRuns.length > 0 && (
+          <button
+            onClick={handleDownload}
+            className="p-1.5 rounded hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors"
+            title="Download schedule"
+          >
+            <DownloadIcon size={14} className="text-gray-500 dark:text-gray-400" />
+          </button>
+        )}
+      </PanelHeader>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Empty State */}
@@ -81,7 +109,7 @@ export default function CronResultsPanel({
                     {index + 1}
                   </span>
                   <span className="text-sm text-gray-800 dark:text-gray-200 font-mono">
-                    {formatRunDate(run)}
+                    {formatRunDate(run, showSeconds)}
                   </span>
                 </div>
               ))}

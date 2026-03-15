@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ControlBar from './ControlBar';
 import InputPanel from './InputPanel';
 import OutputPanel from './OutputPanel';
@@ -30,9 +31,9 @@ const FILE_EXTENSIONS: Record<Format, string> = {
  * Manages format selection, parsing, conversion, and output generation.
  */
 export default function CsvConverterTool() {
-  const [input, setInput] = useState<string>('');
-  const [inputFormat, setInputFormat] = useState<Format>('csv');
-  const [outputFormat, setOutputFormat] = useState<Format>('json');
+  const [input, setInput] = useLocalStorage<string>('reactToolBox_csvConverter_input', '');
+  const [inputFormat, setInputFormat] = useLocalStorage<Format>('reactToolBox_csvConverter_inputFmt', 'csv');
+  const [outputFormat, setOutputFormat] = useLocalStorage<Format>('reactToolBox_csvConverter_outputFmt', 'json');
   const [delimiter, setDelimiter] = useState<Delimiter>(',');
 
   // Parse input and convert to output
@@ -136,7 +137,7 @@ export default function CsvConverterTool() {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Control Bar */}
       <ControlBar
         inputFormat={inputFormat}

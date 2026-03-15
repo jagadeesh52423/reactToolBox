@@ -1,11 +1,15 @@
 'use client';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import mermaid from 'mermaid';
 import SampleDiagrams from '../components/SampleDiagrams';
 import NodeStylePanel from './NodeStylePanel';
 import PanelHeader from '@/components/common/PanelHeader';
 import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
-import CodeEditor from '@/components/common/CodeEditor';
+import MermaidCodeEditor from './MermaidCodeEditor';
+import ThemeSelector from './ThemeSelector';
+import { CUSTOM_THEMES, type CustomTheme, getThemeById } from '../themes';
+import type { GradientDef } from '../themes';
 
 // Updated the default diagram with more spacing and simpler structure
 const DEFAULT_DIAGRAM = `graph TD
@@ -14,8 +18,85 @@ const DEFAULT_DIAGRAM = `graph TD
     B -->|No| D[Try Again]
     D --> A`;
 
+// Gradient injection function - defined outside component to avoid re-render issues
+const applyThemeGradients = (svgElement: SVGSVGElement, gradients: GradientDef[], targets: string[]) => {
+  // Check if defs element exists, create if not
+  let defsElement = svgElement.querySelector('defs');
+  if (!defsElement) {
+    defsElement = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    svgElement.insertBefore(defsElement, svgElement.firstChild);
+  }
+
+  // Add gradient definitions
+  gradients.forEach(gradientDef => {
+    // Remove existing gradient with same ID
+    const existingGradient = defsElement!.querySelector(`#${gradientDef.id}`);
+    if (existingGradient) {
+      existingGradient.remove();
+    }
+
+    // Create gradient element
+    const gradient = document.createElementNS('http://www.w3.org/2000/svg',
+      gradientDef.type === 'linear' ? 'linearGradient' : 'radialGradient'
+    );
+    gradient.setAttribute('id', gradientDef.id);
+
+    if (gradientDef.type === 'linear') {
+      gradient.setAttribute('x1', gradientDef.x1 || '0%');
+      gradient.setAttribute('y1', gradientDef.y1 || '0%');
+      gradient.setAttribute('x2', gradientDef.x2 || '100%');
+      gradient.setAttribute('y2', gradientDef.y2 || '100%');
+    } else {
+      gradient.setAttribute('cx', gradientDef.cx || '50%');
+      gradient.setAttribute('cy', gradientDef.cy || '50%');
+      gradient.setAttribute('r', gradientDef.r || '50%');
+    }
+
+    // Add stops
+    gradientDef.stops.forEach(stop => {
+      const stopElement = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stopElement.setAttribute('offset', stop.offset);
+      stopElement.setAttribute('stop-color', stop.color);
+      gradient.appendChild(stopElement);
+    });
+
+    defsElement.appendChild(gradient);
+  });
+
+  // Apply gradients to target elements
+  targets.forEach(target => {
+    let selector = '';
+    switch (target) {
+      case 'node':
+        selector = '.node rect, .node circle, .node ellipse, .node polygon, .node path';
+        break;
+      case 'cluster':
+        selector = '.cluster rect';
+        break;
+      case 'edgePath':
+        selector = '.edgePath path';
+        break;
+    }
+
+    if (selector) {
+      const elements = svgElement.querySelectorAll(selector);
+      elements.forEach(el => {
+        // CRITICAL: Check if element has inline style with fill property (user-defined from NodeStylePanel)
+        // If it does, skip applying gradient to preserve user's custom colors
+        const inlineStyle = el.getAttribute('style');
+        const hasFillStyle = inlineStyle && inlineStyle.includes('fill:');
+
+        if (!hasFillStyle) {
+          el.setAttribute('fill', `url(#${gradients[0].id})`);
+        }
+      });
+    }
+  });
+};
+
 const MermaidEditor: React.FC = () => {
-  const [code, setCode] = useState(DEFAULT_DIAGRAM);
+  const [code, setCode] = useLocalStorage<string>('reactToolBox_mermaidEditor_code', DEFAULT_DIAGRAM);
+  const [selectedThemeId, setSelectedThemeId] = useLocalStorage<string>('reactToolBox_mermaidEditor_themeId', 'built-in-default');
   const [error, setError] = useState<string>('');
   const [isRendering, setIsRendering] = useState(false);
   const [svgContent, setSvgContent] = useState<string>('');
@@ -25,18 +106,30 @@ const MermaidEditor: React.FC = () => {
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const renderCounterRef = useRef(0);
 
+  // Get current theme - memoized to avoid new object reference every render
+  const currentTheme = useMemo(() => getThemeById(selectedThemeId) || CUSTOM_THEMES[0], [selectedThemeId]);
+
   // Toggle editor visibility
   const toggleEditorVisibility = () => {
     setIsEditorVisible(prev => !prev);
   };
 
+  // Handle theme selection
+  const handleThemeSelect = useCallback((theme: CustomTheme) => {
+    setSelectedThemeId(theme.id);
+
+    // Auto-set suggested background color if theme has one
+    if (theme.suggestedBgColor) {
+      setDiagramBgColor(theme.suggestedBgColor);
+    }
+  }, [setSelectedThemeId]);
+
   // Initialize mermaid with improved configuration
   useEffect(() => {
-
     try {
-      mermaid.initialize({
+      const config: any = {
         startOnLoad: false,
-        theme: 'default',
+        theme: currentTheme.mermaidTheme || 'base',
         securityLevel: 'loose',
         er: { useMaxWidth: false },
         flowchart: {
@@ -50,11 +143,22 @@ const MermaidEditor: React.FC = () => {
         sequence: { useMaxWidth: false },
         gantt: { useMaxWidth: false },
         logLevel: 'fatal',
-      });
+      };
+
+      // Add theme variables if present
+      if (currentTheme.themeVariables) {
+        config.themeVariables = currentTheme.themeVariables;
+      }
+
+      mermaid.initialize(config);
+      // Trigger re-render when theme changes
+      setRenderTrigger(prev => prev + 1);
     } catch (err) {
       console.error("Failed to initialize mermaid:", err);
     }
-  }, []);
+    // currentTheme is derived from selectedThemeId (getThemeById(selectedThemeId))
+    // so it changes whenever selectedThemeId changes - we include it to satisfy React hooks rules
+  }, [selectedThemeId, currentTheme]);
 
   // Auto-render diagram on code change
   useEffect(() => {
@@ -133,7 +237,7 @@ const MermaidEditor: React.FC = () => {
     renderSvg();
   }, [renderTrigger, code]);
   
-  // Separate effect to update the DOM with SVG content after React updates
+  // Separate effect to update the DOM with SVG content and apply gradients
   useEffect(() => {
     if (!svgContent || !svgContainerRef.current) return;
 
@@ -150,6 +254,14 @@ const MermaidEditor: React.FC = () => {
 
         // Append the wrapper
         svgContainerRef.current.appendChild(wrapper);
+
+        // Apply gradients if the theme has them
+        if (currentTheme.gradients && currentTheme.gradientTargets) {
+          const svgElement = wrapper.querySelector('svg');
+          if (svgElement) {
+            applyThemeGradients(svgElement, currentTheme.gradients, currentTheme.gradientTargets);
+          }
+        }
       }
     };
 
@@ -162,13 +274,15 @@ const MermaidEditor: React.FC = () => {
         svgContainerRef.current.innerHTML = '';
       }
     };
-  }, [svgContent]);
+    // currentTheme is derived from selectedThemeId but React hooks requires it in deps
+  }, [svgContent, selectedThemeId, currentTheme]);
 
   // Apply background color to the SVG container
   useEffect(() => {
     if (svgContainerRef.current) {
       svgContainerRef.current.style.backgroundColor = diagramBgColor;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagramBgColor, svgContent]);
 
   // Trigger rendering instead of directly rendering
@@ -195,40 +309,40 @@ const MermaidEditor: React.FC = () => {
     reader.readAsText(file);
   };
   
-  // Download SVG function with improved error handling
+  // Download SVG function - serialize from actual DOM element
   const handleDownloadSvg = () => {
-    if (!svgContent) {
+    if (!svgContent || !svgContainerRef.current) {
       setError('No SVG to download. Please render the diagram first.');
       return;
     }
 
     try {
-      // Add background color to the SVG content
-      let modifiedSvgContent = svgContent;
-
-      // If background color is not white, add a background rectangle
-      if (diagramBgColor !== '#ffffff') {
-        // Parse the SVG to add background rectangle
-        const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
-        const svgElement = svgDoc.querySelector('svg');
-
-        if (svgElement) {
-          // Create background rectangle
-          const backgroundRect = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          backgroundRect.setAttribute('width', '100%');
-          backgroundRect.setAttribute('height', '100%');
-          backgroundRect.setAttribute('fill', diagramBgColor);
-
-          // Insert background rectangle as first element
-          svgElement.insertBefore(backgroundRect, svgElement.firstChild);
-
-          // Serialize back to string
-          modifiedSvgContent = new XMLSerializer().serializeToString(svgDoc);
-        }
+      // Get the actual SVG element from the DOM (which has gradients applied)
+      const svgElement = svgContainerRef.current.querySelector('svg');
+      if (!svgElement) {
+        setError('SVG element not found.');
+        return;
       }
 
-      const blob = new Blob([modifiedSvgContent], { type: 'image/svg+xml' });
+      // Clone the SVG element to avoid modifying the displayed one
+      const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+
+      // Add background rectangle if color is not white
+      if (diagramBgColor !== '#ffffff') {
+        const backgroundRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        backgroundRect.setAttribute('width', '100%');
+        backgroundRect.setAttribute('height', '100%');
+        backgroundRect.setAttribute('fill', diagramBgColor);
+
+        // Insert as first child (behind everything)
+        svgClone.insertBefore(backgroundRect, svgClone.firstChild);
+      }
+
+      // Serialize the SVG with gradients and background
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgClone);
+
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
 
       // Create a temporary anchor element
@@ -406,8 +520,31 @@ const MermaidEditor: React.FC = () => {
     }, 100);
   };
 
+  // Remove all style declarations for the given node IDs
+  const handleResetStyles = (nodeIds: string[]) => {
+    setCode(currentCode => {
+      const lines = currentCode.split('\n');
+      const filtered = lines.filter(line => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('style ')) return true;
+        // Check if this style line targets any of the nodeIds
+        return !nodeIds.some(id => {
+          const regex = new RegExp(`^style\\s+${id}\\s`);
+          return regex.test(trimmed);
+        });
+      });
+      // Clean up any trailing empty lines left behind
+      let result = filtered.join('\n');
+      result = result.replace(/\n{3,}/g, '\n\n').trimEnd();
+      return result;
+    });
+    setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+    }, 100);
+  };
+
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Controls Bar */}
       <div className="px-6 py-4 flex flex-wrap items-center gap-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex-grow flex items-center gap-2">
@@ -431,6 +568,15 @@ const MermaidEditor: React.FC = () => {
             Clear
           </button>
           <SampleDiagrams onSelectSample={loadSample} />
+
+          {/* Theme Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Theme:</label>
+            <ThemeSelector
+              selectedThemeId={selectedThemeId}
+              onSelectTheme={handleThemeSelect}
+            />
+          </div>
 
           {/* Background Color Control */}
           <div className="flex items-center gap-2">
@@ -481,8 +627,8 @@ const MermaidEditor: React.FC = () => {
                     </div>
                   </PanelHeader>
 
-                  {/* Code Editor */}
-                  <CodeEditor
+                  {/* Mermaid Code Editor with Syntax Highlighting */}
+                  <MermaidCodeEditor
                     value={code}
                     onChange={setCode}
                     placeholder="Enter your Mermaid diagram code here..."
@@ -555,6 +701,12 @@ const MermaidEditor: React.FC = () => {
                     <NodeStylePanel
                       nodes={nodes}
                       onStyleChange={handleNodeStyleChange}
+                      onResetStyles={handleResetStyles}
+                      themeDefaults={{
+                        fill: currentTheme.themeVariables?.primaryColor || currentTheme.previewColors?.[0],
+                        stroke: currentTheme.themeVariables?.primaryBorderColor || currentTheme.previewColors?.[1],
+                        color: currentTheme.themeVariables?.primaryTextColor || currentTheme.previewColors?.[2],
+                      }}
                     />
                   </div>
                 </div>

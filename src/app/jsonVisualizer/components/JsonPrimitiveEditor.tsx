@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { JSONValue, JsonValueType, SearchOptions } from '../models/JsonModels';
 import { getJsonParserService } from '../services/JsonParserService';
-import { CheckIcon, XIcon } from './Icons';
+import { CheckIcon, XIcon } from '@/components/shared/Icons';
 import HighlightedText from './HighlightedText';
 
 interface JsonPrimitiveEditorProps {

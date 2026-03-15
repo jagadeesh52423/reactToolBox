@@ -1,6 +1,6 @@
 'use client';
 
-import { PlusCircleIcon, MinusCircleIcon, PencilIcon, EqualsIcon, CheckIcon, InfoIcon } from './Icons';
+import { PlusCircleIcon, MinusCircleIcon, PencilIcon, EqualsIcon, CheckIcon, InfoIcon } from '@/components/shared/Icons';
 
 export interface CompareStats {
     additions: number;

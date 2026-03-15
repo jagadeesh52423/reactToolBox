@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ControlBar from './ControlBar';
 import InputPanel from './InputPanel';
 import OutputPanel from './OutputPanel';
@@ -12,10 +14,40 @@ import OutputPanel from './OutputPanel';
  * Manages all state and delegates rendering to child components.
  */
 export default function Base64Tool() {
-    const [input, setInput] = useState<string>('');
+    const searchParams = useSearchParams();
+    const urlInput = searchParams.get('input');
+    const urlMode = searchParams.get('mode');
+
+    const [storedInput, setStoredInput] = useLocalStorage<string>('reactToolBox_base64_input', '');
+    const [storedMode, setStoredMode] = useLocalStorage<'encode' | 'decode'>('reactToolBox_base64_mode', 'encode');
+
+    const [input, setInputRaw] = useState<string>(urlInput || '');
     const [output, setOutput] = useState<string>('');
-    const [mode, setMode] = useState<'encode' | 'decode'>('encode');
-    const [autoDetect, setAutoDetect] = useState<boolean>(true);
+    const [mode, setModeRaw] = useState<'encode' | 'decode'>(
+        urlMode === 'encode' || urlMode === 'decode' ? urlMode : 'encode'
+    );
+
+    // Restore from localStorage when no URL params are present (after hydration)
+    useEffect(() => {
+        if (!urlInput && storedInput) {
+            setInputRaw(storedInput);
+        }
+        if (!urlMode && storedMode !== 'encode') {
+            setModeRaw(storedMode);
+        }
+    }, [storedInput, storedMode, urlInput, urlMode]);
+
+    // Wrap setters to also persist to localStorage
+    const setInput = useCallback((value: string) => {
+        setInputRaw(value);
+        setStoredInput(value);
+    }, [setStoredInput]);
+
+    const setMode = useCallback((value: 'encode' | 'decode') => {
+        setModeRaw(value);
+        setStoredMode(value);
+    }, [setStoredMode]);
+    const [autoDetect, setAutoDetect] = useState<boolean>(urlInput ? false : true);
     const [error, setError] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -138,7 +170,7 @@ export default function Base64Tool() {
     }, []);
 
     return (
-        <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
             {/* Control Bar */}
             <ControlBar
                 mode={mode}

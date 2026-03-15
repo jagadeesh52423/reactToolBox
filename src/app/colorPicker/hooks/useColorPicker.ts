@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ColorService } from '../services/ColorService';
 import {
   ColorState,
@@ -21,9 +22,21 @@ import {
 
 export const useColorPicker = (initialColor: string = '#3498db') => {
   const [colorService] = useState(() => new ColorService());
+  const [persistedHex, setPersistedHex] = useLocalStorage<string>('reactToolBox_colorPicker_color', initialColor);
   const [colorState, setColorState] = useState<ColorState>(() =>
     colorService.getColorState(initialColor)
   );
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  // Restore persisted hex color after localStorage hydration
+  useEffect(() => {
+    if (!hasHydrated) {
+      setHasHydrated(true);
+      if (persistedHex !== initialColor && colorService.isValidHex(persistedHex)) {
+        setColorState(colorService.getColorState(persistedHex));
+      }
+    }
+  }, [persistedHex, hasHydrated, initialColor, colorService]);
   const [colorHistory, setColorHistory] = useState<string[]>([]);
   const [activeFormatTab, setActiveFormatTab] = useState<ColorFormat>(ColorFormat.HEX);
   const [activePickerTab, setActivePickerTab] = useState<PickerTab>(PickerTab.INPUTS);
@@ -31,12 +44,13 @@ export const useColorPicker = (initialColor: string = '#3498db') => {
   const [notification, setNotification] = useState<Notification | null>(null);
 
   /**
-   * Update all color formats when hex changes
+   * Update all color formats when hex changes and persist to localStorage
    */
   useEffect(() => {
     const newColorState = colorService.getColorState(colorState.hex);
     setColorState(newColorState);
-  }, [colorState.hex, colorService]);
+    setPersistedHex(colorState.hex);
+  }, [colorState.hex, colorService, setPersistedHex]);
 
   /**
    * Update hex color

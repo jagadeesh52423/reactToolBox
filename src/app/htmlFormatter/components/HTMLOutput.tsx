@@ -6,7 +6,7 @@ import {
   ClipboardIcon,
   ClipboardCheckIcon,
   BracesIcon,
-} from './Icons';
+} from '@/components/shared/Icons';
 
 interface HTMLOutputProps {
   highlightedHTML: string;

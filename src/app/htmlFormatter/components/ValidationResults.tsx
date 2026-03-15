@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { ValidationResult } from '../validators/HTMLValidator';
-import { CheckCircleIcon, AlertCircleIcon, InfoIcon, XIcon, ChevronDownIcon, ChevronRightIcon } from './Icons';
+import { CheckCircleIcon, AlertCircleIcon, InfoIcon, XIcon, ChevronDownIcon, ChevronRightIcon } from '@/components/shared/Icons';
 
 interface ValidationResultsProps {
   validationResult: ValidationResult | null;

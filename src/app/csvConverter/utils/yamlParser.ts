@@ -1,34 +1,15 @@
 /**
- * Minimal YAML Parser/Serializer
+ * YAML Parser/Serializer using js-yaml
  *
- * Supports sequences of mappings (the most common data structure for tabular data).
- * This is NOT a full YAML parser -- it handles the tabular data use case only.
- *
- * Example supported format:
- *   - name: Alice
- *     age: 30
- *   - name: Bob
- *     age: 25
+ * Converts between YAML and the ParsedData format used by the CSV Converter.
+ * Handles sequences of mappings (the most common data structure for tabular data).
  */
 
+import yaml from 'js-yaml';
 import type { ParsedData } from './csvParser';
 
 /**
- * Strip surrounding quotes from a YAML value string.
- */
-function stripQuotes(val: string): string {
-  const trimmed = val.trim();
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-
-/**
- * Parse a minimal YAML string into structured data.
+ * Parse a YAML string into structured data.
  */
 export function parseYAML(text: string): ParsedData {
   const trimmed = text.trim();
@@ -36,84 +17,49 @@ export function parseYAML(text: string): ParsedData {
     return { headers: [], rows: [] };
   }
 
-  const lines = trimmed.split(/\r?\n/);
-  const items: Record<string, string>[] = [];
-  let currentItem: Record<string, string> | null = null;
+  const parsed = yaml.load(trimmed);
 
-  for (const rawLine of lines) {
-    // Skip empty lines and comments
-    if (rawLine.trim() === '' || rawLine.trim().startsWith('#')) {
-      continue;
+  // Handle array of objects (sequence of mappings)
+  if (Array.isArray(parsed)) {
+    if (parsed.length === 0) {
+      return { headers: [], rows: [] };
     }
 
-    // New sequence item: "- key: value" or just "- key:"
-    const seqMatch = rawLine.match(/^(\s*)-\s+(.*)/);
-    if (seqMatch) {
-      // Save previous item
-      if (currentItem !== null) {
-        items.push(currentItem);
+    // Extract headers from union of all keys
+    const headerSet = new Set<string>();
+    for (const item of parsed) {
+      if (item && typeof item === 'object') {
+        for (const key of Object.keys(item)) {
+          headerSet.add(key);
+        }
       }
-      currentItem = {};
+    }
 
-      // The rest after "- " may contain a key: value pair
-      const rest = seqMatch[2];
-      const kvMatch = rest.match(/^([^:]+):\s*(.*)/);
-      if (kvMatch) {
-        const key = kvMatch[1].trim();
-        const value = stripQuotes(kvMatch[2]);
-        currentItem[key] = value;
+    const headers = Array.from(headerSet);
+    const rows: Record<string, string>[] = parsed.map((item) => {
+      const row: Record<string, string> = {};
+      for (const h of headers) {
+        const val = item && typeof item === 'object' ? (item as Record<string, unknown>)[h] : undefined;
+        row[h] = val != null ? String(val) : '';
       }
-      continue;
-    }
+      return row;
+    });
 
-    // Continuation key: value (indented, no "- " prefix)
-    const kvMatch = rawLine.match(/^\s+([^:]+):\s*(.*)/);
-    if (kvMatch && currentItem !== null) {
-      const key = kvMatch[1].trim();
-      const value = stripQuotes(kvMatch[2]);
-      currentItem[key] = value;
-      continue;
-    }
-
-    // Top-level key: value without sequence marker (single object)
-    const topKvMatch = rawLine.match(/^([^:\s-][^:]*):\s*(.*)/);
-    if (topKvMatch) {
-      if (currentItem === null) {
-        currentItem = {};
-      }
-      const key = topKvMatch[1].trim();
-      const value = stripQuotes(topKvMatch[2]);
-      currentItem[key] = value;
-    }
+    return { headers, rows };
   }
 
-  // Push the last item
-  if (currentItem !== null) {
-    items.push(currentItem);
-  }
-
-  if (items.length === 0) {
-    return { headers: [], rows: [] };
-  }
-
-  // Extract headers from union of all keys
-  const headerSet = new Set<string>();
-  for (const item of items) {
-    for (const key of Object.keys(item)) {
-      headerSet.add(key);
-    }
-  }
-
-  const headers = Array.from(headerSet);
-  const rows: Record<string, string>[] = items.map((item) => {
+  // Handle single object
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const obj = parsed as Record<string, unknown>;
+    const headers = Object.keys(obj);
     const row: Record<string, string> = {};
     for (const h of headers) {
-      row[h] = item[h] ?? '';
+      row[h] = obj[h] != null ? String(obj[h]) : '';
     }
-    return row;
-  });
+    return { headers, rows: [row] };
+  }
 
-  return { headers, rows };
+  return { headers: [], rows: [] };
 }
 
 /**
@@ -125,30 +71,13 @@ export function serializeYAML(data: ParsedData): string {
     return '';
   }
 
-  const needsQuote = (val: string): boolean => {
-    if (val === '') return true;
-    if (val.includes(':') || val.includes('#') || val.includes('\n')) return true;
-    if (val.startsWith(' ') || val.endsWith(' ')) return true;
-    if (val === 'true' || val === 'false' || val === 'null') return true;
-    if (/^[\d.]+$/.test(val) && !isNaN(Number(val))) return true;
-    return false;
-  };
-
-  const formatValue = (val: string): string => {
-    if (needsQuote(val)) {
-      return '"' + val.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  const items = rows.map((row) => {
+    const obj: Record<string, string> = {};
+    for (const h of headers) {
+      obj[h] = row[h] ?? '';
     }
-    return val;
-  };
+    return obj;
+  });
 
-  return rows
-    .map((row) => {
-      const lines: string[] = [];
-      headers.forEach((h, idx) => {
-        const prefix = idx === 0 ? '- ' : '  ';
-        lines.push(`${prefix}${h}: ${formatValue(row[h] ?? '')}`);
-      });
-      return lines.join('\n');
-    })
-    .join('\n');
+  return yaml.dump(items, { lineWidth: -1 });
 }

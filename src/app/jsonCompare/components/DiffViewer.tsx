@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo } from 'react';
-import { CheckCircleIcon } from './Icons';
+import { CheckCircleIcon } from '@/components/shared/Icons';
 
 interface DiffViewerProps {
   left: string;

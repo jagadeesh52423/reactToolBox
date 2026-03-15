@@ -6,7 +6,7 @@ import {
   TrashIcon,
   CheckIcon,
   SparklesIcon,
-} from './Icons';
+} from '@/components/shared/Icons';
 
 // File System Access API types
 interface FilePickerAcceptType {

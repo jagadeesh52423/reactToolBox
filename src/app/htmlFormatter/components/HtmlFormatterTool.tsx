@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { useHTMLFormatter } from '../hooks/useHTMLFormatter';
 import { HTMLInput } from './HTMLInput';
 import { HTMLOutput } from './HTMLOutput';
-import { ToastNotification } from './ToastNotification';
+import ToastNotification from '@/components/common/ToastNotification';
+import type { ToastConfig } from '@/components/common/ToastNotification';
 import { ValidationResults } from './ValidationResults';
 import { StatusBar } from './StatusBar';
 
@@ -21,12 +22,7 @@ const DEFAULT_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-export type ToastType = 'success' | 'error' | 'info' | 'warning';
-
-export interface ToastConfig {
-  message: string;
-  type: ToastType;
-}
+export type ToastType = ToastConfig['type'];
 
 /**
  * Main HTML Formatter Component - Professional Redesign
@@ -98,7 +94,7 @@ const HtmlFormatterTool: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-hidden min-h-0">
         <div className="w-full h-full flex flex-col gap-4">

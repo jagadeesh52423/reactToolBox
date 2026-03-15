@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.34",
-    "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/typography": "^0.5.19",
+    "js-yaml": "^4.1.1",
     "marked": "^17.0.4",
     "mermaid": "^10.6.1",
     "next": "^15.1.6",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

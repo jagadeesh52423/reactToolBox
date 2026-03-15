@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { HTMLFormattingService } from '../services/HTMLFormattingService';
 import { FormatOptions } from '../models/HTMLToken';
 import { ValidationResult } from '../validators/HTMLValidator';
@@ -9,7 +10,7 @@ import { downloadFile, generateFilename } from '../utils/fileUtils';
  * Separates business logic from UI components
  */
 export const useHTMLFormatter = (defaultHTML: string = '') => {
-  const [inputHTML, setInputHTML] = useState<string>(defaultHTML);
+  const [inputHTML, setInputHTML] = useLocalStorage<string>('reactToolBox_htmlFormatter_input', defaultHTML);
   const [formattedHTML, setFormattedHTML] = useState<string>('');
   const [highlightedHTML, setHighlightedHTML] = useState<string>('');
   const [indentSize, setIndentSize] = useState<number>(2);

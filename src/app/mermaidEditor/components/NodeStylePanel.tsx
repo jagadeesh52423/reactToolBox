@@ -1,6 +1,12 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 
+interface ThemeDefaults {
+  fill?: string;
+  stroke?: string;
+  color?: string;
+}
+
 interface NodeStylePanelProps {
   nodes: Array<{
     id: string;
@@ -8,6 +14,8 @@ interface NodeStylePanelProps {
     styles: Record<string, string>;
   }>;
   onStyleChange: (nodeId: string, styleProperty: string, value: string) => void;
+  onResetStyles: (nodeIds: string[]) => void;
+  themeDefaults?: ThemeDefaults;
 }
 
 const COLORS = [
@@ -32,7 +40,7 @@ const COLORS = [
 
 type StyleProperty = 'fill' | 'stroke' | 'color' | 'stroke-width';
 
-const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange }) => {
+const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange, onResetStyles, themeDefaults }) => {
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [activeStyleProperty, setActiveStyleProperty] = useState<StyleProperty | null>(null);
   const [activeTab, setActiveTab] = useState<'presets' | 'picker' | 'hex'>('presets');
@@ -87,7 +95,12 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
   const getCurrentColor = (nodeId: string, property: string): string => {
     const node = nodes.find(n => n.id === nodeId);
     const currentColor = node?.styles[property];
-    return currentColor || (property === 'fill' ? '#ffffff' : '#000000');
+    if (currentColor) return currentColor;
+    // Fall back to theme defaults, then hardcoded defaults
+    if (property === 'fill') return themeDefaults?.fill || '#ffffff';
+    if (property === 'stroke') return themeDefaults?.stroke || '#000000';
+    if (property === 'color') return themeDefaults?.color || '#000000';
+    return '#000000';
   };
 
   // Toggle node selection without deselecting others
@@ -209,6 +222,21 @@ const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ nodes, onStyleChange })
             >
               Clear
             </button>
+            {hasSelection && selectedNodes.some(id => {
+              const node = nodes.find(n => n.id === id);
+              return node && Object.keys(node.styles).length > 0;
+            }) && (
+              <button
+                onClick={() => {
+                  onResetStyles(selectedNodes);
+                  setActiveStyleProperty(null);
+                }}
+                className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800/40"
+                title="Remove manual style overrides from selected nodes so theme styles apply"
+              >
+                Reset Styles
+              </button>
+            )}
           </div>
         </div>
 

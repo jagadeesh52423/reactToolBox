@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckIcon, AlertCircleIcon, InfoIcon } from './Icons';
+import { CheckIcon, AlertCircleIcon, InfoIcon } from '@/components/shared/Icons';
 
 interface Stats {
   characters: number;

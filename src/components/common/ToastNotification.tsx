@@ -1,21 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ToastConfig, ToastType } from './HtmlFormatterTool';
-import { CheckIcon, AlertCircleIcon, InfoIcon, XIcon } from './Icons';
+import { CheckIcon, AlertCircleIcon, InfoIcon, XIcon } from '@/components/shared/Icons';
+
+export interface ToastConfig {
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  duration?: number;
+}
 
 interface ToastNotificationProps {
   toast: ToastConfig | null;
   onClose: () => void;
 }
 
-/**
- * ToastNotification Component - Professional Design
- *
- * Modern toast notifications with smooth animations.
- * Matches the styling of other tools in the codebase.
- */
-export function ToastNotification({ toast, onClose }: ToastNotificationProps) {
+export default function ToastNotification({ toast, onClose }: ToastNotificationProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -95,17 +94,12 @@ export function ToastNotification({ toast, onClose }: ToastNotificationProps) {
         }
       `}
     >
-      {/* Icon */}
       <div className={`p-2 rounded-lg ${styles.icon}`}>
         {getIcon()}
       </div>
-
-      {/* Message */}
       <span className={`font-medium text-sm ${styles.text}`}>
         {toast?.message}
       </span>
-
-      {/* Close Button */}
       <button
         onClick={onClose}
         className="ml-2 p-1 rounded-lg text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"

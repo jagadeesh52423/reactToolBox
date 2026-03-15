@@ -10,7 +10,7 @@ import {
     CollapseIcon,
     FilterIcon,
     LayersIcon
-} from './Icons';
+} from '@/components/shared/Icons';
 
 interface StructuredDiffViewerProps {
     left: string;

@@ -704,6 +704,132 @@ export function EqualsIcon({ className = '', size = 16 }: IconProps) {
     );
 }
 
+// Text Utility Icons
+export function CopyIcon({ className = '', size = 20 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+    );
+}
+
+export function TextIcon({ className = '', size = 20 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <polyline points="4 7 4 4 20 4 20 7" />
+            <line x1="9" y1="20" x2="15" y2="20" />
+            <line x1="12" y1="4" x2="12" y2="20" />
+        </svg>
+    );
+}
+
+export function CaseUpperIcon({ className = '', size = 20 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 20h4l4-12 4 12h4" />
+            <line x1="6" y1="16" x2="10" y2="16" />
+            <line x1="14" y1="16" x2="18" y2="16" />
+        </svg>
+    );
+}
+
+export function WandIcon({ className = '', size = 20 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M15 4V2" />
+            <path d="M15 16v-2" />
+            <path d="M8 9h2" />
+            <path d="M20 9h2" />
+            <path d="M17.8 11.8 19 13" />
+            <path d="M15 9h0" />
+            <path d="M17.8 6.2 19 5" />
+            <path d="m3 21 9-9" />
+            <path d="M12.2 6.2 11 5" />
+        </svg>
+    );
+}
+
+export function LinkIcon({ className = '', size = 20 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+    );
+}
+
+export function ReplaceIcon({ className = '', size = 20 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M11 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" />
+            <path d="m21 12-9 9" />
+            <path d="m21.5 3.5-9.5 9.5" />
+            <path d="M16 3h5v5" />
+        </svg>
+    );
+}
+
 // Type indicator icons (filled)
 export function StringTypeIcon({ className = '', size = 14 }: IconProps) {
     return (

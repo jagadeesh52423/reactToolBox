@@ -6,6 +6,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --tool-content-height: calc(100vh - 140px);
 }
 
 /* Dark theme (class-based) */

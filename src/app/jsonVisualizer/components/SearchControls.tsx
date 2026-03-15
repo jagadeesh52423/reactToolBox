@@ -1,7 +1,7 @@
 'use client';
 
 import { SearchOptions } from '../models/JsonModels';
-import { SearchIcon, XIcon, FilterIcon, LayersIcon } from './Icons';
+import { SearchIcon, XIcon, FilterIcon, LayersIcon } from '@/components/shared/Icons';
 
 interface SearchControlsProps {
     searchOptions: SearchOptions;

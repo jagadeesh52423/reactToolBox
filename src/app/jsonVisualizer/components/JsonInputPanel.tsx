@@ -10,7 +10,7 @@ import {
     ClipboardCheckIcon,
     ChevronDownIcon,
     AlertCircleIcon
-} from './Icons';
+} from '@/components/shared/Icons';
 import PanelHeader from '@/components/common/PanelHeader';
 import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
 import CodeEditor from '@/components/common/CodeEditor';

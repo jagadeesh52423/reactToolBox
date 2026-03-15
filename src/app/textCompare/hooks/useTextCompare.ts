@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { TextCompareService } from '../services/TextCompareService';
 import { DiffResult, DiffStatistics, DiffOptions } from '../models/DiffModels';
 
@@ -7,8 +8,8 @@ import { DiffResult, DiffStatistics, DiffOptions } from '../models/DiffModels';
  * Separates business logic from UI components
  */
 export const useTextCompare = (defaultLeftText: string = '', defaultRightText: string = '') => {
-  const [leftText, setLeftText] = useState<string>(defaultLeftText);
-  const [rightText, setRightText] = useState<string>(defaultRightText);
+  const [leftText, setLeftText] = useLocalStorage<string>('reactToolBox_textCompare_left', defaultLeftText);
+  const [rightText, setRightText] = useLocalStorage<string>('reactToolBox_textCompare_right', defaultRightText);
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
   const [statistics, setStatistics] = useState<DiffStatistics | null>(null);
   const [showDiff, setShowDiff] = useState<boolean>(false);

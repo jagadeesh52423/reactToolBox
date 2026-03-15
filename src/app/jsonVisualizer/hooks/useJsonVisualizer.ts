@@ -14,6 +14,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import {
     JSONValue,
     JsonPath,
@@ -111,7 +112,7 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
     const searchService = useMemo(() => getJsonSearchService(), []);
 
     // JSON State
-    const [jsonInput, setJsonInput] = useState<string>('');
+    const [jsonInput, setJsonInput] = useLocalStorage<string>('reactToolBox_jsonVisualizer_input', '');
     const [parsedJson, setParsedJson] = useState<JSONValue | null>(null);
     const [error, setError] = useState<string | null>(null);
 

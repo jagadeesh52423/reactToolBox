@@ -1,10 +1,13 @@
 'use client';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useTextCompare } from '../hooks/useTextCompare';
+import { DiffType } from '../models/DiffModels';
+import { useFileIO } from '@/hooks/useFileIO';
 import { TextInputPanel } from './TextInputPanel';
 import { CompareControls } from './CompareControls';
 import { DiffStatisticsDisplay } from './DiffStatisticsDisplay';
 import { DiffResultDisplay } from './DiffResultDisplay';
+import { DownloadIcon } from '@/components/shared/Icons';
 
 const DEFAULT_TEXT_LEFT = `This is a sample text.
 It has multiple lines.
@@ -54,8 +57,39 @@ const TextDiffViewer: React.FC = () => {
     compareService,
   } = useTextCompare(DEFAULT_TEXT_LEFT, DEFAULT_TEXT_RIGHT);
 
+  const { downloadFile } = useFileIO();
+
+  const handleDownloadDiff = useCallback(() => {
+    if (!statistics || !diffResult) return;
+    const leftLines = diffResult.left
+      .filter((l) => l.type !== DiffType.PLACEHOLDER)
+      .map((l) => {
+        const prefix = l.type === DiffType.REMOVED ? '-' : l.type === DiffType.CHANGED ? '~' : ' ';
+        return `${prefix} ${l.text}`;
+      });
+    const rightLines = diffResult.right
+      .filter((l) => l.type !== DiffType.PLACEHOLDER)
+      .map((l) => {
+        const prefix = l.type === DiffType.ADDED ? '+' : l.type === DiffType.CHANGED ? '~' : ' ';
+        return `${prefix} ${l.text}`;
+      });
+    const report = [
+      '=== Text Compare Report ===',
+      `Date: ${new Date().toISOString()}`,
+      `Similarity: ${statistics.similarity.toFixed(1)}%`,
+      `Added: ${statistics.changes.added}, Removed: ${statistics.changes.removed}, Modified: ${statistics.changes.modified}`,
+      '',
+      '--- Original ---',
+      ...leftLines,
+      '',
+      '--- Modified ---',
+      ...rightLines,
+    ].join('\n');
+    downloadFile(report, 'text-compare-report.txt');
+  }, [statistics, diffResult, downloadFile]);
+
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <main className="flex-1 p-6 overflow-auto min-h-0">
         <div className="flex flex-col gap-4">
           {/* Input Panels */}
@@ -86,7 +120,17 @@ const TextDiffViewer: React.FC = () => {
 
           {/* Statistics */}
           {showDiff && statistics && (
-            <DiffStatisticsDisplay statistics={statistics} />
+            <div className="relative">
+              <DiffStatisticsDisplay statistics={statistics} />
+              <button
+                onClick={handleDownloadDiff}
+                className="absolute top-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+                title="Download diff report"
+              >
+                <DownloadIcon size={16} />
+                <span>Export</span>
+              </button>
+            </div>
           )}
 
           {/* Diff Result */}

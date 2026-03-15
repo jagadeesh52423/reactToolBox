@@ -8,7 +8,7 @@ import {
   ChevronDownIcon,
   TrashIcon,
   AlertCircleIcon,
-} from './Icons';
+} from '@/components/shared/Icons';
 
 interface HTMLInputProps {
   value: string;
