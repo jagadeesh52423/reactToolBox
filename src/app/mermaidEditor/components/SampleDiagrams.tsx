@@ -3,38 +3,38 @@ import React, { useState } from 'react';
 
 interface SampleDiagramsProps {
   onSelectSample: (code: string) => void;
+  renderMode?: 'standard' | 'gradient';
 }
 
-const SAMPLE_DIAGRAMS = [
-  {
-    name: "Simple Flowchart",
-    code: `graph LR
-    A[First] --> B[Second] --> C[Third]`
-  },
-  {
-    name: "Basic Flowchart with Labels",
-    code: `graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Success]
-    B -->|No| D[Try Again]
-    D --> A`
-  },
+interface SampleDiagram {
+  name: string;
+  code: string;
+  type: 'flowchart' | 'other';
+}
+
+const SAMPLE_DIAGRAMS: SampleDiagram[] = [
   {
     name: "Decision Tree",
+    type: 'flowchart',
     code: `graph TD
-    A[Christmas] -->|Get money| B(Go shopping)
-    B --> C{Let me think}
-    C -->|One| D[Laptop]
-    C -->|Two| E[iPhone]`
+    A([Start]) --> B[Fetch data from API]
+    B --> C{Response OK?}
+    C -->|Yes| D[Process data]
+    C -->|No| E[Log error & retry]
+    D --> F[Save to database]
+    F --> G([End])
+    E -.-> B`
   },
   {
     name: "Sequence Diagram",
+    type: 'other',
     code: `sequenceDiagram
     Alice->>Bob: Hello Bob
     Bob-->>Alice: Hi Alice!`
   },
   {
     name: "Class Diagram",
+    type: 'other',
     code: `classDiagram
     class Animal {
       +String name
@@ -47,11 +47,13 @@ const SAMPLE_DIAGRAMS = [
   },
   {
     name: "Simple Entity Diagram",
+    type: 'other',
     code: `erDiagram
     CUSTOMER ||--o{ ORDER : places`
   },
   {
     name: "Gantt Chart",
+    type: 'other',
     code: `gantt
     title Project Schedule
     dateFormat YYYY-MM-DD
@@ -59,25 +61,16 @@ const SAMPLE_DIAGRAMS = [
     Design     : a1, 2023-01-01, 10d
     section Development
     Coding     : a2, after a1, 15d`
-  },
-  {
-    name: "Colored Flowchart",
-    code: `graph TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Try Again]
-    D --> A
-    
-    style A fill:#93c5fd,stroke:#2563eb,stroke-width:2px
-    style B fill:#fde68a,stroke:#d97706,stroke-width:2px
-    style C fill:#86efac,stroke:#059669,stroke-width:2px
-    style D fill:#fca5a5,stroke:#dc2626,stroke-width:2px`
   }
 ];
 
-const SampleDiagrams: React.FC<SampleDiagramsProps> = ({ onSelectSample }) => {
+const SampleDiagrams: React.FC<SampleDiagramsProps> = ({ onSelectSample, renderMode = 'standard' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedSample, setSelectedSample] = useState<string | null>(null);
+
+  const filteredSamples = renderMode === 'gradient'
+    ? SAMPLE_DIAGRAMS.filter(s => s.type === 'flowchart')
+    : SAMPLE_DIAGRAMS;
 
   // Load a sample and close the dropdown
   const handleSelectSample = (code: string, name: string) => {
@@ -113,7 +106,7 @@ const SampleDiagrams: React.FC<SampleDiagramsProps> = ({ onSelectSample }) => {
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg">
           <ul className="py-1 overflow-auto max-h-60">
-            {SAMPLE_DIAGRAMS.map((sample, index) => (
+            {filteredSamples.map((sample, index) => (
               <li key={index}>
                 <button
                   onClick={() => handleSelectSample(sample.code, sample.name)}

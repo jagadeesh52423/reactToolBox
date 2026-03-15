@@ -12,6 +12,9 @@ import type { editor } from 'monaco-editor';
 import ThemeSelector from './ThemeSelector';
 import { CUSTOM_THEMES, type CustomTheme, getThemeById } from '../themes';
 import type { GradientDef } from '../themes';
+import { parseFlowchart } from '../utils/flowchartParser';
+import { renderFlowchartSVG, type NodeOverride, type EdgeOverride } from '../utils/flowchartRenderer';
+import { flowchartThemes, getFlowchartThemeById } from '../utils/flowchartThemes';
 
 // Monaco: register Mermaid language and themes before editor mounts
 let mermaidLanguageRegistered = false;
@@ -244,10 +247,13 @@ const applyNodeGradients = (svgElement: SVGSVGElement, nodeGradients: NodeGradie
 
 // Updated the default diagram with more spacing and simpler structure
 const DEFAULT_DIAGRAM = `graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Success]
-    B -->|No| D[Try Again]
-    D --> A`;
+    A([Start]) --> B[Fetch data from API]
+    B --> C{Response OK?}
+    C -->|Yes| D[Process data]
+    C -->|No| E[Log error & retry]
+    D --> F[Save to database]
+    F --> G([End])
+    E -.-> B`;
 
 // Gradient injection function - defined outside component to avoid re-render issues
 const applyThemeGradients = (svgElement: SVGSVGElement, gradients: GradientDef[], targets: string[]) => {
@@ -337,6 +343,8 @@ const MermaidEditor: React.FC = () => {
   const [activeStyleTab, setActiveStyleTab] = useState<'nodes' | 'edges'>('nodes');
   const [edgeGradients, setEdgeGradients] = useLocalStorage<EdgeGradientDef[]>('reactToolBox_mermaidEditor_edgeGradients', []);
   const [nodeGradients, setNodeGradients] = useLocalStorage<NodeGradientDef[]>('reactToolBox_mermaidEditor_nodeGradients', []);
+  const [renderMode, setRenderMode] = useLocalStorage<'standard' | 'gradient'>('reactToolBox_mermaidEditor_renderMode', 'standard');
+  const [gradientThemeId, setGradientThemeId] = useLocalStorage<string>('reactToolBox_mermaidEditor_gradientThemeId', 'vibrant');
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const renderCounterRef = useRef(0);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -427,48 +435,98 @@ const MermaidEditor: React.FC = () => {
   // Separate effect for rendering to handle DOM updates safely
   useEffect(() => {
     if (!renderTrigger || !code.trim()) return;
-    
+
     const renderSvg = async () => {
       setIsRendering(true);
       setError('');
-      
+
       try {
+        // ── Gradient mode: custom SVG renderer ──
+        if (renderMode === 'gradient') {
+          const parsed = parseFlowchart(code);
+          if (!parsed) {
+            setError('Gradient mode only supports flowchart/graph diagrams. Switch to Standard mode for other diagram types.');
+            setSvgContent('');
+            setIsRendering(false);
+            return;
+          }
+          const gradTheme = getFlowchartThemeById(gradientThemeId);
+          // Build per-node overrides from nodeGradients state
+          const nodeOvr: Record<string, NodeOverride> = {};
+          for (const ng of nodeGradients) {
+            if (!nodeOvr[ng.nodeId]) nodeOvr[ng.nodeId] = {};
+            if (ng.property === 'fill' && ng.stops.length >= 2) {
+              nodeOvr[ng.nodeId].gradientStops = ng.stops;
+            } else if (ng.property === 'color' && ng.stops.length >= 1) {
+              nodeOvr[ng.nodeId].textGradientStops = ng.stops;
+            } else if (ng.property === 'stroke' && ng.stops.length >= 1) {
+              nodeOvr[ng.nodeId].strokeGradientStops = ng.stops;
+            } else if (ng.property === 'stroke-width' && ng.stops.length >= 1) {
+              nodeOvr[ng.nodeId].strokeWidth = parseInt(ng.stops[0].color, 10) || 1;
+            }
+          }
+          // Build per-edge overrides from edgeGradients state
+          const edgeOvr: Record<string, EdgeOverride> = {};
+          for (const eg of edgeGradients) {
+            const key = String(eg.edgeIndex);
+            if (!edgeOvr[key]) edgeOvr[key] = {};
+            if (eg.property === 'stroke' && eg.stops.length >= 1) {
+              edgeOvr[key].colorStops = eg.stops;
+            } else if (eg.property === 'color' && eg.stops.length >= 1) {
+              edgeOvr[key].textColorStops = eg.stops;
+            } else if (eg.property === 'stroke-width' && eg.stops.length >= 1) {
+              edgeOvr[key].strokeWidth = parseInt(eg.stops[0].color, 10) || 1;
+            }
+          }
+          const svg = renderFlowchartSVG(parsed, gradTheme, {
+            showLegend: true,
+            showShadows: true,
+            background: diagramBgColor,
+            nodeOverrides: nodeOvr,
+            edgeOverrides: edgeOvr,
+          });
+          setSvgContent(svg);
+          setIsRendering(false);
+          return;
+        }
+
+        // ── Standard mode: Mermaid rendering ──
         // Pre-process the code
         let processedCode = code;
         processedCode = processedCode.replace(/(\w+)\s+--\s+([^-]+)\s+-->\s+(\w+)/g, '$1 -->|$2| $3');
-        
+
         // Create a temporary container that's not in the React tree
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.width = '1200px';
         tempContainer.style.height = '800px';
-        
+
         // Append to body instead of the React tree
         document.body.appendChild(tempContainer);
-        
+
         // Use a counter instead of Date.now() to avoid hydration issues
         renderCounterRef.current += 1;
         const id = `mermaid-${renderCounterRef.current}`;
         const { svg } = await mermaid.render(id, processedCode, tempContainer);
-        
+
         // Store the SVG content in state
         setSvgContent(svg);
-        
+
         // Clean up the temporary container
         if (document.body.contains(tempContainer)) {
           document.body.removeChild(tempContainer);
         }
       } catch (err) {
         console.error('Mermaid rendering error:', err);
-        
+
         // Provide better error messages
         let errorMessage = "Failed to render diagram. ";
-        
+
         const errorStr = String(err);
         if (errorStr.includes("suitable point for the given distance")) {
           errorMessage += "There might be an issue with edge label positioning. Try the following:\n" +
-                         "1. Use '-->|Label|' syntax instead of '-- Label -->'\n" + 
+                         "1. Use '-->|Label|' syntax instead of '-- Label -->'\n" +
                          "2. Add more space between nodes (add more text in node labels)\n" +
                          "3. Try a simpler diagram first";
         } else if (code.includes('erDiagram')) {
@@ -478,7 +536,7 @@ const MermaidEditor: React.FC = () => {
         } else {
           errorMessage += err instanceof Error ? err.message : 'Please check your syntax.';
         }
-        
+
         setError(errorMessage);
         setSvgContent('');
       } finally {
@@ -487,7 +545,7 @@ const MermaidEditor: React.FC = () => {
     };
 
     renderSvg();
-  }, [renderTrigger, code]);
+  }, [renderTrigger, code, renderMode, gradientThemeId, nodeGradients, edgeGradients, diagramBgColor]);
   
   // Separate effect to update the DOM with SVG content and apply gradients
   useEffect(() => {
@@ -507,27 +565,30 @@ const MermaidEditor: React.FC = () => {
         // Append the wrapper
         svgContainerRef.current.appendChild(wrapper);
 
-        // Apply gradients if the theme has them
-        if (currentTheme.gradients && currentTheme.gradientTargets) {
-          const svgElement = wrapper.querySelector('svg');
-          if (svgElement) {
-            applyThemeGradients(svgElement, currentTheme.gradients, currentTheme.gradientTargets);
+        // In gradient mode, SVG already has native gradients — skip post-render injection
+        if (renderMode !== 'gradient') {
+          // Apply gradients if the theme has them
+          if (currentTheme.gradients && currentTheme.gradientTargets) {
+            const svgElement = wrapper.querySelector('svg');
+            if (svgElement) {
+              applyThemeGradients(svgElement, currentTheme.gradients, currentTheme.gradientTargets);
+            }
           }
-        }
 
-        // Apply per-edge gradients
-        if (edgeGradients.length > 0) {
-          const svgElement = wrapper.querySelector('svg');
-          if (svgElement) {
-            applyEdgeGradients(svgElement, edgeGradients);
+          // Apply per-edge gradients
+          if (edgeGradients.length > 0) {
+            const svgElement = wrapper.querySelector('svg');
+            if (svgElement) {
+              applyEdgeGradients(svgElement, edgeGradients);
+            }
           }
-        }
 
-        // Apply per-node gradients
-        if (nodeGradients.length > 0) {
-          const svgElement = wrapper.querySelector('svg');
-          if (svgElement) {
-            applyNodeGradients(svgElement, nodeGradients);
+          // Apply per-node gradients
+          if (nodeGradients.length > 0) {
+            const svgElement = wrapper.querySelector('svg');
+            if (svgElement) {
+              applyNodeGradients(svgElement, nodeGradients);
+            }
           }
         }
       }
@@ -543,7 +604,7 @@ const MermaidEditor: React.FC = () => {
       }
     };
     // currentTheme is derived from selectedThemeId but React hooks requires it in deps
-  }, [svgContent, selectedThemeId, currentTheme, edgeGradients, nodeGradients]);
+  }, [svgContent, selectedThemeId, currentTheme, edgeGradients, nodeGradients, renderMode]);
 
   // Apply background color to the SVG container
   useEffect(() => {
@@ -777,6 +838,20 @@ const MermaidEditor: React.FC = () => {
 
   // Apply style change from the NodeStylePanel
   const handleNodeStyleChange = (nodeId: string, property: string, value: string) => {
+    // In gradient mode, store as node gradient override instead of Mermaid style directive
+    if (renderMode === 'gradient') {
+      if (property === 'stroke-width') {
+        // Store stroke-width as a special gradient entry the renderer understands
+        const widthVal = parseInt(value.replace('px', ''), 10) || 1;
+        handleNodeGradientChange(nodeId, 'stroke-width', [{ offset: '0%', color: String(widthVal) }]);
+      } else {
+        // For color values, store as a single-stop "gradient"
+        const stops = [{ offset: '0%', color: value }, { offset: '100%', color: value }];
+        handleNodeGradientChange(nodeId, property, stops);
+      }
+      return;
+    }
+
     // Use functional update to prevent race conditions in bulk operations
     setCode(currentCode => {
       // Check if this node already has styling
@@ -865,6 +940,18 @@ const MermaidEditor: React.FC = () => {
 
   // Apply style change from the EdgeStylePanel
   const handleEdgeStyleChange = (edgeIndex: number, property: string, value: string) => {
+    // In gradient mode, store as edge gradient override
+    if (renderMode === 'gradient') {
+      if (property === 'stroke-width') {
+        const widthVal = parseInt(value.replace('px', ''), 10) || 1;
+        handleEdgeGradientChange(edgeIndex, 'stroke-width', [{ offset: '0%', color: String(widthVal) }]);
+      } else {
+        const stops = [{ offset: '0%', color: value }, { offset: '100%', color: value }];
+        handleEdgeGradientChange(edgeIndex, property, stops);
+      }
+      return;
+    }
+
     setCode(currentCode => {
       const existingLinkStyleRegex = new RegExp(`linkStyle\\s+${edgeIndex}\\s+([^\\n]+)`, 'i');
       const existingLinkStyleMatch = currentCode.match(existingLinkStyleRegex);
@@ -1050,16 +1137,64 @@ const MermaidEditor: React.FC = () => {
           >
             Clear
           </button>
-          <SampleDiagrams onSelectSample={loadSample} />
+          <SampleDiagrams onSelectSample={loadSample} renderMode={renderMode} />
 
-          {/* Theme Selector */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400">Theme:</label>
-            <ThemeSelector
-              selectedThemeId={selectedThemeId}
-              onSelectTheme={handleThemeSelect}
-            />
+          {/* Theme Selector — only in standard mode */}
+          {renderMode === 'standard' && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Theme:</label>
+              <ThemeSelector
+                selectedThemeId={selectedThemeId}
+                onSelectTheme={handleThemeSelect}
+              />
+            </div>
+          )}
+
+          {/* Render Mode Toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+            <button
+              onClick={() => { setRenderMode('standard'); setTimeout(() => setRenderTrigger(prev => prev + 1), 50); }}
+              className={`px-3 py-1 text-sm rounded-md transition-all ${
+                renderMode === 'standard'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => { setRenderMode('gradient'); setTimeout(() => setRenderTrigger(prev => prev + 1), 50); }}
+              className={`px-3 py-1 text-sm rounded-md transition-all ${
+                renderMode === 'gradient'
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              Gradient SVG
+            </button>
           </div>
+
+          {/* Gradient Theme Selector (only in gradient mode) */}
+          {renderMode === 'gradient' && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Style:</label>
+              <select
+                value={gradientThemeId}
+                onChange={(e) => { setGradientThemeId(e.target.value); setTimeout(() => setRenderTrigger(prev => prev + 1), 50); }}
+                className="text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-gray-700 dark:text-gray-300"
+              >
+                {flowchartThemes.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              {/* Theme preview swatches */}
+              <div className="flex gap-0.5">
+                {getFlowchartThemeById(gradientThemeId).previewColors.map((color, i) => (
+                  <div key={i} className="w-4 h-4 rounded-sm border border-gray-200 dark:border-gray-600" style={{ backgroundColor: color }} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Background Color Control */}
           <div className="flex items-center gap-2">
@@ -1172,7 +1307,7 @@ const MermaidEditor: React.FC = () => {
                       <strong>Error:</strong> {error}
                     </div>
                   )}
-                  <div className="relative w-full h-full flex items-center justify-center">
+                  <div className="relative w-full min-h-full flex flex-col items-center">
                     {!svgContent && !error && !isRendering && (
                       <div className="absolute inset-0 flex items-center justify-center text-gray-500 dark:text-slate-400 text-center px-4">
                         <div>
@@ -1191,7 +1326,7 @@ const MermaidEditor: React.FC = () => {
                     )}
                     <div
                       ref={svgContainerRef}
-                      className="w-full h-full flex items-center justify-center"
+                      className="w-full flex justify-center"
                     />
                   </div>
                 </div>
@@ -1244,6 +1379,7 @@ const MermaidEditor: React.FC = () => {
                         nodeGradients={nodeGradients}
                         onGradientChange={handleNodeGradientChange}
                         onGradientRemove={handleNodeGradientRemove}
+                        renderMode={renderMode}
                       />
                     ) : (
                       <EdgeStylePanel
@@ -1260,6 +1396,7 @@ const MermaidEditor: React.FC = () => {
                         edgeGradients={edgeGradients}
                         onGradientChange={handleEdgeGradientChange}
                         onGradientRemove={handleEdgeGradientRemove}
+                        renderMode={renderMode}
                       />
                     )}
                   </div>
