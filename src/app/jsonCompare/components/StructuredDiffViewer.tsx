@@ -11,6 +11,7 @@ import {
     FilterIcon,
     LayersIcon
 } from '@/components/shared/Icons';
+import InlineDiff from './InlineDiff';
 
 interface StructuredDiffViewerProps {
     left: string;
@@ -211,17 +212,37 @@ const StructuredDiffViewer: React.FC<StructuredDiffViewerProps> = ({ left, right
         const isObject = typeof value === 'object' && value !== null;
         const itemCount = isObject ? Object.keys(value).length : 0;
 
-        // For changed values, show before/after
+        // For changed values, show before/after with inline highlights when both sides are
+        // string-like (strings, numbers, booleans). For mixed/object types fall back to the
+        // simple formatted value.
+        const canInlineDiff =
+            diff.leftValue != null &&
+            diff.rightValue != null &&
+            typeof diff.leftValue !== 'object' &&
+            typeof diff.rightValue !== 'object';
+
         const renderChangedValue = () => (
             <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-100/50 dark:bg-red-900/20 border border-red-200/50 dark:border-red-500/30">
-                    <span className="text-xs text-red-500 dark:text-red-400 font-medium">−</span>
-                    <span className="font-mono text-sm">{formatValue(diff.leftValue)}</span>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-100/50 dark:bg-red-900/20 border border-red-200/50 dark:border-red-500/30 max-w-full">
+                    <span className="text-xs text-red-500 dark:text-red-400 font-medium flex-shrink-0">−</span>
+                    <span className="text-sm min-w-0">
+                        {canInlineDiff ? (
+                            <InlineDiff left={diff.leftValue} right={diff.rightValue} side="left" />
+                        ) : (
+                            formatValue(diff.leftValue)
+                        )}
+                    </span>
                 </div>
                 <span className="text-gray-400 dark:text-slate-500">→</span>
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/30">
-                    <span className="text-xs text-emerald-500 dark:text-emerald-400 font-medium">+</span>
-                    <span className="font-mono text-sm">{formatValue(diff.rightValue)}</span>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/30 max-w-full">
+                    <span className="text-xs text-emerald-500 dark:text-emerald-400 font-medium flex-shrink-0">+</span>
+                    <span className="text-sm min-w-0">
+                        {canInlineDiff ? (
+                            <InlineDiff left={diff.leftValue} right={diff.rightValue} side="right" />
+                        ) : (
+                            formatValue(diff.rightValue)
+                        )}
+                    </span>
                 </div>
             </div>
         );

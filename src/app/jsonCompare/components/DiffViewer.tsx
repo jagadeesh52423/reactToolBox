@@ -1,6 +1,7 @@
 'use client';
 import React, { useMemo } from 'react';
 import { CheckCircleIcon } from '@/components/shared/Icons';
+import InlineDiff from './InlineDiff';
 
 interface DiffViewerProps {
   left: string;
@@ -115,7 +116,15 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ left, right }) => {
               </tr>
             </thead>
             <tbody>
-              {differences.map((diff, index) => (
+              {differences.map((diff, index) => {
+                const canInlineDiff =
+                  diff.type === 'changed' &&
+                  diff.leftValue != null &&
+                  diff.rightValue != null &&
+                  typeof diff.leftValue !== 'object' &&
+                  typeof diff.rightValue !== 'object';
+
+                return (
                 <tr
                   key={index}
                   className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
@@ -128,26 +137,35 @@ const DiffViewer: React.FC<DiffViewerProps> = ({ left, right }) => {
                       {diff.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 font-mono text-sm text-gray-700 dark:text-slate-300">
+                  <td className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 font-mono text-sm text-gray-700 dark:text-slate-300 align-top">
                     {diff.leftValue !== undefined ? (
-                      <span className={diff.type === 'removed' ? 'text-red-600 dark:text-red-400' : ''}>
-                        {JSON.stringify(diff.leftValue)}
-                      </span>
+                      canInlineDiff ? (
+                        <InlineDiff left={diff.leftValue} right={diff.rightValue} side="left" />
+                      ) : (
+                        <span className={diff.type === 'removed' ? 'text-red-600 dark:text-red-400' : ''}>
+                          {JSON.stringify(diff.leftValue)}
+                        </span>
+                      )
                     ) : (
                       <span className="text-gray-400 dark:text-slate-500">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 font-mono text-sm text-gray-700 dark:text-slate-300">
+                  <td className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 font-mono text-sm text-gray-700 dark:text-slate-300 align-top">
                     {diff.rightValue !== undefined ? (
-                      <span className={diff.type === 'added' ? 'text-emerald-600 dark:text-emerald-400' : ''}>
-                        {JSON.stringify(diff.rightValue)}
-                      </span>
+                      canInlineDiff ? (
+                        <InlineDiff left={diff.leftValue} right={diff.rightValue} side="right" />
+                      ) : (
+                        <span className={diff.type === 'added' ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                          {JSON.stringify(diff.rightValue)}
+                        </span>
+                      )
                     ) : (
                       <span className="text-gray-400 dark:text-slate-500">-</span>
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
