@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import CodeEditor from '@/components/common/CodeEditor';
+import MonacoJsonEditor from '@/components/common/MonacoJsonEditor';
 
 interface JsonEditorProps {
   value: string;
@@ -14,12 +14,8 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`h-full border border-gray-200/50 dark:border-slate-700/50 rounded-lg bg-white dark:bg-slate-900 overflow-hidden ${className}`}>
-      <CodeEditor
-        value={value}
-        onChange={onChange}
-        placeholder="Paste JSON here..."
-      />
+    <div className={`h-full flex flex-col border border-gray-200/50 dark:border-slate-700/50 rounded-lg bg-white dark:bg-slate-900 overflow-hidden ${className}`}>
+      <MonacoJsonEditor value={value} onChange={onChange} />
     </div>
   );
 };
