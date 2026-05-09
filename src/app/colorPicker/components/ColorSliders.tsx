@@ -16,10 +16,10 @@ interface ColorSlidersProps {
 export const ColorSliders: React.FC<ColorSlidersProps> = ({ rgb, onRgbChange }) => {
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-medium">Adjust Color</h3>
+      <h3 className="text-lg font-medium dark:text-gray-200">Adjust Color</h3>
 
       <div>
-        <label className="text-sm font-medium">Red: {rgb.r}</label>
+        <label className="text-sm font-medium dark:text-gray-300">Red: {rgb.r}</label>
         <input
           type="range"
           min="0"
@@ -34,7 +34,7 @@ export const ColorSliders: React.FC<ColorSlidersProps> = ({ rgb, onRgbChange }) 
       </div>
 
       <div>
-        <label className="text-sm font-medium">Green: {rgb.g}</label>
+        <label className="text-sm font-medium dark:text-gray-300">Green: {rgb.g}</label>
         <input
           type="range"
           min="0"
@@ -49,7 +49,7 @@ export const ColorSliders: React.FC<ColorSlidersProps> = ({ rgb, onRgbChange }) 
       </div>
 
       <div>
-        <label className="text-sm font-medium">Blue: {rgb.b}</label>
+        <label className="text-sm font-medium dark:text-gray-300">Blue: {rgb.b}</label>
         <input
           type="range"
           min="0"

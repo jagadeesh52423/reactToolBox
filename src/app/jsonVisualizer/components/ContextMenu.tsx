@@ -7,6 +7,9 @@ export interface ContextMenuItem {
     label: string;
     value: string;
     icon?: React.ReactNode;
+    shortcut?: string;
+    type?: 'copy' | 'action';
+    action?: () => void;
 }
 
 interface ContextMenuProps {
@@ -15,15 +18,11 @@ interface ContextMenuProps {
     items: ContextMenuItem[];
     onSelect: (item: ContextMenuItem) => void;
     onClose: () => void;
+    onAddChild?: () => void;
+    onDuplicate?: () => void;
 }
 
-/**
- * ContextMenu Component
- *
- * A floating context menu that appears on right-click.
- * Provides copy options for JSON keys, values, and paths.
- */
-export default function ContextMenu({ x, y, items, onSelect, onClose }: ContextMenuProps) {
+export default function ContextMenu({ x, y, items, onSelect, onClose, onAddChild, onDuplicate }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -79,25 +78,74 @@ export default function ContextMenu({ x, y, items, onSelect, onClose }: ContextM
     return (
         <div
             ref={menuRef}
-            className="fixed z-50 min-w-[180px] py-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden"
-            style={{ left: x, top: y }}
+            className="fixed z-50 min-w-[180px] py-1 rounded-lg shadow-lg border overflow-hidden jv-animate-scale-in"
+            style={{ left: x, top: y, background: 'var(--jv-bg-panel)', borderColor: 'var(--jv-border)' }}
         >
-            <div className="px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wider border-b border-gray-100 dark:border-slate-700">
+            <div
+                className="px-3 py-1.5 text-xs font-medium uppercase tracking-wider border-b"
+                style={{ color: 'var(--jv-text-muted)', borderColor: 'var(--jv-border)' }}
+            >
                 Copy
             </div>
             {items.map((item, index) => (
                 <button
                     key={index}
                     onClick={() => handleItemClick(item)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left"
+                    style={{ color: 'var(--jv-text-primary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--jv-bg-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                     <ClipboardIcon size={14} />
                     <span className="flex-1">{item.label}</span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500 max-w-[100px] truncate font-mono">
+                    <span
+                        className="text-xs max-w-[100px] truncate"
+                        style={{ color: 'var(--jv-text-muted)', fontFamily: 'var(--jv-font-mono)' }}
+                    >
                         {item.value.length > 20 ? item.value.slice(0, 20) + '...' : item.value}
                     </span>
                 </button>
             ))}
+
+            {/* Divider */}
+            {(onAddChild || onDuplicate) && (
+                <div className="my-1 border-t" style={{ borderColor: 'var(--jv-border)' }} />
+            )}
+            {/* Actions section header */}
+            {(onAddChild || onDuplicate) && (
+                <div
+                    className="px-3 py-1.5 text-xs font-medium uppercase tracking-wider"
+                    style={{ color: 'var(--jv-text-muted)' }}
+                >
+                    Actions
+                </div>
+            )}
+            {onAddChild && (
+                <button
+                    onClick={() => { onAddChild(); onClose(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left"
+                    style={{ color: 'var(--jv-text-primary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--jv-bg-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                    <span>+</span>
+                    <span className="flex-1">Add Child</span>
+                    <span className="text-xs" style={{ color: 'var(--jv-text-muted)', fontFamily: 'var(--jv-font-mono)' }}>A</span>
+                </button>
+            )}
+            {onDuplicate && (
+                <button
+                    onClick={() => { onDuplicate(); onClose(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left"
+                    style={{ color: 'var(--jv-text-primary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--jv-bg-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                    <ClipboardIcon size={14} />
+                    <span className="flex-1">Duplicate</span>
+                    <span className="text-xs" style={{ color: 'var(--jv-text-muted)', fontFamily: 'var(--jv-font-mono)' }}>D</span>
+                </button>
+            )}
         </div>
     );
 }

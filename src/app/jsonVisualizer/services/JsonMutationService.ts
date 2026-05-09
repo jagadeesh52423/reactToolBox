@@ -13,6 +13,7 @@
 
 import {
     JSONValue,
+    JSONObject,
     JsonPath,
     MutationResult,
     MutationType
@@ -215,6 +216,47 @@ export class JsonMutationService {
         }
 
         return current;
+    }
+
+    /**
+     * Add a new key/value to an object or push to an array at the specified path
+     */
+    add(data: JSONValue, parentPath: JsonPath, key: string, value: JSONValue): MutationResult {
+        try {
+            const cloned = this.parserService.deepClone(data);
+
+            if (parentPath.length === 0) {
+                if (Array.isArray(cloned)) {
+                    cloned.push(value);
+                } else if (typeof cloned === 'object' && cloned !== null) {
+                    (cloned as JSONObject)[key] = value;
+                } else {
+                    return { success: false, data: null, error: 'Cannot add to primitive value' };
+                }
+                return { success: true, data: cloned, error: null };
+            }
+
+            let current: JSONValue = cloned;
+            for (const segment of parentPath) {
+                if (Array.isArray(current)) {
+                    current = current[parseInt(segment)];
+                } else if (typeof current === 'object' && current !== null) {
+                    current = (current as JSONObject)[segment];
+                }
+            }
+
+            if (Array.isArray(current)) {
+                current.push(value);
+            } else if (typeof current === 'object' && current !== null) {
+                (current as JSONObject)[key] = value;
+            } else {
+                return { success: false, data: null, error: 'Target is not an object or array' };
+            }
+
+            return { success: true, data: cloned, error: null };
+        } catch (err) {
+            return { success: false, data: null, error: `Add failed: ${err}` };
+        }
     }
 
     /**

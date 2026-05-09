@@ -17,10 +17,10 @@ export const Notification: React.FC<NotificationProps> = ({ notification }) => {
 
   const bgColor =
     notification.type === 'success'
-      ? 'bg-green-100 border-green-400 text-green-800'
+      ? 'bg-green-100 border-green-400 text-green-800 dark:bg-green-900/30 dark:border-green-600 dark:text-green-300'
       : notification.type === 'error'
-      ? 'bg-red-100 border-red-400 text-red-800'
-      : 'bg-blue-100 border-blue-400 text-blue-800';
+      ? 'bg-red-100 border-red-400 text-red-800 dark:bg-red-900/30 dark:border-red-600 dark:text-red-300'
+      : 'bg-blue-100 border-blue-400 text-blue-800 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-300';
 
   return (
     <div

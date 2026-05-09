@@ -24,7 +24,7 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
   disabled = false,
 }) => {
   return (
-    <div className="flex flex-col gap-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div className="flex flex-col gap-4 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-600 rounded-lg p-4">
       {/* Options */}
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 cursor-pointer">
@@ -32,9 +32,9 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
             type="checkbox"
             checked={options.ignoreWhitespace || false}
             onChange={(e) => onOptionsChange({ ignoreWhitespace: e.target.checked })}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
           />
-          <span className="text-sm font-medium text-gray-700">Ignore Whitespace</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Ignore Whitespace</span>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer">
@@ -42,9 +42,9 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
             type="checkbox"
             checked={options.ignoreCase || false}
             onChange={(e) => onOptionsChange({ ignoreCase: e.target.checked })}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
           />
-          <span className="text-sm font-medium text-gray-700">Ignore Case</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Ignore Case</span>
         </label>
       </div>
 

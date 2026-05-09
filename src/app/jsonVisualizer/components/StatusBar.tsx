@@ -15,17 +15,14 @@ interface StatusBarProps {
     jsonInput: string;
     parsedJson: JSONValue | null;
     error: string | null;
+    canUndo?: boolean;
+    canRedo?: boolean;
+    onUndo?: () => void;
+    onRedo?: () => void;
 }
 
-/**
- * StatusBar Component
- *
- * Displays JSON statistics: size, node count, depth, validity status.
- * Professional design with icons and subtle styling.
- */
-export default function StatusBar({ jsonInput, parsedJson, error }: StatusBarProps) {
+export default function StatusBar({ jsonInput, parsedJson, error, canUndo, canRedo, onUndo, onRedo }: StatusBarProps) {
     const stats = useMemo((): JsonStats => {
-        // Calculate size
         const bytes = new Blob([jsonInput]).size;
         let size: string;
         if (bytes < 1024) {
@@ -36,7 +33,6 @@ export default function StatusBar({ jsonInput, parsedJson, error }: StatusBarPro
             size = `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
         }
 
-        // Calculate node count and depth
         let nodeCount = 0;
         let maxDepth = 0;
 
@@ -66,27 +62,72 @@ export default function StatusBar({ jsonInput, parsedJson, error }: StatusBarPro
     }, [jsonInput, parsedJson, error]);
 
     return (
-        <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-gray-100/50 to-gray-200/50 dark:from-slate-800/50 dark:to-slate-900/50 border-t border-gray-200/50 dark:border-slate-700/50 text-sm">
+        <div
+            className="flex items-center justify-between px-4 py-2 border-t text-sm"
+            style={{
+                background: 'var(--jv-bg-secondary)',
+                borderColor: 'var(--jv-border)',
+                fontFamily: 'var(--jv-font-sans)',
+            }}
+        >
             <div className="flex items-center gap-6">
                 {/* Size */}
-                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                    <DatabaseIcon size={14} className="text-gray-400 dark:text-slate-500" />
-                    <span className="font-medium text-gray-700 dark:text-slate-300">{stats.size}</span>
-                    <span className="text-gray-400 dark:text-slate-500">Size</span>
+                <div className="flex items-center gap-2" style={{ color: 'var(--jv-text-muted)' }}>
+                    <DatabaseIcon size={14} />
+                    <span className="font-medium" style={{ color: 'var(--jv-text-secondary)' }}>{stats.size}</span>
+                    <span>Size</span>
                 </div>
 
                 {/* Node Count */}
-                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                    <HashIcon size={14} className="text-gray-400 dark:text-slate-500" />
-                    <span className="font-medium text-gray-700 dark:text-slate-300">{stats.nodeCount}</span>
-                    <span className="text-gray-400 dark:text-slate-500">Nodes</span>
+                <div className="flex items-center gap-2" style={{ color: 'var(--jv-text-muted)' }}>
+                    <HashIcon size={14} />
+                    <span className="font-medium" style={{ color: 'var(--jv-text-secondary)' }}>{stats.nodeCount}</span>
+                    <span>Nodes</span>
                 </div>
 
                 {/* Depth */}
-                <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                    <LayersIcon size={14} className="text-gray-400 dark:text-slate-500" />
-                    <span className="font-medium text-gray-700 dark:text-slate-300">{stats.depth}</span>
-                    <span className="text-gray-400 dark:text-slate-500">Depth</span>
+                <div className="flex items-center gap-2" style={{ color: 'var(--jv-text-muted)' }}>
+                    <LayersIcon size={14} />
+                    <span className="font-medium" style={{ color: 'var(--jv-text-secondary)' }}>{stats.depth}</span>
+                    <span>Depth</span>
+                </div>
+
+                {/* Undo/Redo */}
+                <div className="flex items-center gap-1">
+                    {onUndo && (
+                        <button
+                            onClick={onUndo}
+                            disabled={!canUndo}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-all disabled:opacity-30"
+                            style={{
+                                color: 'var(--jv-text-secondary)',
+                                fontFamily: 'var(--jv-font-sans)',
+                            }}
+                            title="Undo (⌘Z)"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 7v6h6" /><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
+                            </svg>
+                            <span>Undo</span>
+                        </button>
+                    )}
+                    {onRedo && (
+                        <button
+                            onClick={onRedo}
+                            disabled={!canRedo}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-all disabled:opacity-30"
+                            style={{
+                                color: 'var(--jv-text-secondary)',
+                                fontFamily: 'var(--jv-font-sans)',
+                            }}
+                            title="Redo (⌘⇧Z)"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13" />
+                            </svg>
+                            <span>Redo</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -94,18 +135,18 @@ export default function StatusBar({ jsonInput, parsedJson, error }: StatusBarPro
             <div className="flex items-center gap-2">
                 {stats.isValid ? (
                     <>
-                        <CheckIcon size={14} className="text-emerald-500 dark:text-emerald-400" />
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">Valid JSON</span>
+                        <span style={{ color: 'var(--jv-success)' }}><CheckIcon size={14} /></span>
+                        <span className="font-medium" style={{ color: 'var(--jv-success)' }}>Valid JSON</span>
                     </>
                 ) : error ? (
                     <>
-                        <AlertCircleIcon size={14} className="text-red-500 dark:text-red-400" />
-                        <span className="text-red-600 dark:text-red-400 font-medium">Invalid JSON</span>
+                        <span style={{ color: 'var(--jv-danger)' }}><AlertCircleIcon size={14} /></span>
+                        <span className="font-medium" style={{ color: 'var(--jv-danger)' }}>Invalid JSON</span>
                     </>
                 ) : (
                     <>
-                        <AlertCircleIcon size={14} className="text-gray-400 dark:text-slate-500" />
-                        <span className="text-gray-400 dark:text-slate-500">No input</span>
+                        <span style={{ color: 'var(--jv-text-muted)' }}><AlertCircleIcon size={14} /></span>
+                        <span style={{ color: 'var(--jv-text-muted)' }}>No input</span>
                     </>
                 )}
             </div>

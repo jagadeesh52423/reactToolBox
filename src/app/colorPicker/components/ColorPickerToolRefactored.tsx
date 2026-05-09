@@ -82,13 +82,13 @@ const ColorPickerToolRefactored: React.FC = () => {
             />
 
             {/* Picker Method Tabs */}
-            <div className="border rounded overflow-hidden">
-              <div className="flex bg-gray-50">
+            <div className="border dark:border-slate-700 rounded overflow-hidden">
+              <div className="flex bg-gray-50 dark:bg-slate-800">
                 <button
                   className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
                     activePickerTab === PickerTab.INPUTS
                       ? 'bg-blue-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                   }`}
                   onClick={() => setActivePickerTab(PickerTab.INPUTS)}
                 >
@@ -98,7 +98,7 @@ const ColorPickerToolRefactored: React.FC = () => {
                   className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
                     activePickerTab === PickerTab.PALETTES
                       ? 'bg-blue-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                   }`}
                   onClick={() => setActivePickerTab(PickerTab.PALETTES)}
                 >
@@ -108,7 +108,7 @@ const ColorPickerToolRefactored: React.FC = () => {
                   className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
                     activePickerTab === PickerTab.WHEEL
                       ? 'bg-blue-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                   }`}
                   onClick={() => setActivePickerTab(PickerTab.WHEEL)}
                 >
@@ -118,7 +118,7 @@ const ColorPickerToolRefactored: React.FC = () => {
                   className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
                     activePickerTab === PickerTab.HARMONY
                       ? 'bg-blue-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                   }`}
                   onClick={() => setActivePickerTab(PickerTab.HARMONY)}
                 >
@@ -128,7 +128,7 @@ const ColorPickerToolRefactored: React.FC = () => {
             </div>
 
             {/* Picker Content */}
-            <div className="border rounded p-4 bg-white">
+            <div className="border dark:border-slate-700 rounded p-4 bg-white dark:bg-slate-800">
               {activePickerTab === PickerTab.INPUTS && (
                 <div className="space-y-6">
                   <ColorFormatInputs

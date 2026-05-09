@@ -14,6 +14,12 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useHistory } from './useHistory';
+import { useBreadcrumb } from './useBreadcrumb';
+import { useTreeNavigation } from './useTreeNavigation';
+import { useCommandPalette } from './useCommandPalette';
+import { useNavigate } from './useNavigate';
+import type { UseNavigateReturn } from './useNavigate';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import {
     JSONValue,
@@ -23,8 +29,11 @@ import {
     ToastConfig,
     ToastType,
     SAMPLE_JSON,
-    JsonTreeViewRef
+    JsonTreeViewRef,
+    BreadcrumbSegment
 } from '../models/JsonModels';
+import type { UseCommandPaletteReturn } from './useCommandPalette';
+import type { UseTreeNavigationReturn } from './useTreeNavigation';
 import { getJsonParserService } from '../services/JsonParserService';
 import { getJsonMutationService } from '../services/JsonMutationService';
 import { getJsonSearchService } from '../services/JsonSearchService';
@@ -90,6 +99,33 @@ export interface UseJsonVisualizerReturn {
     // Toast Handler
     showToast: (config: ToastConfig) => void;
     clearToast: () => void;
+
+    // History (undo/redo)
+    canUndo: boolean;
+    canRedo: boolean;
+    handleUndo: () => void;
+    handleRedo: () => void;
+
+    // Breadcrumb
+    breadcrumbPath: JsonPath;
+    breadcrumbSegments: BreadcrumbSegment[];
+    handleBreadcrumbNavigate: (path: JsonPath) => void;
+    handleBreadcrumbClick: (path: JsonPath) => void;
+
+    // Command palette
+    commandPalette: UseCommandPaletteReturn;
+
+    // Tree navigation
+    treeNavigation: UseTreeNavigationReturn;
+    handleToggleExpand: (path: JsonPath) => void;
+    expandedPaths: Set<string>;
+
+    // Add
+    handleAdd: (parentPath: JsonPath, key: string, value: JSONValue) => void;
+
+    // Navigate
+    navigate: UseNavigateReturn;
+    handleNavigateToPath: (path: JsonPath) => void;
 }
 
 /**
@@ -138,6 +174,37 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
 
     // Toast State
     const [toast, setToast] = useState<ToastConfig | null>(null);
+
+    // History (undo/redo)
+    const history = useHistory(jsonInput);
+
+    // Breadcrumb navigation
+    const breadcrumb = useBreadcrumb(parsedJson);
+
+    // Command palette
+    const commandPalette = useCommandPalette();
+
+    // Navigate mode
+    const navigate = useNavigate(parsedJson);
+
+    // Track expanded paths for tree navigation
+    const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+
+    const handleToggleExpand = useCallback((path: JsonPath) => {
+        setExpandedPaths(prev => {
+            const next = new Set(prev);
+            const pathStr = path.join('.');
+            if (next.has(pathStr)) {
+                next.delete(pathStr);
+            } else {
+                next.add(pathStr);
+            }
+            return next;
+        });
+    }, []);
+
+    // Tree keyboard navigation
+    const treeNavigation = useTreeNavigation(parsedJson, expandedPaths, handleToggleExpand);
 
     // Refs
     const treeViewRef = useRef<JsonTreeViewRef>(null);
@@ -468,8 +535,10 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         const result = mutationService.delete(parsedJson, path);
 
         if (result.success && result.data !== null) {
+            const newJson = parserService.stringify(result.data, indentLevel);
+            history.pushState(newJson, `delete ${path[path.length - 1]}`);
             setParsedJson(result.data);
-            setJsonInput(parserService.stringify(result.data, indentLevel));
+            setJsonInput(newJson);
             showToast({
                 type: ToastType.SUCCESS,
                 message: `Deleted ${path[path.length - 1]}`
@@ -488,8 +557,10 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
         const result = mutationService.update(parsedJson, path, value);
 
         if (result.success && result.data !== null) {
+            const newJson = parserService.stringify(result.data, indentLevel);
+            history.pushState(newJson, 'update');
             setParsedJson(result.data);
-            setJsonInput(parserService.stringify(result.data, indentLevel));
+            setJsonInput(newJson);
             showToast({
                 type: ToastType.SUCCESS,
                 message: 'Value updated'
@@ -501,6 +572,92 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
             });
         }
     }, [parsedJson, mutationService, parserService, indentLevel, showToast]);
+
+    // ========================================================================
+    // Add Handler
+    // ========================================================================
+
+    const handleAdd = useCallback((parentPath: JsonPath, key: string, value: JSONValue) => {
+        if (!parsedJson) return;
+        const result = mutationService.add(parsedJson, parentPath, key, value);
+        if (result.success && result.data !== undefined) {
+            const newJson = parserService.stringify(result.data, indentLevel);
+            history.pushState(newJson, `add ${key}`);
+            setParsedJson(result.data);
+            setJsonInput(newJson);
+            showToast({ type: ToastType.SUCCESS, message: 'Node added successfully' });
+        } else {
+            showToast({ type: ToastType.ERROR, message: result.error || 'Failed to add node' });
+        }
+    }, [parsedJson, mutationService, indentLevel, history, showToast]);
+
+    // ========================================================================
+    // Navigate Handler
+    // ========================================================================
+
+    const handleNavigateToPath = useCallback((path: JsonPath) => {
+        // Expand all ancestors
+        setExpandedPaths(prev => {
+            const next = new Set(prev);
+            // Add root path
+            next.add('');
+            // Add each ancestor: for ["author","name"], add "", "author"
+            for (let i = 0; i < path.length; i++) {
+                next.add(path.slice(0, i).join('.'));
+            }
+            return next;
+        });
+        // Focus the target node
+        treeNavigation.setFocusedPath(path);
+        // Close command palette
+        commandPalette.close();
+    }, [treeNavigation, commandPalette]);
+
+    // ========================================================================
+    // Undo/Redo Handlers
+    // ========================================================================
+
+    const handleUndo = useCallback(() => {
+        const prev = history.undo();
+        if (prev !== null) {
+            setJsonInput(prev);
+            const result = parserService.parse(prev);
+            if (result.success) {
+                setParsedJson(result.data);
+                setError(null);
+            }
+            showToast({ type: ToastType.SUCCESS, message: 'Undo' });
+        }
+    }, [history, showToast, parserService]);
+
+    const handleRedo = useCallback(() => {
+        const next = history.redo();
+        if (next !== null) {
+            setJsonInput(next);
+            const result = parserService.parse(next);
+            if (result.success) {
+                setParsedJson(result.data);
+                setError(null);
+            }
+            showToast({ type: ToastType.SUCCESS, message: 'Redo' });
+        }
+    }, [history, showToast, parserService]);
+
+    // Keyboard shortcuts for undo/redo
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                handleUndo();
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo]);
 
     // ========================================================================
     // UI Handlers
@@ -561,6 +718,33 @@ export function useJsonVisualizer(options: UseJsonVisualizerOptions = {}): UseJs
 
         // Toast
         showToast,
-        clearToast
+        clearToast,
+
+        // History
+        canUndo: history.canUndo,
+        canRedo: history.canRedo,
+        handleUndo,
+        handleRedo,
+
+        // Breadcrumb
+        breadcrumbPath: breadcrumb.breadcrumbPath,
+        breadcrumbSegments: breadcrumb.segments,
+        handleBreadcrumbNavigate: breadcrumb.navigateTo,
+        handleBreadcrumbClick: breadcrumb.updateFromClick,
+
+        // Command palette
+        commandPalette,
+
+        // Tree navigation
+        treeNavigation,
+        handleToggleExpand,
+        expandedPaths,
+
+        // Add
+        handleAdd,
+
+        // Navigate
+        navigate,
+        handleNavigateToPath,
     };
 }

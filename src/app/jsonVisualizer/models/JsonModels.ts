@@ -362,3 +362,105 @@ export interface ToastConfig {
     message: string;
     duration?: number;
 }
+
+// ============================================================================
+// History & Navigation Types
+// ============================================================================
+
+export interface HistoryEntry {
+  jsonString: string;
+  timestamp: number;
+  description: string;
+}
+
+export interface BreadcrumbSegment {
+  key: string;
+  path: JsonPath;
+  type: JsonValueType;
+  isLast: boolean;
+}
+
+export interface CommandPaletteState {
+  isOpen: boolean;
+  searchText: string;
+  mode: 'search' | 'filter' | 'navigate';
+}
+
+export interface AddNodeConfig {
+  parentPath: JsonPath;
+  isArray: boolean;
+  key: string;
+  valueType: JsonValueType;
+  value: string;
+}
+
+export interface TreeNavigationState {
+  focusedPath: JsonPath | null;
+  flatNodes: JsonNode[];
+  focusedIndex: number;
+}
+
+// ============================================================================
+// Extended Component Props
+// ============================================================================
+
+export interface JsonTreeViewPropsExtended extends JsonTreeViewProps {
+  focusedPath: JsonPath | null;
+  onFocusChange: (path: JsonPath | null) => void;
+  onAdd: (parentPath: JsonPath, key: string, value: JSONValue) => void;
+  breadcrumbPath: JsonPath;
+  onBreadcrumbNavigate: (path: JsonPath) => void;
+}
+
+export interface StatusBarPropsExtended {
+  size: number;
+  nodeCount: number;
+  depth: number;
+  isValid: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+}
+
+export interface CommandPaletteProps {
+  isOpen: boolean;
+  onClose: () => void;
+  searchText: string;
+  onSearchTextChange: (text: string) => void;
+  mode: 'search' | 'filter' | 'navigate';
+  onModeChange: (mode: 'search' | 'filter' | 'navigate') => void;
+  matchCount: number;
+  searchOptions: SearchOptions;
+  onSearchOptionsChange: (options: Partial<SearchOptions>) => void;
+  // Navigate mode props
+  navigateText?: string;
+  suggestions?: PathSuggestion[];
+  selectedSuggestionIndex?: number;
+  onNavigateTextChange?: (text: string) => void;
+  onSuggestionSelect?: (path: JsonPath) => void;
+  onSuggestionIndexChange?: (index: number) => void;
+}
+
+export interface BreadcrumbNavProps {
+  segments: BreadcrumbSegment[];
+  onNavigate: (path: JsonPath) => void;
+}
+
+export interface AddNodeFormProps {
+  parentPath: JsonPath;
+  isArray: boolean;
+  onAdd: (key: string, value: JSONValue) => void;
+  onCancel: () => void;
+}
+
+// ============================================================================
+// Navigate Mode Types
+// ============================================================================
+
+export interface PathSuggestion {
+  path: JsonPath;
+  pathString: string;    // "author.name"
+  type: JsonValueType;
+  preview?: string;      // value preview for primitives (truncated)
+}

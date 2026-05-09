@@ -6,16 +6,6 @@ import JsonViewerPanel from './JsonViewerPanel';
 import ToastNotification from '@/components/common/ToastNotification';
 import StatusBar from './StatusBar';
 
-/**
- * JsonVisualizerRefactored Component - Professional Redesign
- *
- * Main orchestrator component for the JSON Visualizer tool.
- * Features:
- * - Theme-aware design (light/dark)
- * - Status bar with JSON statistics
- * - Professional header with branding
- * - Responsive two-panel layout
- */
 export default function JsonVisualizerRefactored() {
     const {
         // State
@@ -62,19 +52,45 @@ export default function JsonVisualizerRefactored() {
         toggleEditorVisibility,
 
         // Toast
-        clearToast
+        clearToast,
+
+        // New: History
+        canUndo,
+        canRedo,
+        handleUndo,
+        handleRedo,
+
+        // New: Breadcrumb
+        breadcrumbSegments,
+        handleBreadcrumbNavigate,
+
+        // New: Command palette
+        commandPalette,
+
+        // New: Tree navigation
+        treeNavigation,
+
+        // New: Add
+        handleAdd,
+
+        // New: Navigate
+        navigate,
+        handleNavigateToPath,
     } = useJsonVisualizer();
 
     return (
-        <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div
+            className="h-full flex flex-col"
+            style={{ background: 'var(--jv-bg-primary)' }}
+        >
             {/* Main Content */}
-            <main className="flex-1 p-6 overflow-hidden min-h-0">
-                <div className="w-full h-full">
-                    <div className={`grid gap-6 h-full ${
-                        isEditorVisible ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
-                    }`}>
-                        {/* Left Panel - Input */}
-                        {isEditorVisible && (
+            <main className="flex-1 p-4 overflow-hidden min-h-0">
+                <div className={`grid gap-4 h-full ${
+                    isEditorVisible ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
+                }`} style={{ minHeight: 0 }}>
+                    {/* Left Panel - Input */}
+                    {isEditorVisible && (
+                        <div className="min-h-0">
                             <JsonInputPanel
                                 jsonInput={jsonInput}
                                 error={error}
@@ -89,9 +105,11 @@ export default function JsonVisualizerRefactored() {
                                 onDownload={handleDownload}
                                 onToggleVisibility={toggleEditorVisibility}
                             />
-                        )}
+                        </div>
+                    )}
 
-                        {/* Right Panel - Viewer */}
+                    {/* Right Panel - Viewer */}
+                    <div className="min-h-0">
                         <JsonViewerPanel
                             ref={treeViewRef}
                             parsedJson={parsedJson}
@@ -112,6 +130,22 @@ export default function JsonVisualizerRefactored() {
                             onDelete={handleDelete}
                             onUpdate={handleUpdate}
                             onToggleEditorVisibility={toggleEditorVisibility}
+                            breadcrumbSegments={breadcrumbSegments}
+                            onBreadcrumbNavigate={handleBreadcrumbNavigate}
+                            commandPaletteOpen={commandPalette.isOpen}
+                            commandPaletteMode={commandPalette.mode}
+                            onCommandPaletteClose={commandPalette.close}
+                            onCommandPaletteModeChange={commandPalette.setMode}
+                            onCommandPaletteOpen={commandPalette.open}
+                            onAdd={handleAdd}
+                            focusedPath={treeNavigation.focusedPath}
+                            onFocusChange={treeNavigation.setFocusedPath}
+                            navigateText={navigate.navigateText}
+                            suggestions={navigate.suggestions}
+                            selectedSuggestionIndex={navigate.selectedIndex}
+                            onNavigateTextChange={navigate.setNavigateText}
+                            onSuggestionSelect={handleNavigateToPath}
+                            onSuggestionIndexChange={navigate.setSelectedIndex}
                         />
                     </div>
                 </div>
@@ -122,6 +156,10 @@ export default function JsonVisualizerRefactored() {
                 jsonInput={jsonInput}
                 parsedJson={parsedJson}
                 error={error}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
             />
 
             {/* Toast Notification */}

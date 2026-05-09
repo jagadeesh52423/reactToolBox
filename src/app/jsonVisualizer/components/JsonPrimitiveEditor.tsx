@@ -13,12 +13,6 @@ interface JsonPrimitiveEditorProps {
     onUpdate: (value: JSONValue) => void;
 }
 
-/**
- * JsonPrimitiveEditor Component - Professional Redesign
- *
- * Displays and allows inline editing of primitive JSON values.
- * Features type-colored values and smooth edit transitions.
- */
 export default function JsonPrimitiveEditor({
     value,
     isHighlighted,
@@ -63,35 +57,33 @@ export default function JsonPrimitiveEditor({
         }
     };
 
-    // Get color based on type
-    const getValueColor = () => {
+    const getValueClass = () => {
+        if (typeStyle.type === JsonValueType.NULL) return 'italic';
+        return '';
+    };
+
+    const getValueCSSColor = () => {
         switch (typeStyle.type) {
-            case JsonValueType.STRING:
-                return 'text-emerald-400';
-            case JsonValueType.NUMBER:
-                return 'text-blue-400';
-            case JsonValueType.BOOLEAN:
-                return 'text-purple-400';
-            case JsonValueType.NULL:
-                return 'text-slate-500 italic';
-            default:
-                return 'text-slate-300';
+            case JsonValueType.STRING: return 'var(--jv-string)';
+            case JsonValueType.NUMBER: return 'var(--jv-number)';
+            case JsonValueType.BOOLEAN: return 'var(--jv-boolean)';
+            case JsonValueType.NULL: return 'var(--jv-null)';
+            default: return 'var(--jv-text-secondary)';
         }
     };
 
-    // Get badge styling based on type
-    const getBadgeStyle = () => {
+    const getBadgeCSSStyle = (): React.CSSProperties => {
         switch (typeStyle.type) {
             case JsonValueType.STRING:
-                return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+                return { background: 'rgba(5, 150, 105, 0.1)', color: 'var(--jv-string)', border: '1px solid rgba(5, 150, 105, 0.2)' };
             case JsonValueType.NUMBER:
-                return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+                return { background: 'rgba(37, 99, 235, 0.1)', color: 'var(--jv-number)', border: '1px solid rgba(37, 99, 235, 0.2)' };
             case JsonValueType.BOOLEAN:
-                return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+                return { background: 'rgba(124, 58, 237, 0.1)', color: 'var(--jv-boolean)', border: '1px solid rgba(124, 58, 237, 0.2)' };
             case JsonValueType.NULL:
-                return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+                return { background: 'var(--jv-type-badge-bg)', color: 'var(--jv-null)', border: '1px solid rgba(100, 116, 139, 0.2)' };
             default:
-                return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+                return { background: 'var(--jv-type-badge-bg)', color: 'var(--jv-text-muted)', border: '1px solid rgba(100, 116, 139, 0.2)' };
         }
     };
 
@@ -103,34 +95,38 @@ export default function JsonPrimitiveEditor({
                         type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        className={`
-                            px-2 py-1 text-sm font-mono rounded-md
-                            bg-white dark:bg-slate-800 border focus:outline-none focus:ring-1
-                            ${error
-                                ? 'border-red-400/50 dark:border-red-500/50 focus:ring-red-500/30 text-red-600 dark:text-red-300'
-                                : 'border-gray-300 dark:border-slate-600 focus:ring-indigo-500/30 text-gray-800 dark:text-slate-200'
-                            }
-                        `}
+                        className="px-2 py-1 text-sm rounded-md focus:outline-none focus:ring-1"
+                        style={{
+                            background: 'var(--jv-bg-secondary)',
+                            border: error ? '1px solid var(--jv-danger)' : '1px solid var(--jv-border)',
+                            color: error ? 'var(--jv-danger)' : 'var(--jv-text-primary)',
+                            fontFamily: 'var(--jv-font-mono)',
+                        }}
                         onKeyDown={handleKeyDown}
                         autoFocus
                     />
                     <button
                         onClick={saveEdit}
-                        className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-600/30 transition-colors"
+                        className="p-1.5 rounded-md transition-colors"
+                        style={{ background: 'rgba(5, 150, 105, 0.1)', color: 'var(--jv-success)' }}
                         title="Save (Enter)"
                     >
                         <CheckIcon size={14} />
                     </button>
                     <button
                         onClick={cancelEdit}
-                        className="p-1.5 rounded-md bg-gray-100 dark:bg-slate-600/20 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600/30 transition-colors"
+                        className="p-1.5 rounded-md transition-colors"
+                        style={{ background: 'var(--jv-type-badge-bg)', color: 'var(--jv-text-muted)' }}
                         title="Cancel (Esc)"
                     >
                         <XIcon size={14} />
                     </button>
                 </div>
                 {error && (
-                    <div className="text-xs text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-500/10 px-2 py-1 rounded">
+                    <div
+                        className="text-xs px-2 py-1 rounded"
+                        style={{ color: 'var(--jv-danger)', background: 'rgba(239, 68, 68, 0.1)' }}
+                    >
                         {error}
                     </div>
                 )}
@@ -143,12 +139,17 @@ export default function JsonPrimitiveEditor({
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`
-                    font-mono text-sm cursor-pointer transition-all duration-150
-                    hover:opacity-80
-                    ${getValueColor()}
-                    ${isHighlighted ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded ring-1 ring-yellow-500/40' : ''}
-                `}
+                className={`text-sm cursor-pointer transition-all duration-150 hover:opacity-80 ${getValueClass()}`}
+                style={{
+                    color: getValueCSSColor(),
+                    fontFamily: 'var(--jv-font-mono)',
+                    ...(isHighlighted ? {
+                        background: 'var(--jv-search-highlight)',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        boxShadow: '0 0 0 1px rgba(250, 204, 21, 0.4)',
+                    } : {}),
+                }}
                 onClick={startEditing}
                 title="Click to edit"
             >
@@ -162,10 +163,8 @@ export default function JsonPrimitiveEditor({
                 )}
             </span>
             <span
-                className={`
-                    px-1.5 py-0.5 text-[10px] font-medium rounded border uppercase tracking-wide
-                    ${getBadgeStyle()}
-                `}
+                className="px-1.5 py-0.5 text-[10px] font-medium rounded uppercase tracking-wide"
+                style={getBadgeCSSStyle()}
                 title={typeStyle.label}
             >
                 {typeStyle.type === JsonValueType.STRING ? 'str' :

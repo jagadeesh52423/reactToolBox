@@ -13,7 +13,7 @@ import {
 } from '@/components/shared/Icons';
 import PanelHeader from '@/components/common/PanelHeader';
 import ToggleVisibilityButton from '@/components/common/ToggleVisibilityButton';
-import CodeEditor from '@/components/common/CodeEditor';
+import MonacoJsonEditor from '@/components/common/MonacoJsonEditor';
 
 interface JsonInputPanelProps {
     jsonInput: string;
@@ -75,7 +75,7 @@ export default function JsonInputPanel({
     };
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+        <div className="flex flex-col h-full rounded-xl border overflow-hidden shadow-xl" style={{ background: 'var(--jv-bg-panel)', borderColor: 'var(--jv-border)' }}>
             {/* Header */}
             <PanelHeader title="JSON Input">
                 {/* Visibility Toggle */}
@@ -178,11 +178,11 @@ export default function JsonInputPanel({
                 </div>
             </PanelHeader>
 
-            {/* Code Editor */}
-            <CodeEditor
+            {/* Monaco Editor */}
+            <MonacoJsonEditor
                 value={jsonInput}
                 onChange={onJsonChange}
-                placeholder="Paste your JSON here..."
+                error={error}
             />
 
             {/* Error Display */}

@@ -34,12 +34,12 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
   onHsvChange,
 }) => {
   return (
-    <div className="border rounded overflow-hidden">
+    <div className="border dark:border-slate-700 rounded overflow-hidden">
       {/* Format Tabs */}
       <div className="flex">
         <button
           className={`flex-1 py-2 transition-colors ${
-            activeTab === ColorFormat.HEX ? 'bg-blue-500 text-white' : 'bg-gray-100'
+            activeTab === ColorFormat.HEX ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-slate-700 dark:text-gray-300'
           }`}
           onClick={() => onTabChange(ColorFormat.HEX)}
         >
@@ -47,7 +47,7 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
         </button>
         <button
           className={`flex-1 py-2 transition-colors ${
-            activeTab === ColorFormat.RGB ? 'bg-blue-500 text-white' : 'bg-gray-100'
+            activeTab === ColorFormat.RGB ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-slate-700 dark:text-gray-300'
           }`}
           onClick={() => onTabChange(ColorFormat.RGB)}
         >
@@ -55,7 +55,7 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
         </button>
         <button
           className={`flex-1 py-2 transition-colors ${
-            activeTab === ColorFormat.HSL ? 'bg-blue-500 text-white' : 'bg-gray-100'
+            activeTab === ColorFormat.HSL ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-slate-700 dark:text-gray-300'
           }`}
           onClick={() => onTabChange(ColorFormat.HSL)}
         >
@@ -63,7 +63,7 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
         </button>
         <button
           className={`flex-1 py-2 transition-colors ${
-            activeTab === ColorFormat.HSV ? 'bg-blue-500 text-white' : 'bg-gray-100'
+            activeTab === ColorFormat.HSV ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-slate-700 dark:text-gray-300'
           }`}
           onClick={() => onTabChange(ColorFormat.HSV)}
         >
@@ -75,10 +75,10 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
       <div className="p-4">
         {activeTab === ColorFormat.HEX && (
           <div>
-            <label className="block mb-2 text-sm font-medium">Hexadecimal</label>
+            <label className="block mb-2 text-sm font-medium dark:text-gray-300">Hexadecimal</label>
             <input
               type="text"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
               value={hex}
               onChange={(e) => onHexChange(e.target.value)}
               placeholder="#000000"
@@ -89,34 +89,34 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
         {activeTab === ColorFormat.RGB && (
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">R</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">R</label>
               <input
                 type="number"
                 min="0"
                 max="255"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={rgb.r}
                 onChange={(e) => onRgbChange('r', parseInt(e.target.value))}
               />
             </div>
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">G</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">G</label>
               <input
                 type="number"
                 min="0"
                 max="255"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={rgb.g}
                 onChange={(e) => onRgbChange('g', parseInt(e.target.value))}
               />
             </div>
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">B</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">B</label>
               <input
                 type="number"
                 min="0"
                 max="255"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={rgb.b}
                 onChange={(e) => onRgbChange('b', parseInt(e.target.value))}
               />
@@ -127,34 +127,34 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
         {activeTab === ColorFormat.HSL && (
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">H</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">H</label>
               <input
                 type="number"
                 min="0"
                 max="360"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsl.h}
                 onChange={(e) => onHslChange('h', parseInt(e.target.value))}
               />
             </div>
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">S%</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">S%</label>
               <input
                 type="number"
                 min="0"
                 max="100"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsl.s}
                 onChange={(e) => onHslChange('s', parseInt(e.target.value))}
               />
             </div>
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">L%</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">L%</label>
               <input
                 type="number"
                 min="0"
                 max="100"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsl.l}
                 onChange={(e) => onHslChange('l', parseInt(e.target.value))}
               />
@@ -165,34 +165,34 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
         {activeTab === ColorFormat.HSV && (
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">H</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">H</label>
               <input
                 type="number"
                 min="0"
                 max="360"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsv.h}
                 onChange={(e) => onHsvChange('h', parseInt(e.target.value))}
               />
             </div>
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">S%</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">S%</label>
               <input
                 type="number"
                 min="0"
                 max="100"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsv.s}
                 onChange={(e) => onHsvChange('s', parseInt(e.target.value))}
               />
             </div>
             <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">V%</label>
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">V%</label>
               <input
                 type="number"
                 min="0"
                 max="100"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsv.v}
                 onChange={(e) => onHsvChange('v', parseInt(e.target.value))}
               />

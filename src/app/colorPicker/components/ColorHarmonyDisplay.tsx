@@ -54,7 +54,7 @@ export const ColorHarmonyDisplay: React.FC<ColorHarmonyDisplayProps> = ({
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium mb-4">Color Harmony</h3>
+      <h3 className="text-lg font-medium mb-4 dark:text-gray-200">Color Harmony</h3>
 
       {harmonies.map(({ type, label, description }) => {
         const colors = getColorHarmony(type);
@@ -62,13 +62,13 @@ export const ColorHarmonyDisplay: React.FC<ColorHarmonyDisplayProps> = ({
         return (
           <div key={type}>
             <div className="mb-2">
-              <h4 className="font-medium">{label}</h4>
-              <p className="text-sm text-gray-600">{description}</p>
+              <h4 className="font-medium dark:text-gray-200">{label}</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
             </div>
             <div className="flex gap-2">
               {/* Current color */}
               <div
-                className="w-16 h-16 rounded border-2 border-gray-400 cursor-pointer hover:scale-105 transition-transform"
+                className="w-16 h-16 rounded border-2 border-gray-400 dark:border-slate-500 cursor-pointer hover:scale-105 transition-transform"
                 style={{ backgroundColor: currentColor }}
                 onClick={() => onColorSelect(currentColor)}
                 title={currentColor}

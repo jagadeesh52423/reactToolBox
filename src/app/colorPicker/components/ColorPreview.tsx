@@ -59,25 +59,25 @@ export const ColorPreview: React.FC<ColorPreviewProps> = ({
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => onCopyColor(ColorFormat.HEX)}
-            className="bg-gray-200 hover:bg-gray-300 py-2 px-3 rounded text-sm transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-gray-200 py-2 px-3 rounded text-sm transition-colors"
           >
             Copy HEX
           </button>
           <button
             onClick={() => onCopyColor(ColorFormat.RGB)}
-            className="bg-gray-200 hover:bg-gray-300 py-2 px-3 rounded text-sm transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-gray-200 py-2 px-3 rounded text-sm transition-colors"
           >
             Copy RGB
           </button>
           <button
             onClick={() => onCopyColor(ColorFormat.HSL)}
-            className="bg-gray-200 hover:bg-gray-300 py-2 px-3 rounded text-sm transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-gray-200 py-2 px-3 rounded text-sm transition-colors"
           >
             Copy HSL
           </button>
           <button
             onClick={() => onCopyColor(ColorFormat.HSV)}
-            className="bg-gray-200 hover:bg-gray-300 py-2 px-3 rounded text-sm transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-gray-200 py-2 px-3 rounded text-sm transition-colors"
           >
             Copy HSV
           </button>

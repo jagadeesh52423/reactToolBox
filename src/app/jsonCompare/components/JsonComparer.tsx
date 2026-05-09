@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import DiffViewer from './DiffViewer';
 import StructuredDiffViewer from './StructuredDiffViewer';
 import JsonEditor from './JsonEditor';
@@ -28,7 +28,34 @@ const JsonComparer: React.FC = () => {
   const [fixedLeftJson, setFixedLeftJson] = useState<string>('');
   const [fixedRightJson, setFixedRightJson] = useState<string>('');
   const [stats, setStats] = useState<CompareStats | null>(null);
+  const [editorsPct, setEditorsPct] = useState<number>(0.4);
+  const containerRef = useRef<HTMLElement>(null);
   const { downloadFile } = useFileIO();
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const containerEl = containerRef.current;
+    if (!containerEl) return;
+    const startY = e.clientY;
+    const containerHeight = containerEl.getBoundingClientRect().height;
+    const startPct = editorsPct;
+
+    const onMove = (ev: MouseEvent) => {
+      const deltaPct = (ev.clientY - startY) / containerHeight;
+      const next = Math.max(0.15, Math.min(0.85, startPct + deltaPct));
+      setEditorsPct(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  }, [editorsPct]);
 
   const handleDownloadDiff = useCallback(() => {
     if (!stats || !fixedLeftJson || !fixedRightJson) return;
@@ -243,9 +270,9 @@ const JsonComparer: React.FC = () => {
   );
 
   return (
-    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-full min-h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
-      <main className="flex-1 p-6 overflow-auto flex flex-col">
+      <main ref={containerRef} className="flex-1 min-h-0 p-6 overflow-hidden flex flex-col">
         {/* Error Banner */}
         {error && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 flex items-center gap-3">
@@ -255,7 +282,10 @@ const JsonComparer: React.FC = () => {
         )}
 
         {/* JSON Editors */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-4 relative h-[45%] min-h-[200px]">
+        <div
+          className={`flex flex-col lg:flex-row gap-4 mb-4 relative min-h-[180px] ${showDiff ? 'flex-shrink-0' : 'flex-1 min-h-0'}`}
+          style={showDiff ? { flexBasis: `${editorsPct * 100}%` } : undefined}
+        >
           {/* Left JSON Panel */}
           <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             <PanelHeader title="Left JSON" onFormat={() => fixAndFormatJson('left')} />
@@ -292,8 +322,19 @@ const JsonComparer: React.FC = () => {
           </div>
         </div>
 
+        {/* Resize Handle (only when diff is visible) */}
+        {showDiff && (
+          <div
+            onMouseDown={handleResizeStart}
+            className="group h-1.5 mb-3 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-indigo-400 dark:hover:bg-indigo-500 cursor-row-resize transition-colors flex-shrink-0 flex items-center justify-center"
+            title="Drag to resize editors"
+          >
+            <div className="w-10 h-0.5 rounded-full bg-gray-400 dark:bg-slate-500 group-hover:bg-white" />
+          </div>
+        )}
+
         {/* Compare Button */}
-        <div className="flex justify-center mb-6">
+        <div className={`flex justify-center flex-shrink-0 ${showDiff ? 'mb-3' : 'mb-6'}`}>
           <button
             onClick={handleCompare}
             className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 dark:shadow-indigo-500/20 transition-all duration-200 hover:scale-[1.02]"

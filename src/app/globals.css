@@ -7,12 +7,113 @@
   --background: #ffffff;
   --foreground: #171717;
   --tool-content-height: calc(100vh - 140px);
+
+  /* JSON Visualizer Theme */
+  --jv-bg-primary: #f8fafc;
+  --jv-bg-secondary: #f1f5f9;
+  --jv-bg-panel: #ffffff;
+  --jv-bg-hover: #e2e8f0;
+  --jv-bg-active: #dbeafe;
+  --jv-border: #e2e8f0;
+  --jv-border-focus: #3b82f6;
+  --jv-text-primary: #0f172a;
+  --jv-text-secondary: #475569;
+  --jv-text-muted: #94a3b8;
+  --jv-accent: #3b82f6;
+  --jv-accent-glow: rgba(59, 130, 246, 0.3);
+  --jv-string: #059669;
+  --jv-number: #2563eb;
+  --jv-boolean: #7c3aed;
+  --jv-null: #64748b;
+  --jv-key: #c2410c;
+  --jv-bracket: #64748b;
+  --jv-type-badge-bg: rgba(0, 0, 0, 0.06);
+  --jv-connector: #cbd5e1;
+  --jv-search-highlight: rgba(250, 204, 21, 0.4);
+  --jv-focus-ring: rgba(59, 130, 246, 0.5);
+  --jv-danger: #ef4444;
+  --jv-success: #22c55e;
+  --jv-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  --jv-font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Dark theme (class-based) */
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+
+  /* JSON Visualizer Theme - Dark */
+  --jv-bg-primary: #0f172a;
+  --jv-bg-secondary: #1e293b;
+  --jv-bg-panel: #1e293b;
+  --jv-bg-hover: #334155;
+  --jv-bg-active: #1e3a5f;
+  --jv-border: #334155;
+  --jv-border-focus: #60a5fa;
+  --jv-text-primary: #f1f5f9;
+  --jv-text-secondary: #94a3b8;
+  --jv-text-muted: #64748b;
+  --jv-accent: #60a5fa;
+  --jv-accent-glow: rgba(96, 165, 250, 0.3);
+  --jv-string: #34d399;
+  --jv-number: #60a5fa;
+  --jv-boolean: #a78bfa;
+  --jv-null: #94a3b8;
+  --jv-key: #fb923c;
+  --jv-bracket: #94a3b8;
+  --jv-type-badge-bg: rgba(255, 255, 255, 0.08);
+  --jv-connector: #475569;
+  --jv-search-highlight: rgba(250, 204, 21, 0.3);
+  --jv-focus-ring: rgba(96, 165, 250, 0.5);
+  --jv-danger: #f87171;
+  --jv-success: #4ade80;
+  --jv-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  --jv-font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@keyframes jv-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes jv-slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes jv-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--jv-accent-glow); }
+  50% { box-shadow: 0 0 0 4px var(--jv-accent-glow); }
+}
+
+@keyframes jv-breadcrumb-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes jv-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.jv-animate-fade-in {
+  animation: jv-fadeIn 0.2s ease-out;
+}
+
+.jv-animate-slide-down {
+  animation: jv-slideDown 0.2s ease-out;
+}
+
+.jv-animate-scale-in {
+  animation: jv-scale-in 0.15s ease-out;
+}
+
+.jv-animate-breadcrumb {
+  animation: jv-breadcrumb-in 0.2s ease-out;
+}
+
+.jv-focus-ring {
+  animation: jv-pulse-glow 1.5s ease-in-out infinite;
 }
 
 body {

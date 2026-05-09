@@ -7,6 +7,7 @@ import { getJsonSearchService } from '../services/JsonSearchService';
 import JsonPrimitiveEditor from './JsonPrimitiveEditor';
 import ContextMenu, { ContextMenuItem } from './ContextMenu';
 import HighlightedText from './HighlightedText';
+import AddNodeForm from './AddNodeForm';
 import {
     ChevronDownIcon,
     ChevronRightIcon,
@@ -23,6 +24,7 @@ interface ContextMenuState {
     x: number;
     y: number;
     items: ContextMenuItem[];
+    contextKey?: string;
 }
 
 interface JsonTreeViewProps {
@@ -32,25 +34,18 @@ interface JsonTreeViewProps {
     searchOptions: SearchOptions;
     onDelete: (path: JsonPath) => void;
     onUpdate: (path: JsonPath, value: JSONValue) => void;
+    focusedPath?: JsonPath | null;
+    onFocusChange?: (path: JsonPath | null) => void;
+    onAdd?: (parentPath: JsonPath, key: string, value: JSONValue) => void;
 }
 
-/**
- * JsonTreeView Component - Professional Redesign
- *
- * Features:
- * - Smooth animations on expand/collapse
- * - Professional connector lines
- * - Type-colored badges
- * - Hover actions with icons
- * - Visual hierarchy with indentation
- */
 const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
-    ({ data, level = 1, path = [], searchOptions, onDelete, onUpdate }, ref) => {
-        // Auto-expand all levels by default
+    ({ data, level = 1, path = [], searchOptions, onDelete, onUpdate, focusedPath, onFocusChange, onAdd }, ref) => {
         const [isExpanded, setIsExpanded] = useState(true);
         const [isHighlighted, setIsHighlighted] = useState(false);
         const [isFiltered, setIsFiltered] = useState(false);
         const [showCopied, setShowCopied] = useState(false);
+        const [showAddForm, setShowAddForm] = useState(false);
         const [contextMenu, setContextMenu] = useState<ContextMenuState>({
             visible: false,
             x: 0,
@@ -64,6 +59,27 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
 
         const parserService = getJsonParserService();
         const searchService = getJsonSearchService();
+
+        const isFocused = focusedPath && path.join('.') === focusedPath.join('.');
+
+        // Auto-expand if this node is an ancestor of the focused path
+        useEffect(() => {
+            if (focusedPath && focusedPath.length > path.length) {
+                const isAncestor = path.length === 0
+                    ? true
+                    : path.every((p, i) => focusedPath[i] === p);
+                if (isAncestor) {
+                    setIsExpanded(true);
+                }
+            }
+        }, [focusedPath, path]);
+
+        // Auto-scroll when this node becomes focused (e.g. from Navigate mode)
+        useEffect(() => {
+            if (isFocused && nodeRef.current) {
+                nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, [isFocused]);
 
         useEffect(() => {
             childrenRefs.current = {};
@@ -82,8 +98,8 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 if (childRef?.expandAll) {
                     try {
                         await childRef.expandAll();
-                    } catch (error) {
-                        console.error('Error expanding child:', error);
+                    } catch {
+                        // Silently handle expand errors
                     }
                 }
             });
@@ -209,13 +225,14 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                 visible: true,
                 x: e.clientX,
                 y: e.clientY,
-                items
+                items,
+                contextKey: key
             });
         };
 
-        const closeContextMenu = () => {
+        const closeContextMenu = useCallback(() => {
             setContextMenu(prev => ({ ...prev, visible: false }));
-        };
+        }, []);
 
         if (isFiltered) {
             return null;
@@ -223,12 +240,18 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
 
         if (parserService.isPrimitive(data)) {
             return (
-                <JsonPrimitiveEditor
-                    value={data}
-                    isHighlighted={isHighlighted}
-                    searchOptions={searchOptions}
-                    onUpdate={(newValue) => onUpdate(path, newValue)}
-                />
+                <span
+                    ref={nodeRef}
+                    className={`inline-flex rounded transition-all duration-150 ${isFocused ? 'ring-2 jv-focus-ring' : ''}`}
+                    style={isFocused ? { background: 'var(--jv-bg-active)' } : undefined}
+                >
+                    <JsonPrimitiveEditor
+                        value={data}
+                        isHighlighted={isHighlighted}
+                        searchOptions={searchOptions}
+                        onUpdate={(newValue) => onUpdate(path, newValue)}
+                    />
+                </span>
             );
         }
 
@@ -237,58 +260,87 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
         const typeStyle = parserService.getTypeStyle(data);
         const itemCount = items.length;
 
-        // Get type badge color
-        const getBadgeColor = () => {
+        // Get type badge style using CSS variables
+        const getBadgeStyle = () => {
             if (typeStyle.type === JsonValueType.ARRAY) {
-                return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                return {
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    color: 'var(--jv-bracket)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                };
             }
-            return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+            return {
+                background: 'rgba(6, 182, 212, 0.15)',
+                color: 'var(--jv-bracket)',
+                border: '1px solid rgba(6, 182, 212, 0.3)',
+            };
         };
 
         return (
             <div
                 ref={nodeRef}
                 className={`relative ${level > 1 ? 'ml-2' : ''}`}
+                role={level === 1 ? 'tree' : 'group'}
             >
-                {/* Node Header - Key at top-left */}
+                {/* Node Header */}
                 <div
                     className={`
                         inline-flex items-center gap-1 py-0.5 px-1.5 rounded cursor-pointer
                         transition-all duration-150 group
-                        ${isHighlighted
-                            ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40'
-                            : 'hover:bg-gray-200/60 dark:hover:bg-slate-700/40'
-                        }
+                        ${isFocused ? 'ring-2 jv-focus-ring' : ''}
                     `}
+                    style={{
+                        background: isHighlighted
+                            ? 'var(--jv-search-highlight)'
+                            : isFocused
+                            ? 'var(--jv-bg-active)'
+                            : undefined,
+                        ...(isHighlighted ? { boxShadow: '0 0 0 1px rgba(250, 204, 21, 0.4)' } : {}),
+                    }}
                     onClick={toggleCurrentLevel}
+                    onMouseEnter={(e) => {
+                        if (!isHighlighted && !isFocused) {
+                            e.currentTarget.style.background = 'var(--jv-bg-hover)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!isHighlighted && !isFocused) {
+                            e.currentTarget.style.background = '';
+                        }
+                    }}
+                    role="treeitem"
+                    aria-expanded={isExpanded}
                 >
                     {/* Expand/Collapse Icon */}
-                    <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                    <div
+                        className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}
+                        style={{ color: 'var(--jv-text-muted)' }}
+                    >
                         <ChevronRightIcon size={12} />
                     </div>
 
                     {/* Bracket */}
-                    <span className="font-mono text-sm text-gray-500 dark:text-slate-400">
+                    <span className="text-sm" style={{ color: 'var(--jv-bracket)', fontFamily: 'var(--jv-font-mono)' }}>
                         {isArray ? '[' : '{'}
                     </span>
 
                     {/* Item count when collapsed */}
                     {!isExpanded && (
                         <>
-                            <span className="text-gray-400 dark:text-slate-500 text-xs">
+                            <span className="text-xs" style={{ color: 'var(--jv-text-muted)' }}>
                                 {itemCount}
                             </span>
-                            <span className="font-mono text-sm text-gray-500 dark:text-slate-400">
+                            <span className="text-sm" style={{ color: 'var(--jv-bracket)', fontFamily: 'var(--jv-font-mono)' }}>
                                 {isArray ? ']' : '}'}
                             </span>
                         </>
                     )}
 
                     {/* Type Badge */}
-                    <span className={`
-                        px-1 py-0 text-xs font-medium rounded border
-                        ${getBadgeColor()}
-                    `}>
+                    <span
+                        className="px-1 py-0 text-xs font-medium rounded"
+                        style={getBadgeStyle()}
+                    >
                         {isArray ? 'Array' : 'Object'}
                     </span>
 
@@ -299,7 +351,10 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                 e.stopPropagation();
                                 expandSubtree();
                             }}
-                            className="p-0.5 rounded text-gray-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            className="p-0.5 rounded transition-colors"
+                            style={{ color: 'var(--jv-text-muted)' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--jv-accent)'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--jv-text-muted)'}
                             title="Expand all"
                         >
                             <ExpandIcon size={12} />
@@ -309,7 +364,10 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                 e.stopPropagation();
                                 collapseSubtree();
                             }}
-                            className="p-0.5 rounded text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-300/50 dark:hover:bg-slate-600/50 transition-colors"
+                            className="p-0.5 rounded transition-colors"
+                            style={{ color: 'var(--jv-text-muted)' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--jv-text-primary)'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--jv-text-muted)'}
                             title="Collapse all"
                         >
                             <CollapseIcon size={12} />
@@ -319,25 +377,38 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                 e.stopPropagation();
                                 copySubtree();
                             }}
-                            className={`
-                                p-0.5 rounded transition-colors
-                                ${showCopied
-                                    ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10'
-                                    : 'text-gray-400 dark:text-slate-500 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-cyan-500/10'
-                                }
-                            `}
+                            className="p-0.5 rounded transition-colors"
+                            style={{ color: showCopied ? 'var(--jv-success)' : 'var(--jv-text-muted)' }}
+                            onMouseEnter={(e) => { if (!showCopied) e.currentTarget.style.color = 'var(--jv-accent)'; }}
+                            onMouseLeave={(e) => { if (!showCopied) e.currentTarget.style.color = 'var(--jv-text-muted)'; }}
                             title="Copy subtree"
                         >
                             <ClipboardIcon size={12} />
                         </button>
+                        {onAdd && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowAddForm(true);
+                                }}
+                                className="p-0.5 rounded transition-colors"
+                                style={{ color: 'var(--jv-success)' }}
+                                title="Add child node"
+                            >
+                                <span className="text-sm font-bold">+</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 {/* Children */}
                 {isExpanded && (
                     <div className="relative ml-2 mt-0.5">
-                        {/* Vertical Connector Line - from top to last child */}
-                        <div className="absolute left-1.5 top-0 bottom-6 w-px bg-gray-300 dark:bg-slate-600" />
+                        {/* Vertical Connector Line */}
+                        <div
+                            className="absolute left-1.5 top-0 bottom-6 w-px"
+                            style={{ background: 'var(--jv-connector)' }}
+                        />
 
                         {items.map(([key, value], index) => {
                             if (!searchService.shouldItemBeVisible(key, value, searchOptions)) {
@@ -348,19 +419,21 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                             const isObjectChild = !isPrimitiveChild;
 
                             return (
-                                <div key={key} className="relative group/item">
-                                    {/* Horizontal Connector - connects vertical line to node */}
-                                    <div className="absolute left-1.5 top-3 w-2 h-px bg-gray-300 dark:bg-slate-600" />
+                                <div key={key} className="relative group/item jv-animate-fade-in">
+                                    {/* Horizontal Connector */}
+                                    <div
+                                        className="absolute left-1.5 top-3 w-2 h-px"
+                                        style={{ background: 'var(--jv-connector)' }}
+                                    />
 
-                                    {/* Key Row - positioned at top-left */}
+                                    {/* Key Row */}
                                     <div className="ml-4 flex items-center gap-1">
                                         <div
-                                            className={`
-                                                flex items-center gap-1.5 py-0.5 px-1.5 rounded cursor-context-menu
-                                                transition-colors duration-150
-                                                hover:bg-gray-200/40 dark:hover:bg-slate-700/20
-                                            `}
+                                            className="flex items-center gap-1.5 py-0.5 px-1.5 rounded cursor-context-menu transition-colors duration-150"
                                             onContextMenu={(e) => handleContextMenu(e, key, value)}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--jv-bg-hover)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = ''}
+                                            role="treeitem"
                                         >
                                             {/* Delete Button */}
                                             <button
@@ -368,7 +441,10 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                     e.stopPropagation();
                                                     onDelete([...path, key]);
                                                 }}
-                                                className="opacity-0 group-hover/item:opacity-100 p-0.5 rounded text-gray-400 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                className="opacity-0 group-hover/item:opacity-100 p-0.5 rounded transition-all"
+                                                style={{ color: 'var(--jv-text-muted)' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--jv-danger)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--jv-text-muted)'}
                                                 title="Delete"
                                             >
                                                 <TrashIcon size={10} />
@@ -376,13 +452,11 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
 
                                             {/* Key */}
                                             <span
-                                                className={`
-                                                    font-medium text-sm transition-colors select-none
-                                                    ${isArray
-                                                        ? 'text-gray-500 dark:text-slate-500 font-mono'
-                                                        : 'text-blue-600 dark:text-blue-400'
-                                                    }
-                                                `}
+                                                className="font-medium text-sm transition-colors select-none"
+                                                style={{
+                                                    color: isArray ? 'var(--jv-text-muted)' : 'var(--jv-key)',
+                                                    fontFamily: isArray ? 'var(--jv-font-mono)' : undefined,
+                                                }}
                                             >
                                                 {isArray ? (
                                                     `[${key}]`
@@ -395,7 +469,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                     key
                                                 )}
                                             </span>
-                                            <span className="text-gray-400 dark:text-slate-600">:</span>
+                                            <span style={{ color: 'var(--jv-text-muted)' }}>:</span>
 
                                             {/* Copy Path Button */}
                                             <button
@@ -403,7 +477,10 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                     e.stopPropagation();
                                                     handleCopyPath(key);
                                                 }}
-                                                className="opacity-0 group-hover/item:opacity-100 p-0.5 rounded text-gray-400 dark:text-slate-600 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
+                                                className="opacity-0 group-hover/item:opacity-100 p-0.5 rounded transition-all"
+                                                style={{ color: 'var(--jv-text-muted)' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--jv-accent)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--jv-text-muted)'}
                                                 title={`Copy path: ${[...path, key].join('.')}`}
                                             >
                                                 <ClipboardIcon size={10} />
@@ -424,6 +501,9 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                         searchOptions={searchOptions}
                                                         onDelete={onDelete}
                                                         onUpdate={onUpdate}
+                                                        focusedPath={focusedPath}
+                                                        onFocusChange={onFocusChange}
+                                                        onAdd={onAdd}
                                                     />
                                                 </div>
                                             )}
@@ -445,6 +525,9 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                                                 searchOptions={searchOptions}
                                                 onDelete={onDelete}
                                                 onUpdate={onUpdate}
+                                                focusedPath={focusedPath}
+                                                onFocusChange={onFocusChange}
+                                                onAdd={onAdd}
                                             />
                                         </div>
                                     )}
@@ -452,9 +535,22 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                             );
                         })}
 
+                        {/* Add Node Form */}
+                        {showAddForm && onAdd && (
+                            <AddNodeForm
+                                parentPath={path}
+                                isArray={isArray}
+                                onAdd={(key, value) => {
+                                    onAdd(path, key, value);
+                                    setShowAddForm(false);
+                                }}
+                                onCancel={() => setShowAddForm(false)}
+                            />
+                        )}
+
                         {/* Closing Bracket */}
                         <div className="ml-4 py-0.5 px-1.5">
-                            <span className="font-mono text-gray-500 dark:text-slate-400 text-sm">
+                            <span className="text-sm" style={{ color: 'var(--jv-bracket)', fontFamily: 'var(--jv-font-mono)' }}>
                                 {isArray ? ']' : '}'}
                             </span>
                         </div>
@@ -469,6 +565,7 @@ const JsonTreeView = forwardRef<JsonTreeViewRef, JsonTreeViewProps>(
                         items={contextMenu.items}
                         onSelect={() => {}}
                         onClose={closeContextMenu}
+                        onAddChild={onAdd ? () => setShowAddForm(true) : undefined}
                     />
                 )}
             </div>

@@ -115,7 +115,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
                     <div className="font-medium text-red-800 dark:text-red-300">{error.message}</div>
                     {error.suggestion && (
                       <div className="text-sm text-gray-600 dark:text-slate-400 mt-1 flex items-start gap-1">
-                        <span className="text-amber-500">Tip:</span>
+                        <span className="text-amber-500 dark:text-amber-400">Tip:</span>
                         {error.suggestion}
                       </div>
                     )}
@@ -150,7 +150,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
                     <div className="font-medium text-amber-800 dark:text-amber-300">{warning.message}</div>
                     {warning.suggestion && (
                       <div className="text-sm text-gray-600 dark:text-slate-400 mt-1 flex items-start gap-1">
-                        <span className="text-amber-500">Tip:</span>
+                        <span className="text-amber-500 dark:text-amber-400">Tip:</span>
                         {warning.suggestion}
                       </div>
                     )}
@@ -185,7 +185,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
                     <div className="font-medium text-blue-800 dark:text-blue-300">{item.message}</div>
                     {item.suggestion && (
                       <div className="text-sm text-gray-600 dark:text-slate-400 mt-1 flex items-start gap-1">
-                        <span className="text-amber-500">Tip:</span>
+                        <span className="text-amber-500 dark:text-amber-400">Tip:</span>
                         {item.suggestion}
                       </div>
                     )}

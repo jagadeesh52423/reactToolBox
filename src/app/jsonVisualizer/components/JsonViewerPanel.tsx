@@ -1,8 +1,10 @@
 'use client';
 
 import { forwardRef } from 'react';
-import { JSONValue, JsonPath, SearchOptions, JsonTreeViewRef } from '../models/JsonModels';
+import { JSONValue, JsonPath, SearchOptions, JsonTreeViewRef, BreadcrumbSegment, PathSuggestion } from '../models/JsonModels';
 import SearchControls from './SearchControls';
+import CommandPalette from './CommandPalette';
+import BreadcrumbNav from './BreadcrumbNav';
 import JsonTreeView from './JsonTreeView';
 import { ExpandIcon, CollapseIcon, BracesIcon } from '@/components/shared/Icons';
 import PanelHeader from '@/components/common/PanelHeader';
@@ -26,14 +28,26 @@ interface JsonViewerPanelProps {
     onDelete: (path: JsonPath) => void;
     onUpdate: (path: JsonPath, value: JSONValue) => void;
     onToggleEditorVisibility: () => void;
+    // New optional props
+    breadcrumbSegments?: BreadcrumbSegment[];
+    onBreadcrumbNavigate?: (path: JsonPath) => void;
+    commandPaletteOpen?: boolean;
+    commandPaletteMode?: 'search' | 'filter' | 'navigate';
+    onCommandPaletteClose?: () => void;
+    onCommandPaletteModeChange?: (mode: 'search' | 'filter' | 'navigate') => void;
+    onCommandPaletteOpen?: () => void;
+    onAdd?: (parentPath: JsonPath, key: string, value: JSONValue) => void;
+    focusedPath?: JsonPath | null;
+    onFocusChange?: (path: JsonPath | null) => void;
+    // Navigate mode props
+    navigateText?: string;
+    suggestions?: PathSuggestion[];
+    selectedSuggestionIndex?: number;
+    onNavigateTextChange?: (text: string) => void;
+    onSuggestionSelect?: (path: JsonPath) => void;
+    onSuggestionIndexChange?: (index: number) => void;
 }
 
-/**
- * JsonViewerPanel Component - Professional Redesign
- *
- * Right panel containing the interactive JSON tree viewer and search controls.
- * Features modern styling, integrated search, and tree controls.
- */
 const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
     (
         {
@@ -54,19 +68,43 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
             onCollapseAll,
             onDelete,
             onUpdate,
-            onToggleEditorVisibility
+            onToggleEditorVisibility,
+            breadcrumbSegments,
+            onBreadcrumbNavigate,
+            commandPaletteOpen,
+            commandPaletteMode,
+            onCommandPaletteClose,
+            onCommandPaletteModeChange,
+            onCommandPaletteOpen,
+            onAdd,
+            focusedPath,
+            onFocusChange,
+            navigateText,
+            suggestions,
+            selectedSuggestionIndex,
+            onNavigateTextChange,
+            onSuggestionSelect,
+            onSuggestionIndexChange,
         },
         ref
     ) => {
         return (
-            <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+            <div
+                className="flex flex-col h-full rounded-xl border shadow-xl overflow-hidden"
+                style={{ background: 'var(--jv-bg-panel)', borderColor: 'var(--jv-border)' }}
+            >
                 {/* Header */}
                 <PanelHeader title="JSON Viewer">
                     {/* Show Editor Button (only when editor is hidden) */}
                     {!isEditorVisible && (
                         <button
                             onClick={onToggleEditorVisibility}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-100/50 dark:bg-indigo-600/20 hover:bg-indigo-200/50 dark:hover:bg-indigo-600/40 border border-indigo-300/30 dark:border-indigo-500/30 transition-all duration-200 mr-1"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 mr-1 border"
+                            style={{
+                                color: 'var(--jv-accent)',
+                                background: 'var(--jv-bg-active)',
+                                borderColor: 'var(--jv-border)',
+                            }}
                             title="Show editor"
                         >
                             <svg className="w-[14px] h-[14px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,23 +115,41 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                         </button>
                     )}
 
-                        <button
-                            onClick={onExpandAll}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 border border-gray-300/30 dark:border-slate-600/30 transition-all duration-200"
-                            title="Expand all nodes"
-                        >
-                            <ExpandIcon size={14} />
-                            <span className="text-sm">Expand</span>
-                        </button>
+                    <button
+                        onClick={onExpandAll}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200"
+                        style={{
+                            color: 'var(--jv-text-secondary)',
+                            background: 'var(--jv-bg-secondary)',
+                            borderColor: 'var(--jv-border)',
+                        }}
+                        title="Expand all nodes"
+                    >
+                        <ExpandIcon size={14} />
+                        <span className="text-sm">Expand</span>
+                    </button>
                     <button
                         onClick={onCollapseAll}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white bg-gray-100/50 dark:bg-slate-700/30 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 border border-gray-300/30 dark:border-slate-600/30 transition-all duration-200"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200"
+                        style={{
+                            color: 'var(--jv-text-secondary)',
+                            background: 'var(--jv-bg-secondary)',
+                            borderColor: 'var(--jv-border)',
+                        }}
                         title="Collapse all nodes"
                     >
                         <CollapseIcon size={14} />
                         <span className="text-sm">Collapse</span>
                     </button>
                 </PanelHeader>
+
+                {/* Breadcrumb Navigation */}
+                {breadcrumbSegments && breadcrumbSegments.length > 1 && onBreadcrumbNavigate && (
+                    <BreadcrumbNav
+                        segments={breadcrumbSegments}
+                        onNavigate={onBreadcrumbNavigate}
+                    />
+                )}
 
                 {/* Search Controls */}
                 <SearchControls
@@ -107,6 +163,9 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                     onRegexToggle={onRegexToggle}
                     onKeysOnlyToggle={onKeysOnlyToggle}
                     onSearch={onSearch}
+                    onOpenPalette={() => {
+                        onCommandPaletteOpen?.();
+                    }}
                 />
 
                 {/* Tree View */}
@@ -118,19 +177,53 @@ const JsonViewerPanel = forwardRef<JsonTreeViewRef, JsonViewerPanelProps>(
                             searchOptions={searchOptions}
                             onDelete={onDelete}
                             onUpdate={onUpdate}
+                            focusedPath={focusedPath}
+                            onFocusChange={onFocusChange}
+                            onAdd={onAdd}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-500">
+                        <div className="flex flex-col items-center justify-center h-full" style={{ color: 'var(--jv-text-muted)' }}>
                             <BracesIcon size={48} className="mb-4 opacity-30" />
                             <p className="text-lg font-medium">
                                 {error ? 'Fix JSON errors to view' : 'No JSON to display'}
                             </p>
-                            <p className="text-sm mt-1 text-gray-500 dark:text-slate-600">
+                            <p className="text-sm mt-1" style={{ color: 'var(--jv-text-muted)' }}>
                                 {error ? 'Check the input panel for error details' : 'Paste or import JSON in the input panel'}
                             </p>
                         </div>
                     )}
                 </div>
+
+                {/* Command Palette */}
+                {commandPaletteOpen !== undefined && onCommandPaletteClose && (
+                    <CommandPalette
+                        isOpen={commandPaletteOpen}
+                        onClose={onCommandPaletteClose}
+                        searchText={searchOptions.searchText}
+                        onSearchTextChange={onSearchTextChange}
+                        mode={commandPaletteMode || 'search'}
+                        onModeChange={(newMode) => {
+                            onCommandPaletteModeChange?.(newMode);
+                            // Sync filter mode with searchOptions.isFilterEnabled
+                            onFilterToggle(newMode === 'filter');
+                        }}
+                        matchCount={matchCount}
+                        searchOptions={searchOptions}
+                        onSearchOptionsChange={(opts) => {
+                            if (opts.isCaseSensitive !== undefined) onCaseSensitiveToggle(opts.isCaseSensitive);
+                            if (opts.isRegexEnabled !== undefined) onRegexToggle(opts.isRegexEnabled);
+                            if (opts.isFuzzyEnabled !== undefined) onFuzzyToggle(opts.isFuzzyEnabled);
+                            if (opts.isKeysOnly !== undefined) onKeysOnlyToggle(opts.isKeysOnly);
+                            if (opts.isFilterEnabled !== undefined) onFilterToggle(opts.isFilterEnabled);
+                        }}
+                        navigateText={navigateText}
+                        suggestions={suggestions}
+                        selectedSuggestionIndex={selectedSuggestionIndex}
+                        onNavigateTextChange={onNavigateTextChange}
+                        onSuggestionSelect={onSuggestionSelect}
+                        onSuggestionIndexChange={onSuggestionIndexChange}
+                    />
+                )}
             </div>
         );
     }

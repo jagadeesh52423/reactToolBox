@@ -36,7 +36,7 @@ export const ColorPalettes: React.FC<ColorPalettesProps> = ({
               className={`px-3 py-1 rounded text-sm capitalize transition-colors ${
                 selectedPalette === paletteName
                   ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300'
+                  : 'bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-gray-200'
               }`}
               onClick={() => onPaletteChange(paletteName)}
             >
@@ -48,7 +48,7 @@ export const ColorPalettes: React.FC<ColorPalettesProps> = ({
           {palettes[selectedPalette].map((color, index) => (
             <button
               key={index}
-              className="w-full aspect-square rounded border-2 border-gray-300 hover:border-gray-500 hover:scale-105 transition-all"
+              className="w-full aspect-square rounded border-2 border-gray-300 hover:border-gray-500 dark:border-slate-600 dark:hover:border-slate-400 hover:scale-105 transition-all"
               style={{ backgroundColor: color }}
               onClick={() => onColorSelect(color)}
               title={color}
@@ -63,7 +63,7 @@ export const ColorPalettes: React.FC<ColorPalettesProps> = ({
           {cssColors.map((color, index) => (
             <button
               key={index}
-              className="w-full aspect-square rounded border-2 border-gray-300 hover:border-gray-500 hover:scale-105 transition-all"
+              className="w-full aspect-square rounded border-2 border-gray-300 hover:border-gray-500 dark:border-slate-600 dark:hover:border-slate-400 hover:scale-105 transition-all"
               style={{ backgroundColor: color }}
               onClick={() => onColorSelect(color)}
               title={color}

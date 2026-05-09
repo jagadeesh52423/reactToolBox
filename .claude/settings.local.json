@@ -12,7 +12,11 @@
       "Bash(git commit:*)",
       "Bash(npm install:*)",
       "Bash(node -e \"const d = require\\(''@dagrejs/dagre''\\); console.log\\(Object.keys\\(d\\)\\); console.log\\(typeof d.graphlib\\); console.log\\(typeof d.default?.graphlib\\)\")",
-      "Bash(node -e \"import\\(''@dagrejs/dagre''\\).then\\(d => { console.log\\(Object.keys\\(d\\)\\); console.log\\(typeof d.graphlib\\); console.log\\(typeof d.default?.graphlib\\); }\\)\")"
+      "Bash(node -e \"import\\(''@dagrejs/dagre''\\).then\\(d => { console.log\\(Object.keys\\(d\\)\\); console.log\\(typeof d.graphlib\\); console.log\\(typeof d.default?.graphlib\\); }\\)\")",
+      "Bash(find src/app -name \"*.tsx\" -type f ! -path \"*/node_modules/*\" -exec grep -l \"text-gray\\\\|text-slate\\\\|text-zinc\\\\|bg-blue\\\\|bg-purple\\\\|bg-gray\\\\|bg-red\\\\|bg-green\\\\|bg-yellow\" {} \\\\;)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(node /tmp/test.js)"
     ]
   },
   "enableAllProjectMcpServers": true,

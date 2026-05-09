@@ -1,31 +1,26 @@
 'use client';
+import dynamic from 'next/dynamic';
 
-import JsonVisualizerRefactored from './components/JsonVisualizerRefactored';
+const JsonVisualizerRefactored = dynamic(() => import('./components/JsonVisualizerRefactored'), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="h-full flex items-center justify-center"
+      style={{ background: 'var(--jv-bg-primary)' }}
+    >
+      <div className="text-center" style={{ color: 'var(--jv-text-muted)' }}>
+        <div
+          className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-3"
+          style={{ borderColor: 'var(--jv-accent)' }}
+        ></div>
+        <div className="text-sm" style={{ fontFamily: 'var(--jv-font-sans)' }}>
+          Loading JSON Visualizer...
+        </div>
+      </div>
+    </div>
+  ),
+});
 
-/**
- * JSON Visualizer Page
- *
- * Interactive JSON viewer and editor tool.
- *
- * Features:
- * - Parse and validate JSON
- * - Interactive tree view with expand/collapse
- * - Search with exact and fuzzy matching
- * - Filter mode to hide non-matching nodes
- * - Level-based search filtering
- * - Inline editing of primitive values
- * - Delete nodes
- * - Copy subtrees and paths
- * - Import/export JSON files
- * - Prettify with configurable indentation
- *
- * Architecture:
- * - models/     - Type definitions and constants
- * - strategies/ - Search algorithms (Strategy Pattern)
- * - services/   - Business logic (Singleton, Facade)
- * - hooks/      - React state management (Custom Hook)
- * - components/ - UI components (Single Responsibility)
- */
 export default function JsonVisualizerPage() {
-    return <JsonVisualizerRefactored />;
+  return <JsonVisualizerRefactored />;
 }
