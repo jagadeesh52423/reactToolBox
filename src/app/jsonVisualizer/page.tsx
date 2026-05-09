@@ -1,26 +1,11 @@
-'use client';
-import dynamic from 'next/dynamic';
+import type { Metadata } from 'next';
+import JsonVisualizerClient from './JsonVisualizerClient';
 
-const JsonVisualizerRefactored = dynamic(() => import('./components/JsonVisualizerRefactored'), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="h-full flex items-center justify-center"
-      style={{ background: 'var(--jv-bg-primary)' }}
-    >
-      <div className="text-center" style={{ color: 'var(--jv-text-muted)' }}>
-        <div
-          className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-3"
-          style={{ borderColor: 'var(--jv-accent)' }}
-        ></div>
-        <div className="text-sm" style={{ fontFamily: 'var(--jv-font-sans)' }}>
-          Loading JSON Visualizer...
-        </div>
-      </div>
-    </div>
-  ),
-});
+export const metadata: Metadata = {
+  title: 'JSON Visualizer',
+  description: 'Interactive JSON viewer with search, tree navigation, and inline editing.',
+};
 
 export default function JsonVisualizerPage() {
-  return <JsonVisualizerRefactored />;
+  return <JsonVisualizerClient />;
 }

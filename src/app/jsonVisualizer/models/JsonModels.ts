@@ -298,24 +298,6 @@ export interface JsonTreeViewRef {
     toggle: () => void;
 }
 
-/**
- * Props for primitive value editor
- */
-export interface JsonPrimitiveEditorProps {
-    value: JSONValue;
-    isHighlighted: boolean;
-    onUpdate: (value: JSONValue) => void;
-}
-
-/**
- * Props for search controls
- */
-export interface SearchControlsProps {
-    searchOptions: SearchOptions;
-    onSearchChange: (options: Partial<SearchOptions>) => void;
-    onSearch: () => void;
-}
-
 // ============================================================================
 // Sample Data
 // ============================================================================

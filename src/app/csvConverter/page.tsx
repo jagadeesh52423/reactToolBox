@@ -1,13 +1,11 @@
-'use client';
-
+import type { Metadata } from 'next';
 import CsvConverterTool from './components/CsvConverterTool';
 
-/**
- * CSV/JSON Converter Page
- *
- * Convert between CSV, JSON, and YAML formats with configurable
- * delimiters and a table view toggle.
- */
+export const metadata: Metadata = {
+  title: 'CSV Converter',
+  description: 'Convert between CSV, JSON, and YAML with configurable delimiters and a table view.',
+};
+
 export default function CsvConverterPage() {
     return <CsvConverterTool />;
 }

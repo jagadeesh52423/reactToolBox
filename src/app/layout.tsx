@@ -4,10 +4,34 @@ import { ThemeScript } from "@/components/ThemeScript";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import LayoutWrapper from "@/components/LayoutWrapper";
+import Footer from "@/components/common/Footer";
+import CookieConsent from "@/components/common/CookieConsent";
+import AnalyticsLoader from "@/components/common/AnalyticsLoader";
+import { SITE_NAME, SITE_URL } from "@/lib/seo";
+
+const DEFAULT_DESCRIPTION =
+  "A collection of fast, privacy-friendly developer tools — JSON, text, regex, color, diagrams, and more.";
 
 export const metadata: Metadata = {
-  title: "React ToolBox",
-  description: "Collection of useful developer tools",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
@@ -39,10 +63,10 @@ export default function RootLayout({
               </LayoutWrapper>
             </div>
 
-            <footer className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 text-center text-gray-500 dark:text-gray-400 text-sm bg-gray-50 dark:bg-gray-900">
-              &copy; {new Date().getFullYear()} React ToolBox
-            </footer>
+            <Footer />
           </div>
+          <CookieConsent />
+          <AnalyticsLoader />
         </ThemeProvider>
       </body>
     </html>

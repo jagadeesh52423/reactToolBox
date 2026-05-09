@@ -1,92 +1,164 @@
-# TEST REPORT — React ToolBox Improvements (Phases 1-3)
+# TEST REPORT — Feature Deploy Readiness (Smoke Test, TASK-4)
 
-**Verdict: PASSED**
+**Verdict: PASS-WITH-CAVEATS**
 
-**Test environment:** Local build + TypeScript compilation (static verification). No runtime server tested.
-
----
-
-## Test Scenarios
-
-### 1. Production Build (`npx next build`)
-**PASS** — Compiled successfully. All 20 routes generated as static pages. No errors or warnings.
-
-Key route verification:
-- `/mermaidEditor` — present (1.47 kB)
-- `/svgEditor` — present as redirect (141 B)
-- `/diceGame` — absent (expected)
-- `/about` — absent (expected)
-
-### 2. TypeScript Compilation (`npx tsc --noEmit`)
-**PASS** — Zero type errors across the entire codebase.
-
-### 3. Route Rename (svgEditor → mermaidEditor)
-**PASS**
-- `src/app/mermaidEditor/` exists with `page.tsx` and `components/`
-- `src/app/svgEditor/page.tsx` is a server-side redirect using `next/navigation` `redirect()`
-- No stale `/svgEditor` references found in `src/`
-
-### 4. Orphaned Pages Removed
-**PASS**
-- `src/app/diceGame/` — does not exist
-- `src/app/about/` — does not exist
-- No references to `/diceGame` or `/about` found in `src/`
-
-### 5. Per-Tool Icons Files Deleted
-**PASS** — All 4 deleted:
-- `src/app/jsonCompare/components/Icons.tsx` — gone
-- `src/app/jsonVisualizer/components/Icons.tsx` — gone
-- `src/app/htmlFormatter/components/Icons.tsx` — gone
-- `src/app/textUtilities/components/Icons.tsx` — gone
-- Zero remaining imports from old per-tool `Icons` paths
-
-### 6. Old ToastNotification Files Deleted
-**PASS** — Both deleted:
-- `src/app/jsonVisualizer/components/ToastNotification.tsx` — gone
-- `src/app/htmlFormatter/components/ToastNotification.tsx` — gone
-
-### 7. Shared Components & Hooks Created
-**PASS** — All present:
-- `src/components/common/ToastNotification.tsx`
-- `src/hooks/useToast.ts`
-- `src/hooks/useLocalStorage.ts`
-- `src/hooks/useKeyboardShortcut.ts`
-- `src/hooks/useFileIO.ts`
-- `src/hooks/useUrlState.ts`
-
-### 8. CSS Variable for Layout Height
-**PASS**
-- `--tool-content-height: calc(100vh - 140px)` defined in `globals.css:9`
-- Zero remaining `h-[calc(100vh-140px)]` hardcoded values in `src/`
-
-### 9. Monaco Dependency Removed
-**PASS** — `@monaco-editor/react` not found in `package.json`
-
-### 10. js-yaml Dependency Added
-**PASS** — `js-yaml: ^4.1.1` and `@types/js-yaml: ^4.0.9` present in `package.json`
+Tested by: tester (team feature-deploy-readiness)
+Scope: TypeScript safety, production build, runtime smoke test of all routes via curl on `npm run dev` (port 3012).
+Caveat: Interactive UI behaviors (button clicks, undo/redo, drag, file upload) are NOT tested here. Static HTML responses only — see "Manual QA Required" section.
 
 ---
 
-## Summary
+## 1. Static / Build Verification
 
-| # | Scenario | Result |
-|---|----------|--------|
-| 1 | Production build | PASS |
-| 2 | TypeScript compilation | PASS |
-| 3 | Route rename (mermaidEditor) | PASS |
-| 4 | Orphaned pages removed | PASS |
-| 5 | Per-tool Icons deleted | PASS |
-| 6 | Old toast files deleted | PASS |
-| 7 | Shared components/hooks created | PASS |
-| 8 | CSS variable substitution | PASS |
-| 9 | Monaco removed | PASS |
-| 10 | js-yaml added | PASS |
+| # | Check | Command | Result |
+|---|-------|---------|--------|
+| 1 | TypeScript safety | `npx tsc --noEmit` | **PASS** — zero diagnostics |
+| 2 | Production build | `npx next build` | **PASS** — exit 0, compiled successfully, 24/24 static pages generated, no errors, no warnings |
+
+### Build Route Table (21 app routes + `_not-found`)
+
+```
+○ /                       2.71 kB
+○ /_not-found             990 B
+○ /base64                 3.67 kB
+○ /colorPicker            7.22 kB
+○ /cronParser             6.58 kB
+○ /csvConverter           17.1 kB
+○ /htmlFormatter          10.4 kB
+○ /jsonCompare            12.9 kB
+○ /jsonVisualizer         1.47 kB
+○ /markdownPreview        15.2 kB
+○ /mermaidEditor          1.48 kB
+○ /privacy                148 B
+○ /regexTester            4.63 kB
+○ /robots.txt             0 B
+○ /sitemap.xml            0 B
+○ /svgEditor              148 B   (legacy 307 redirect → /mermaidEditor)
+○ /terms                  148 B
+○ /textCompare            5.22 kB
+○ /textUtilities          7.04 kB
+○ /timestampConverter     4.02 kB
+○ /uuidGenerator          4.17 kB
+```
+
+All marked `○ (Static)` — fully prerendered, ideal for static hosting.
+
+---
+
+## 2. Runtime Smoke Test (curl against `localhost:3012`)
+
+Server started via `npm run dev` (Next 15.1.6, Turbopack). "Ready in 751 ms". No server-side errors logged during the smoke run. Server killed cleanly after tests.
+
+### 2a. Required Routes — Status + Content Marker
+
+| Route | HTTP | Marker | Result |
+|-------|------|--------|--------|
+| `/` | 200 | "React Toolbox" present | **PASS** |
+| `/robots.txt` | 200 | contains `Sitemap:` line | **PASS** |
+| `/sitemap.xml` | 200 | contains `<urlset>` and **17** `<url>` entries | **PASS** |
+| `/privacy` | 200 | contains "Privacy" | **PASS** |
+| `/terms` | 200 | contains "Terms" | **PASS** |
+| `/base64` | 200 | renders | **PASS** |
+| `/colorPicker` | 200 | renders | **PASS** |
+| `/cronParser` | 200 | renders | **PASS** |
+| `/csvConverter` | 200 | renders | **PASS** |
+| `/htmlFormatter` | 200 | renders | **PASS** |
+| `/jsonCompare` | 200 | renders | **PASS** |
+| `/jsonVisualizer` | 200 | renders | **PASS** |
+| `/markdownPreview` | 200 | renders | **PASS** |
+| `/mermaidEditor` | 200 | renders | **PASS** |
+| `/regexTester` | 200 | renders | **PASS** |
+| `/textCompare` | 200 | renders | **PASS** |
+| `/textUtilities` | 200 | renders | **PASS** |
+| `/timestampConverter` | 200 | renders | **PASS** |
+| `/uuidGenerator` | 200 | renders | **PASS** |
+
+### 2b. Bonus Route
+
+| Route | HTTP | Notes |
+|-------|------|-------|
+| `/svgEditor` | 307 → `/mermaidEditor` | **PASS** (legacy redirect, intentional) |
+
+No HTML response contained `Application error`, `Internal Server Error`, `Unhandled`, or `TypeError` markers.
+
+---
+
+## 3. SEO / Metadata Spot-Checks
+
+### Per-route `<title>` from `metadata` export — verified rendered
+| Route | Rendered `<title>` |
+|-------|-------------------|
+| `/` | `React Toolbox — Developer Tools for JSON, Text, Regex & More` |
+| `/jsonVisualizer` | `JSON Visualizer | React Toolbox` |
+| `/base64` | `Base64 Codec | React Toolbox` |
+| `/mermaidEditor` | `Mermaid Editor | React Toolbox` |
+| `/privacy` | `Privacy Policy | React Toolbox` |
+| `/terms` | `Terms of Use | React Toolbox` |
+
+Per-route metadata is correctly emitted by Next.js — **PASS**.
+
+### `robots.txt` content
+```
+User-Agent: *
+Allow: /
+
+Sitemap: https://localhost:3012/sitemap.xml
+```
+Format correct. ⚠ Note: in dev the `Sitemap:` URL reflects the request host (`localhost:3012`); in production this will resolve to the real domain via the configured site URL. Verify `NEXT_PUBLIC_SITE_URL` (or equivalent) is set correctly in deploy env before launch.
+
+### `sitemap.xml`
+- 1 `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`
+- **17 `<url>` entries** (meets the ≥17 requirement)
+- Closes with `</urlset>`
+
+---
+
+## 4. Footer Wiring (home page)
+
+Curled `/` and grepped:
+- `href="/privacy"` — **1 match** (PASS)
+- `href="/terms"` — **1 match** (PASS)
+
+Footer is rendered server-side and links to both legal pages.
+
+---
+
+## 5. Summary Table
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | `tsc --noEmit` clean | PASS |
+| 2 | `next build` clean (24/24 static pages) | PASS |
+| 3 | All 19 required routes return 200 | PASS |
+| 4 | `/svgEditor` 307→`/mermaidEditor` | PASS |
+| 5 | `robots.txt` valid + has `Sitemap:` | PASS |
+| 6 | `sitemap.xml` has `<urlset>` + 17 `<url>` | PASS |
+| 7 | Per-route `<title>` from metadata renders | PASS |
+| 8 | Home page links to `/privacy` and `/terms` | PASS |
+| 9 | No runtime server errors during smoke run | PASS |
+| 10 | No `Application error` markers in any HTML | PASS |
 
 **10/10 scenarios passed.**
 
 ---
 
-## Notes
+## 6. Manual QA Required Before Deploy (NOT covered by this report)
 
-- **Runtime testing not performed.** This report covers build verification, type safety, and file structure validation. For full confidence, manual or automated browser testing should verify UI functionality (sidebar search, keyboard shortcuts, localStorage persistence, URL params, cron parser 6/7 fields, download buttons).
-- Code review (CODE_REVIEW.md) was APPROVED with no blocking issues prior to this test.
+The smoke test only verifies that pages render server-side without errors and ship correct metadata. The following must be exercised in a real browser before considering this deploy-ready:
+
+1. **jsonVisualizer interactive behavior** (TASK-1 fixes) — *static verification only via curl*
+   - Click "+" / add buttons → tree updates
+   - Undo / redo after add and after remove
+   - Edit a key/value → state propagates
+   - Verify the prop-threading bugs from CODE_REVIEW.md are gone in the live UI
+2. **CookieConsent banner** — appears on first visit, dismisses, persists in `localStorage`, gates analytics loader
+3. **AnalyticsLoader / lib/analytics** — verify it does NOT call analytics endpoints before consent is granted (open devtools network tab)
+4. **Sidebar search + keyboard shortcuts** across tools
+5. **Footer links** open `/privacy` and `/terms` correctly in client-side navigation
+6. **Production env vars** — confirm site URL is configured so `robots.txt` and `sitemap.xml` emit the real domain (not `localhost`)
+
+---
+
+## 7. Verdict
+
+**PASS-WITH-CAVEATS** — All static, build, type, and HTTP-level checks pass. Safe to proceed to TASK-5 (final holistic code review). **Browser-driven manual QA of jsonVisualizer interactivity, cookie consent, and analytics gating is required before the final deploy** — recommend the team-lead schedule a 15-min manual run-through, or add Playwright in a follow-up.
