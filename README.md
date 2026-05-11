@@ -68,6 +68,48 @@ Convert text between different case formats:
 - **Multiple Cases**: camelCase, PascalCase, snake_case, kebab-case, and more
 - **Bulk Processing**: Convert large amounts of text at once
 
+### 🔐 **Base64 Codec**
+Encode and decode Base64 text and files:
+- **Text Mode**: Encode/decode arbitrary text to/from Base64
+- **File Mode**: Drag-and-drop file encoding
+- **Copy & Download**: One-click copy or download results
+
+### ⏰ **Cron Parser**
+Parse and debug cron expressions:
+- **Expression Breakdown**: Human-readable explanation of each field
+- **Next Runs Preview**: See upcoming scheduled execution times
+- **Validation**: Instant feedback on invalid expressions
+
+### 📋 **CSV Converter**
+Convert between CSV, JSON, and YAML:
+- **Configurable Delimiters**: Comma, tab, pipe, and custom separators
+- **Table Preview**: View parsed data in a sortable table
+- **Multi-format Output**: Export as JSON, YAML, or reformatted CSV
+
+### 📝 **Markdown Preview**
+Live Markdown editor with instant preview:
+- **Split Pane**: Side-by-side editing and rendered output
+- **GitHub-Flavored Markdown**: Tables, task lists, syntax highlighting
+- **Export**: Download rendered HTML
+
+### 🔍 **Regex Tester**
+Test and debug regular expressions:
+- **Live Matching**: Highlight matches in real-time as you type
+- **Capture Groups**: Inspect named and numbered capture groups
+- **Flag Controls**: Toggle global, case-insensitive, multiline flags
+
+### 🕐 **Timestamp Converter**
+Convert between Unix timestamps and human-readable dates:
+- **Bidirectional**: Unix epoch to date and date to epoch
+- **Multiple Formats**: Seconds, milliseconds, ISO 8601
+- **Timezone Support**: View conversions in different timezones
+
+### 🆔 **UUID Generator**
+Generate unique identifiers in bulk:
+- **Multiple Formats**: UUID v4, nanoid, MongoDB ObjectId-style
+- **Bulk Generation**: Generate many IDs at once
+- **Copy to Clipboard**: One-click copy for each generated ID
+
 ## 🛠️ Technology Stack
 
 - **Framework**: [Next.js 14](https://nextjs.org/) with App Router
@@ -122,14 +164,21 @@ Convert text between different case formats:
 ```
 src/
 ├── app/                          # Next.js App Router pages
-│   ├── colorPicker/             # Color Picker tool
-│   ├── htmlFormatter/           # HTML Formatter tool
-│   ├── jsonCompare/             # JSON Compare tool
-│   ├── jsonVisualizer/          # JSON Visualizer tool
-│   ├── svgEditor/               # Mermaid Editor (SVG diagrams)
-│   ├── textCompare/             # Text Compare tool
-│   ├── textUtilities/           # Text Utilities collection
-│   └── textCase/                # Text Case Converter
+│   ├── base64/                  # Base64 Codec
+│   ├── colorPicker/             # Color Picker
+│   ├── cronParser/              # Cron Parser
+│   ├── csvConverter/            # CSV Converter
+│   ├── htmlFormatter/           # HTML Formatter
+│   ├── jsonCompare/             # JSON Compare
+│   ├── jsonVisualizer/          # JSON Visualizer
+│   ├── markdownPreview/         # Markdown Preview
+│   ├── mermaidEditor/           # Mermaid Diagram Editor
+│   ├── regexTester/             # Regex Tester
+│   ├── svgEditor/               # SVG Editor
+│   ├── textCompare/             # Text Compare
+│   ├── textUtilities/           # Text Utilities
+│   ├── timestampConverter/      # Timestamp Converter
+│   └── uuidGenerator/           # UUID Generator
 ├── components/                  # Shared React components
 │   └── ToolsNavigation.tsx      # Main navigation component
 └── globals.css                  # Global styles
