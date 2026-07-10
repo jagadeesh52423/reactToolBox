@@ -8,8 +8,26 @@ export type InlineDiffResult = {
   right: InlineDiffSegment[];
 };
 
+// Cap on the LCS DP table size (tokensLeft * tokensRight). Beyond this the O(n*m) table
+// becomes multi-second/OOM on large primitive values diffed synchronously on the render thread.
+const MAX_LCS_CELLS = 1_000_000;
+
 const tokenize = (s: string): string[] =>
   s.split(/(\s+|[^\w\s])/).filter((t) => t.length > 0);
+
+const commonPrefixLength = (a: string[], b: string[]): number => {
+  const max = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < max && a[i] === b[i]) i++;
+  return i;
+};
+
+const commonSuffixLength = (a: string[], b: string[], prefixLength: number): number => {
+  const max = Math.min(a.length, b.length) - prefixLength;
+  let i = 0;
+  while (i < max && a[a.length - 1 - i] === b[b.length - 1 - i]) i++;
+  return i;
+};
 
 const computeLCS = (a: string[], b: string[]): number[][] => {
   const m = a.length;
@@ -36,9 +54,13 @@ const mergeSegments = (segments: InlineDiffSegment[]): InlineDiffSegment[] => {
   return merged;
 };
 
-export const computeInlineDiff = (left: string, right: string): InlineDiffResult => {
-  const leftTokens = tokenize(left);
-  const rightTokens = tokenize(right);
+const toUnchangedSegments = (tokens: string[]): InlineDiffSegment[] =>
+  tokens.map((text) => ({ text, changed: false }));
+
+const diffTokenArrays = (
+  leftTokens: string[],
+  rightTokens: string[]
+): { left: InlineDiffSegment[]; right: InlineDiffSegment[] } => {
   const dp = computeLCS(leftTokens, rightTokens);
 
   const leftOut: InlineDiffSegment[] = [];
@@ -60,6 +82,40 @@ export const computeInlineDiff = (left: string, right: string): InlineDiffResult
       i--;
     }
   }
+
+  return { left: leftOut, right: rightOut };
+};
+
+export const computeInlineDiff = (left: string, right: string): InlineDiffResult => {
+  const leftTokens = tokenize(left);
+  const rightTokens = tokenize(right);
+
+  const prefixLength = commonPrefixLength(leftTokens, rightTokens);
+  const suffixLength = commonSuffixLength(leftTokens, rightTokens, prefixLength);
+
+  const prefixTokens = leftTokens.slice(0, prefixLength);
+  const suffixTokens = leftTokens.slice(leftTokens.length - suffixLength);
+
+  const leftMiddle = leftTokens.slice(prefixLength, leftTokens.length - suffixLength);
+  const rightMiddle = rightTokens.slice(prefixLength, rightTokens.length - suffixLength);
+
+  let leftMiddleOut: InlineDiffSegment[];
+  let rightMiddleOut: InlineDiffSegment[];
+
+  if (leftMiddle.length === 0 && rightMiddle.length === 0) {
+    leftMiddleOut = [];
+    rightMiddleOut = [];
+  } else if (leftMiddle.length * rightMiddle.length > MAX_LCS_CELLS) {
+    leftMiddleOut = leftMiddle.length > 0 ? [{ text: leftMiddle.join(''), changed: true }] : [];
+    rightMiddleOut = rightMiddle.length > 0 ? [{ text: rightMiddle.join(''), changed: true }] : [];
+  } else {
+    const middleDiff = diffTokenArrays(leftMiddle, rightMiddle);
+    leftMiddleOut = middleDiff.left;
+    rightMiddleOut = middleDiff.right;
+  }
+
+  const leftOut = [...toUnchangedSegments(prefixTokens), ...leftMiddleOut, ...toUnchangedSegments(suffixTokens)];
+  const rightOut = [...toUnchangedSegments(prefixTokens), ...rightMiddleOut, ...toUnchangedSegments(suffixTokens)];
 
   return { left: mergeSegments(leftOut), right: mergeSegments(rightOut) };
 };

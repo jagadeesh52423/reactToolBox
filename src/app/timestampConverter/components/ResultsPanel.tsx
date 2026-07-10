@@ -5,9 +5,18 @@ import PanelHeader from '@/components/common/PanelHeader';
 import { useFileIO } from '@/hooks/useFileIO';
 import { DownloadIcon } from '@/components/shared/Icons';
 import { ConversionResult } from '../utils/timestampUtils';
+import MultiTimezonePanel from './MultiTimezonePanel';
+import CustomFormatPanel from './CustomFormatPanel';
 
 interface ResultsPanelProps {
   conversions: ConversionResult[];
+  parsedDate: Date | null;
+  timezone: string;
+  multiTimezones: string[];
+  onAddTimezone: (tz: string) => void;
+  onRemoveTimezone: (tz: string) => void;
+  customFormat: string;
+  onCustomFormatChange: (value: string) => void;
 }
 
 /**
@@ -17,7 +26,16 @@ interface ResultsPanelProps {
  * Each card shows a label, value, and a copy-to-clipboard button
  * with brief visual feedback.
  */
-export default function ResultsPanel({ conversions }: ResultsPanelProps) {
+export default function ResultsPanel({
+  conversions,
+  parsedDate,
+  timezone,
+  multiTimezones,
+  onAddTimezone,
+  onRemoveTimezone,
+  customFormat,
+  onCustomFormatChange,
+}: ResultsPanelProps) {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const { downloadFile } = useFileIO();
 
@@ -104,6 +122,23 @@ export default function ResultsPanel({ conversions }: ResultsPanelProps) {
               </div>
             ))}
           </div>
+        )}
+
+        {conversions.length > 0 && (
+          <>
+            <MultiTimezonePanel
+              parsedDate={parsedDate}
+              timezones={multiTimezones}
+              onAdd={onAddTimezone}
+              onRemove={onRemoveTimezone}
+            />
+            <CustomFormatPanel
+              parsedDate={parsedDate}
+              timezone={timezone}
+              format={customFormat}
+              onFormatChange={onCustomFormatChange}
+            />
+          </>
         )}
       </div>
     </div>

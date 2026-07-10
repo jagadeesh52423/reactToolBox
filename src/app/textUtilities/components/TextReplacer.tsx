@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import CodeEditor from '@/components/common/CodeEditor';
+import { escapeRegExp } from '../utils/textUtils';
 import {
   CopyIcon,
   TrashIcon,
@@ -177,7 +178,8 @@ const TextReplacer: React.FC<ReplacerProps> = ({ inputText, onInputChange }) => 
     }
   }, [parseTokens, tokenFormat]);
 
-  // Perform replacement (always regex mode)
+  // Perform replacement. Each pair's isRegex flag controls whether `search` is treated
+  // as a regex pattern or escaped for literal matching (default: literal).
   const performReplacement = useCallback(() => {
     let result = inputText;
     let totalMatches = 0;
@@ -189,9 +191,10 @@ const TextReplacer: React.FC<ReplacerProps> = ({ inputText, onInputChange }) => 
       for (const pair of enabledPairs) {
         const flags = caseSensitive ? 'g' : 'gi';
         let searchPattern: RegExp;
+        const patternSource = pair.isRegex ? pair.search : escapeRegExp(pair.search);
 
         try {
-          searchPattern = new RegExp(pair.search, flags);
+          searchPattern = new RegExp(patternSource, flags);
         } catch (regexError) {
           setError(`Invalid regex pattern "${pair.search}": ${regexError instanceof Error ? regexError.message : 'Unknown error'}`);
           return;
@@ -431,7 +434,7 @@ const TextReplacer: React.FC<ReplacerProps> = ({ inputText, onInputChange }) => 
           </select>
         </div>
         <div className="text-xs text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
-          Regex mode enabled - Use $1, $2 for backreferences
+          Per-pair Regex toggle below - regex patterns support $1, $2 backreferences
         </div>
       </div>
 
@@ -571,8 +574,21 @@ const TextReplacer: React.FC<ReplacerProps> = ({ inputText, onInputChange }) => 
                         type="checkbox"
                         checked={pair.enabled}
                         onChange={(e) => updateReplacementPair(pair.id, 'enabled', e.target.checked)}
+                        title="Enable this replacement pair"
                         className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
                       />
+                      <label
+                        className="flex items-center gap-1 flex-shrink-0 text-[10px] font-medium text-gray-500 dark:text-slate-400 cursor-pointer select-none"
+                        title="Treat Search as a regex pattern instead of literal text"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={pair.isRegex}
+                          onChange={(e) => updateReplacementPair(pair.id, 'isRegex', e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>.*</span>
+                      </label>
                       <input
                         type="text"
                         value={pair.search}

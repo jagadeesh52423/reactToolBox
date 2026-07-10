@@ -358,21 +358,37 @@ const MermaidEditor: React.FC = () => {
   const renderCounterRef = useRef(0);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [monacoTheme, setMonacoTheme] = useState('mermaid-light');
+  const [isSiteDarkMode, setIsSiteDarkMode] = useState(false);
+  const [hasCustomBgColor, setHasCustomBgColor] = useState(false);
 
   // Get current theme - memoized to avoid new object reference every render
   const currentTheme = useMemo(() => getThemeById(selectedThemeId) || CUSTOM_THEMES[0], [selectedThemeId]);
 
-  // Detect dark mode and switch Monaco theme
+  // Detect the app's dark/light theme and switch the Monaco editor theme to match
   useEffect(() => {
     const html = document.documentElement;
     const updateTheme = () => {
-      setMonacoTheme(html.classList.contains('dark') ? 'mermaid-dark' : 'mermaid-light');
+      const isDark = html.classList.contains('dark');
+      setMonacoTheme(isDark ? 'mermaid-dark' : 'mermaid-light');
+      setIsSiteDarkMode(isDark);
     };
     updateTheme();
     const observer = new MutationObserver(updateTheme);
     observer.observe(html, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+
+  // When still on the default preset (untouched by the user), follow the app's theme:
+  // use Mermaid's built-in 'dark' theme and a dark canvas background in dark mode.
+  const effectiveMermaidTheme = selectedThemeId === 'built-in-default'
+    ? (isSiteDarkMode ? 'dark' : 'default')
+    : (currentTheme.mermaidTheme || 'base');
+
+  useEffect(() => {
+    if (selectedThemeId === 'built-in-default' && !hasCustomBgColor) {
+      setDiagramBgColor(isSiteDarkMode ? '#1e1e1e' : '#ffffff');
+    }
+  }, [isSiteDarkMode, selectedThemeId, hasCustomBgColor]);
 
   const handleEditorMount: OnMount = (monacoEditor) => {
     editorRef.current = monacoEditor;
@@ -386,10 +402,12 @@ const MermaidEditor: React.FC = () => {
   // Handle theme selection
   const handleThemeSelect = useCallback((theme: CustomTheme) => {
     setSelectedThemeId(theme.id);
+    setHasCustomBgColor(false);
 
     // Auto-set suggested background color if theme has one
     if (theme.suggestedBgColor) {
       setDiagramBgColor(theme.suggestedBgColor);
+      setHasCustomBgColor(true);
     }
   }, [setSelectedThemeId]);
 
@@ -400,7 +418,7 @@ const MermaidEditor: React.FC = () => {
         const m = await getMermaid();
         const config: any = {
           startOnLoad: false,
-          theme: currentTheme.mermaidTheme || 'base',
+          theme: effectiveMermaidTheme,
           securityLevel: 'loose',
           er: { useMaxWidth: false },
           flowchart: {
@@ -430,8 +448,9 @@ const MermaidEditor: React.FC = () => {
     };
     initMermaid();
     // currentTheme is derived from selectedThemeId (getThemeById(selectedThemeId))
-    // so it changes whenever selectedThemeId changes - we include it to satisfy React hooks rules
-  }, [selectedThemeId, currentTheme]);
+    // so it changes whenever selectedThemeId changes - we include it to satisfy React hooks rules.
+    // effectiveMermaidTheme also depends on isSiteDarkMode, so toggling the app theme re-renders too.
+  }, [selectedThemeId, currentTheme, effectiveMermaidTheme]);
 
   // Auto-render diagram on code change
   useEffect(() => {
@@ -1230,7 +1249,7 @@ const MermaidEditor: React.FC = () => {
             <input
               type="color"
               value={diagramBgColor}
-              onChange={(e) => setDiagramBgColor(e.target.value)}
+              onChange={(e) => { setDiagramBgColor(e.target.value); setHasCustomBgColor(true); }}
               className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
               title="Diagram Background Color"
             />

@@ -24,6 +24,8 @@ export interface DiffLine {
 export interface DiffResult {
   left: DiffLine[];
   right: DiffLine[];
+  /** Set when the algorithm fell back to a degraded comparison (e.g. inputs too large to align precisely). */
+  notice?: string;
 }
 
 /**
@@ -67,3 +69,8 @@ export interface DiffOptions {
   ignoreCase?: boolean;
   contextLines?: number;
 }
+
+/**
+ * Diff result layout: two columns side by side, or a single unified column.
+ */
+export type DiffViewMode = 'side-by-side' | 'unified';

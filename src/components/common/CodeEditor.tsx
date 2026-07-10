@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback, useMemo } from 'react';
+import React, { useRef, useCallback, useMemo, forwardRef } from 'react';
 
 interface CodeEditorProps {
   value: string;
@@ -8,6 +8,7 @@ interface CodeEditorProps {
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  onScroll?: (event: React.UIEvent<HTMLTextAreaElement>) => void;
 }
 
 /**
@@ -15,16 +16,27 @@ interface CodeEditorProps {
  *
  * Reusable code editor with line numbers and syntax highlighting support.
  * Used across different tools for consistent editing experience.
+ * Forwards its ref to the underlying textarea for callers that need DOM access
+ * (e.g. cursor-driven insertions, scroll sync).
  */
-export default function CodeEditor({
-  value,
-  onChange,
-  placeholder = 'Enter code here...',
-  className = '',
-  readOnly = false
-}: CodeEditorProps) {
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+const CodeEditor = forwardRef<HTMLTextAreaElement, CodeEditorProps>(function CodeEditor(
+  { value, onChange, placeholder = 'Enter code here...', className = '', readOnly = false, onScroll },
+  forwardedRef
+) {
+  const internalRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  const setTextareaRef = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      internalRef.current = node;
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(node);
+      } else if (forwardedRef) {
+        forwardedRef.current = node;
+      }
+    },
+    [forwardedRef]
+  );
 
   // Calculate line numbers
   const lineCount = value.split('\n').length;
@@ -34,11 +46,15 @@ export default function CodeEditor({
   );
 
   // Sync scroll between line numbers and textarea
-  const handleScroll = useCallback(() => {
-    if (editorRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = editorRef.current.scrollTop;
-    }
-  }, []);
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLTextAreaElement>) => {
+      if (internalRef.current && lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = internalRef.current.scrollTop;
+      }
+      onScroll?.(event);
+    },
+    [onScroll]
+  );
 
   return (
     <div className={`h-full w-full flex overflow-hidden ${className}`}>
@@ -63,7 +79,7 @@ export default function CodeEditor({
 
       {/* Code Editor Textarea */}
       <textarea
-        ref={editorRef}
+        ref={setTextareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onScroll={handleScroll}
@@ -78,4 +94,6 @@ export default function CodeEditor({
       />
     </div>
   );
-}
+});
+
+export default CodeEditor;

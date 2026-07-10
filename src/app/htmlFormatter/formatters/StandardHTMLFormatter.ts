@@ -9,6 +9,7 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
   private indentLevel: number = 0;
   private indent: string = '';
   private result: string = '';
+  private resultEndsWithNewline: boolean = true;
   private tokens: HTMLToken[] = [];
   private currentIndex: number = 0;
 
@@ -32,7 +33,32 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
   private reset(): void {
     this.indentLevel = 0;
     this.result = '';
+    this.resultEndsWithNewline = true;
     this.currentIndex = 0;
+  }
+
+  /**
+   * Appends to the result buffer, tracking whether it now ends with a newline by
+   * checking only the (small) appended chunk rather than re-scanning the whole
+   * accumulated result string on every write (which forces V8 to flatten the
+   * underlying rope-like string on each check and is quadratic for large documents).
+   */
+  private append(text: string): void {
+    if (!text) return;
+    this.result += text;
+    this.resultEndsWithNewline = text.endsWith('\n');
+  }
+
+  /**
+   * Appends inline content (tag or text), indenting it first only if it's the very
+   * first thing on a fresh line (e.g. an inline element that's the first child of a
+   * block). Content continuing an already-started line is appended as-is, unchanged.
+   */
+  private appendInline(text: string): void {
+    if (this.resultEndsWithNewline) {
+      this.append(this.getIndentation());
+    }
+    this.append(text);
   }
 
   private processToken(token: HTMLToken, options: FormatOptions): void {
@@ -59,31 +85,34 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
         this.handleRawText(token, options);
         break;
       default:
-        this.result += token.content;
+        this.append(token.content);
     }
   }
 
   private handleDoctype(token: HTMLToken): void {
-    this.result += token.content + '\n';
+    this.append(token.content + '\n');
   }
 
   private handleComment(token: HTMLToken): void {
-    this.result += this.getIndentation() + token.content + '\n';
+    this.ensureNewLine();
+    this.append(this.getIndentation() + token.content + '\n');
   }
 
   private handleOpenTag(token: HTMLToken): void {
     if (token.displayType === TagDisplayType.INLINE) {
-      this.result += token.content;
+      this.appendInline(token.content);
     } else {
+      this.ensureNewLine();
+
       // Check if this block element contains only inline content
       const hasOnlyInlineContent = this.hasOnlyInlineContent(this.currentIndex);
 
       if (hasOnlyInlineContent) {
         // Keep on same line, don't add newline or increase indent
-        this.result += this.getIndentation() + token.content;
+        this.append(this.getIndentation() + token.content);
       } else {
         // Normal block formatting
-        this.result += this.getIndentation() + token.content + '\n';
+        this.append(this.getIndentation() + token.content + '\n');
         this.indentLevel++;
       }
     }
@@ -91,7 +120,7 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
 
   private handleCloseTag(token: HTMLToken): void {
     if (token.displayType === TagDisplayType.INLINE) {
-      this.result += token.content;
+      this.appendInline(token.content);
     } else {
       // Check if the previous opening tag had only inline content
       const openingIndex = this.findMatchingOpenTag(this.currentIndex, token.tagName || '');
@@ -99,20 +128,22 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
 
       if (hadOnlyInlineContent) {
         // Close on same line
-        this.result += token.content + '\n';
+        this.append(token.content + '\n');
       } else {
         // Normal block formatting
+        this.ensureNewLine();
         this.indentLevel = Math.max(0, this.indentLevel - 1);
-        this.result += this.getIndentation() + token.content + '\n';
+        this.append(this.getIndentation() + token.content + '\n');
       }
     }
   }
 
   private handleSelfClosingTag(token: HTMLToken): void {
     if (token.displayType === TagDisplayType.INLINE) {
-      this.result += token.content;
+      this.appendInline(token.content);
     } else {
-      this.result += this.getIndentation() + token.content + '\n';
+      this.ensureNewLine();
+      this.append(this.getIndentation() + token.content + '\n');
     }
   }
 
@@ -138,10 +169,10 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
 
     if (inInlineOnlyBlock || inInlineContext || isSimpleBlockContent) {
       // Keep inline - don't add indentation or newlines
-      this.result += token.content;
+      this.appendInline(token.content);
     } else {
       // Add as a separate line with indentation
-      this.result += this.getIndentation() + trimmedContent + '\n';
+      this.append(this.getIndentation() + trimmedContent + '\n');
     }
   }
 
@@ -159,7 +190,7 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
 
     if (isSingleLine) {
       // Keep on same line as opening tag
-      this.result += trimmedContent;
+      this.append(trimmedContent);
       return;
     }
 
@@ -188,16 +219,12 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
     });
 
     // Add newline before content if not already present
-    if (!this.result.endsWith('\n')) {
-      this.result += '\n';
-    }
+    this.ensureNewLine();
 
-    this.result += reindentedLines.join('\n');
+    this.append(reindentedLines.join('\n'));
 
     // Ensure we end with a newline
-    if (!this.result.endsWith('\n')) {
-      this.result += '\n';
-    }
+    this.ensureNewLine();
   }
 
   private isInInlineContext(): boolean {
@@ -240,6 +267,16 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
   }
 
   /**
+   * A block-level element always starts its own line; this guards against gluing
+   * onto whatever inline content the previous sibling left on the current line.
+   */
+  private ensureNewLine(): void {
+    if (this.result.length > 0 && !this.resultEndsWithNewline) {
+      this.append('\n');
+    }
+  }
+
+  /**
    * Checks if a block element (at the given index) contains only inline content
    * This helps us determine if we should keep everything on one line
    */
@@ -262,11 +299,22 @@ export class StandardHTMLFormatter implements IHTMLFormatter {
             // Check all tokens between open and close
             for (let j = openTagIndex + 1; j < i; j++) {
               const innerToken = this.tokens[j];
-              // If we find any block element, return false
+              // If we find any block-level element, return false
+              if (innerToken.displayType === TagDisplayType.BLOCK && innerToken.type === TokenType.TAG_OPEN) {
+                return false;
+              }
+              // Self-closing void elements (<br>/<img>/<input>) always render on their
+              // own line (see handleSelfClosingTag), so they disqualify compact mode too
+              // — unless it's a normally-inline tag written with self-closing syntax
+              // (e.g. <span/>), which genuinely stays inline.
               if (
-                innerToken.displayType === TagDisplayType.BLOCK &&
-                innerToken.type === TokenType.TAG_OPEN
+                innerToken.type === TokenType.TAG_SELF_CLOSING &&
+                innerToken.displayType !== TagDisplayType.INLINE
               ) {
+                return false;
+              }
+              // Comments always force normal (non-compact) block formatting
+              if (innerToken.type === TokenType.COMMENT) {
                 return false;
               }
               // If we find RAW_TEXT with multiple lines, treat as block

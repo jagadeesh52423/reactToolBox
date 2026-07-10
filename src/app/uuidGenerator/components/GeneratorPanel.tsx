@@ -15,10 +15,14 @@ interface GeneratorPanelProps {
 }
 
 const ID_TYPES: { value: IdType; label: string; description: string }[] = [
+  { value: 'uuid-v1', label: 'UUID v1', description: 'Timestamp-based (RFC 4122); node ID is randomized, not a real MAC address' },
   { value: 'uuid-v4', label: 'UUID v4', description: 'Standard RFC 4122 UUID using crypto.randomUUID()' },
+  { value: 'uuid-v7', label: 'UUID v7', description: 'Time-ordered (RFC 9562): unix-ms timestamp + random bits' },
   { value: 'nanoid', label: 'Nano ID', description: 'URL-safe 21-character ID (A-Za-z0-9_-)' },
   { value: 'objectid', label: 'ObjectId', description: 'MongoDB-style 24-character hex string' },
 ];
+
+const UUID_VARIANTS: ReadonlySet<IdType> = new Set(['uuid-v1', 'uuid-v4', 'uuid-v7']);
 
 /**
  * GeneratorPanel Component
@@ -74,10 +78,10 @@ export default function GeneratorPanel({
             Format Options
           </label>
           <div className="space-y-3">
-            {/* Hyphens Toggle - only relevant for UUID */}
+            {/* Hyphens Toggle - only relevant for UUID variants */}
             <label
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors ${
-                idType === 'uuid-v4'
+                UUID_VARIANTS.has(idType)
                   ? 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50'
                   : 'border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/30 opacity-50'
               }`}
@@ -85,7 +89,7 @@ export default function GeneratorPanel({
               <input
                 type="checkbox"
                 checked={format.hyphens}
-                disabled={idType !== 'uuid-v4'}
+                disabled={!UUID_VARIANTS.has(idType)}
                 onChange={(e) => onFormatChange({ ...format, hyphens: e.target.checked })}
                 className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-slate-600 focus:ring-blue-500"
                 aria-label="Include hyphens in UUID"

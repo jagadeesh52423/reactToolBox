@@ -37,10 +37,12 @@ const ColorPickerToolRefactored: React.FC = () => {
     rgb,
     hsl,
     hsv,
+    alpha,
     updateHex,
     updateRgb,
     updateHsl,
     updateHsv,
+    updateAlpha,
     setHsv,
     generateRandom,
     useEyedropper,
@@ -74,6 +76,7 @@ const ColorPickerToolRefactored: React.FC = () => {
             {/* Color Preview */}
             <ColorPreview
               hex={hex}
+              alpha={alpha}
               onSaveToHistory={saveToHistory}
               onRandomColor={generateRandom}
               onEyedropper={useEyedropper}
@@ -138,13 +141,15 @@ const ColorPickerToolRefactored: React.FC = () => {
                     rgb={rgb}
                     hsl={hsl}
                     hsv={hsv}
+                    alpha={alpha}
                     onHexChange={updateHex}
                     onRgbChange={updateRgb}
                     onHslChange={updateHsl}
                     onHsvChange={updateHsv}
+                    onAlphaChange={updateAlpha}
                   />
 
-                  <ColorSliders rgb={rgb} onRgbChange={updateRgb} />
+                  <ColorSliders rgb={rgb} onRgbChange={updateRgb} alpha={alpha} onAlphaChange={updateAlpha} />
                 </div>
               )}
 

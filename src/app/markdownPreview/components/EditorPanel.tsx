@@ -1,20 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { RefObject } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
 import CodeEditor from '@/components/common/CodeEditor';
+import MarkdownToolbar from './MarkdownToolbar';
 
 interface EditorPanelProps {
     markdown: string;
     onMarkdownChange: (value: string) => void;
     onToggleVisibility: () => void;
     onClear: () => void;
+    textareaRef: RefObject<HTMLTextAreaElement | null>;
+    onEditorScroll: () => void;
 }
 
 /**
  * EditorPanel Component
  *
- * Left panel containing the markdown editor with CodeEditor,
+ * Left panel containing the markdown editor with CodeEditor, a formatting toolbar,
  * a toggle visibility button, and a clear button in the header.
  */
 export default function EditorPanel({
@@ -22,6 +25,8 @@ export default function EditorPanel({
     onMarkdownChange,
     onToggleVisibility,
     onClear,
+    textareaRef,
+    onEditorScroll,
 }: EditorPanelProps) {
     return (
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col h-full">
@@ -44,10 +49,14 @@ export default function EditorPanel({
                 </button>
             </PanelHeader>
 
+            <MarkdownToolbar textareaRef={textareaRef} onChange={onMarkdownChange} />
+
             <div className="flex-1 overflow-hidden min-h-0">
                 <CodeEditor
+                    ref={textareaRef}
                     value={markdown}
                     onChange={onMarkdownChange}
+                    onScroll={onEditorScroll}
                     placeholder="Enter markdown here..."
                 />
             </div>

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
 import { useFileIO } from '@/hooks/useFileIO';
 import { DownloadIcon } from '@/components/shared/Icons';
+import { getTimezones } from '@/lib/timezones';
 import { formatRunDate, CronFieldCount } from '../utils/cronUtils';
 
 interface CronResultsPanelProps {
@@ -13,6 +14,8 @@ interface CronResultsPanelProps {
   expression: string;
   error: string | null;
   fieldCount: CronFieldCount;
+  timezone: string;
+  onTimezoneChange: (tz: string) => void;
 }
 
 /**
@@ -28,22 +31,32 @@ export default function CronResultsPanel({
   expression,
   error,
   fieldCount,
+  timezone,
+  onTimezoneChange,
 }: CronResultsPanelProps) {
   const hasExpression = expression.trim().length > 0;
   const showSeconds = fieldCount >= 6;
   const { downloadFile } = useFileIO();
+  // Populated client-only: the server's and the browser's
+  // Intl.supportedValuesOf('timeZone') lists can differ by a few entries, which
+  // would otherwise cause a hydration mismatch on this always-rendered datalist.
+  const [timezones, setTimezones] = useState<string[]>([]);
+  useEffect(() => {
+    setTimezones(getTimezones());
+  }, []);
 
   const handleDownload = useCallback(() => {
     if (!isValid || nextRuns.length === 0) return;
     const report = [
       `Expression: ${expression}`,
       `Description: ${description}`,
+      `Timezone: ${timezone}`,
       '',
       `Next ${nextRuns.length} runs:`,
-      ...nextRuns.map((r, i) => `  ${i + 1}. ${formatRunDate(r, showSeconds)}`),
+      ...nextRuns.map((r, i) => `  ${i + 1}. ${formatRunDate(r, showSeconds, timezone)}`),
     ].join('\n');
     downloadFile(report, 'cron-schedule.txt');
-  }, [isValid, nextRuns, expression, description, downloadFile]);
+  }, [isValid, nextRuns, expression, description, timezone, showSeconds, downloadFile]);
 
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
@@ -58,6 +71,26 @@ export default function CronResultsPanel({
           </button>
         )}
       </PanelHeader>
+
+      <div className="px-4 pt-3">
+        <label htmlFor="cron-timezone" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+          Timezone for Next Runs
+        </label>
+        <input
+          id="cron-timezone"
+          type="text"
+          list="cron-timezone-list"
+          value={timezone}
+          onChange={(e) => onTimezoneChange(e.target.value)}
+          className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+          aria-label="Select timezone for computing next run times"
+        />
+        <datalist id="cron-timezone-list">
+          {timezones.map((tz) => (
+            <option key={tz} value={tz} />
+          ))}
+        </datalist>
+      </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Empty State */}
@@ -109,7 +142,7 @@ export default function CronResultsPanel({
                     {index + 1}
                   </span>
                   <span className="text-sm text-gray-800 dark:text-gray-200 font-mono">
-                    {formatRunDate(run, showSeconds)}
+                    {formatRunDate(run, showSeconds, timezone)}
                   </span>
                 </div>
               ))}

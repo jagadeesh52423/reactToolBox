@@ -50,7 +50,7 @@ export class HTMLTokenizer {
         const preserveLeading = prevToken !== null && this.isInlineToken(prevToken);
 
         // Peek at next tag to see if it's inline
-        const nextTagEnd = html.indexOf('>', tagStart);
+        const nextTagEnd = this.findTagEnd(html, tagStart);
         const nextTag = nextTagEnd !== -1 ? html.slice(tagStart, nextTagEnd + 1) : '';
         const nextTagName = this.extractTagName(nextTag);
         const preserveTrailing = !!(nextTagName && this.tagConfig.isInline(nextTagName));
@@ -65,7 +65,7 @@ export class HTMLTokenizer {
       }
 
       // Find end of tag
-      const tagEnd = html.indexOf('>', tagStart);
+      const tagEnd = this.findTagEnd(html, tagStart);
       if (tagEnd === -1) {
         // Malformed HTML - treat rest as text
         const text = html.slice(tagStart);
@@ -218,10 +218,48 @@ export class HTMLTokenizer {
   }
 
   /**
-   * Extracts attributes from a tag string
+   * Extracts attributes from a tag string by slicing between the tag name and the
+   * closing '>' (or '/>'), rather than a regex over the raw content, since attribute
+   * values may themselves contain '>' (e.g. title="a > b").
    */
   private extractAttributes(tag: string): string {
-    const match = tag.match(/<[a-zA-Z][a-zA-Z0-9-]*\s+([^>]*?)\/?>$/i);
-    return match ? match[1].trim() : '';
+    const nameMatch = tag.match(/^<[a-zA-Z][a-zA-Z0-9-]*/);
+    if (!nameMatch) return '';
+
+    let end = tag.length - 1;
+    if (tag[end - 1] === '/') end -= 1;
+
+    return tag.slice(nameMatch[0].length, end).trim();
+  }
+
+  /**
+   * Finds the index of the '>' that closes the tag/construct starting at `start`.
+   * Comments and CDATA sections use their own terminators ('-->', ']]>') since their
+   * content may contain unbalanced quote characters. Other tags are scanned quote-aware
+   * so a '>' inside a quoted attribute value doesn't end the tag early.
+   */
+  private findTagEnd(html: string, start: number): number {
+    if (html.startsWith('<!--', start)) {
+      const closeIdx = html.indexOf('-->', start);
+      return closeIdx === -1 ? -1 : closeIdx + 2;
+    }
+
+    if (html.startsWith('<![CDATA[', start)) {
+      const closeIdx = html.indexOf(']]>', start);
+      return closeIdx === -1 ? -1 : closeIdx + 2;
+    }
+
+    let quote: '"' | "'" | null = null;
+    for (let i = start; i < html.length; i++) {
+      const char = html[i];
+      if (quote) {
+        if (char === quote) quote = null;
+      } else if (char === '"' || char === "'") {
+        quote = char;
+      } else if (char === '>') {
+        return i;
+      }
+    }
+    return -1;
   }
 }

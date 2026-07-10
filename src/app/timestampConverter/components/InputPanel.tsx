@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import PanelHeader from '@/components/common/PanelHeader';
 import { getTimezones } from '../utils/timestampUtils';
 
 interface InputPanelProps {
   input: string;
-  currentTime: Date;
+  currentTime: Date | null;
   timezone: string;
   error: string | null;
   onInputChange: (value: string) => void;
@@ -35,16 +35,27 @@ export default function InputPanel({
   onUseCurrentTime,
   onDatePickerChange,
 }: InputPanelProps) {
-  const timezones = useMemo(() => getTimezones(), []);
+  // Starts empty: Intl.supportedValuesOf('timeZone') can differ by a handful of entries
+  // between the server's ICU data and the browser's, so populating it eagerly would
+  // reintroduce a hydration mismatch. Populated client-only, after mount.
+  const [timezones, setTimezones] = useState<string[]>([]);
+  useEffect(() => {
+    setTimezones(getTimezones());
+  }, []);
 
-  const currentUnix = Math.floor(currentTime.getTime() / 1000);
-  const currentISO = currentTime.toISOString();
-
-  let currentLocal: string;
-  try {
-    currentLocal = currentTime.toLocaleString('en-US', { timeZone: timezone });
-  } catch {
-    currentLocal = currentTime.toLocaleString('en-US');
+  // currentTime is null until the post-mount effect in TimestampConverterTool fires,
+  // so both the SSR markup and the first client render show this same placeholder.
+  let currentUnix: string = '—';
+  let currentISO: string = '—';
+  let currentLocal: string = '—';
+  if (currentTime) {
+    currentUnix = String(Math.floor(currentTime.getTime() / 1000));
+    currentISO = currentTime.toISOString();
+    try {
+      currentLocal = currentTime.toLocaleString('en-US', { timeZone: timezone });
+    } catch {
+      currentLocal = currentTime.toLocaleString('en-US');
+    }
   }
 
   return (

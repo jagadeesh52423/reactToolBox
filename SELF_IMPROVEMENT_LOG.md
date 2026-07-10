@@ -1,0 +1,31 @@
+# Self-Improvement Log — reactToolBox
+
+## How to test this project (discovered 2026-07-10 — skip re-discovery)
+- No test framework. Runtime testing: `npm run build` (catches TS/SSR), dev server `npx next dev -p 3013` + curl route smoke (16 routes; /svgEditor 307→/mermaidEditor is intentional), and `npx tsx` probe scripts run directly against source modules (testers keep them in `.probes/` and `.probes-b/`, uncommitted).
+- Browser-only paths (Web Workers, hydration, DOM sanitization) need the Chrome MCP against :3013 — node probes cannot exercise them.
+- Display schedule checks in LOCAL time; `toUTCString()` shifts calendar days and causes false alarms (happened once).
+
+## Fixed issues (symptom → root cause → fix → guard)
+- [2026-07-10] markdownPreview — XSS via img onerror/svg onload/javascript: hrefs → blacklist regex only stripped literal `<script>` → DOMPurify (isomorphic-dompurify, SSR-safe) sanitizing marked's output as last step before the single dangerouslySetInnerHTML sink → allowlist-over-blacklist; reviewer ran bypass attempts.
+- [2026-07-10] jsonCompare — 3.3s hang/heap-OOM on large differing strings → O(n²) char-LCS per changed leaf in render-path useMemo → token prefix/suffix trim + MAX_LCS_CELLS=1M cap, above cap emit whole-value changed segment → probe: 160KB repro 15ms.
+- [2026-07-10] regexTester — tab freeze on `(a+)+b` (ReDoS) → single synchronous regex.exec unbounded (iteration guard can't bound one exec) → matching moved to inline-Blob Web Worker, 2s timeout → terminate(), per-effect `settled` guard vs stale messages → browser-verified timeout + recovery.
+- [2026-07-10] textCompare — multi-line inserts misreported as changes; CRLF false diffs → 1-line lookahead heuristic; split only on \n → line-level LCS + \r\n?→\n normalization; then SAME O(n·m) memory cliff as jsonCompare → capped with MAX_LCS_CELLS + positional fallback + visible notice; differential fuzz vs uncapped (500 cases, 0 real mismatches).
+- [2026-07-10] htmlFormatter — 3-iteration bug nest: (1) tag scan `indexOf('>')` broke on `>` in quoted attrs → quote-aware findTagEnd; (2) block tags glued after inline content → ensureNewLine guards (a naive `result.endsWith` check caused a 456ms→8.1s V8 rope-flatten regression, fixed by tracking a resultEndsWithNewline flag in a single append() writer); (3) hasOnlyInlineContent ignored COMMENT/TAG_SELF_CLOSING tokens → honest token-type classification + appendInline indent helper + 4th latent close-tag glue instance found by coder.
+- [2026-07-10] csvConverter — mixed arrays silently dropped primitive entries as empty rows → header-driven row build skipped non-objects → shared buildRowsFromItems with `_value` column (collision-renames) for JSON+YAML paths; raw js-yaml exception text now wrapped in friendly message.
+- [2026-07-10] timestampConverter — invalid typed timezone blanked ALL results → one try/catch around every field → per-field tz isolation (formatWithTimezone), inline error on the 2 tz fields only; also s-vs-ms heuristic retries as ms outside year 1–9999; separately, SSR "Current Time" hydration mismatch → client-only rendering (UI batch).
+- [2026-07-10] textUtilities — snake_case→camelCase broken (\b doesn't fire at `_`) → splitIntoWords helper; emoji/CJK counts via Intl.Segmenter — WHICH regressed emoji-only word count to 0 (isWordLike excludes emoji) → whitespace-token fallback when segmenter finds 0 words on non-empty text. Lesson: Segmenter isWordLike ≠ "token".
+- [2026-07-10] cronParser — DOW 7 rejected → range max 6 → accept 0-7 + normalizeDayOfWeek(7→0) AFTER expandField (normalizing before would break 5-7 as descending range); range descriptions truncated ("1-5"→"on Mon") → parseInt on range token → describeFieldToken classifier.
+- [2026-07-10] mermaidEditor — malformed mid-chain node id fabricated an A-->C edge → parsedNodes skipped failed segments, shifting index alignment with arrowMatches → null placeholders keep alignment; existing null guard drops affected edges.
+
+## Promoted rules (recurring classes this run)
+1. **No unbounded computation reachable from user input on the render path.** Any O(n²)+ algorithm or single regex exec over user-controlled input needs a cap with graceful fallback (LCS cell caps) or off-thread execution with a timeout (worker + terminate). Hit 3× in one run (jsonCompare, textCompare, regexTester).
+2. **Sanitization is allowlist, never regex blacklist.** One DOMPurify at the final sink; verify SSR compatibility (isomorphic) and that exactly one sink exists.
+3. **Never build output strings with scattered `result +=`.** Route through one append() that maintains needed invariants (e.g. trailing-newline flag); `endsWith` on a growing string is an O(n) rope-flatten trap. Formatter newline bugs recurred 4× until centralized.
+4. **Silent data loss beats crashes in badness.** Converters must represent or explicitly warn about entries they can't map (csv `_value` column), never emit empty rows.
+5. **Normalize aliases after expansion, not before** (cron DOW 7→0 post-expandField) — pre-normalizing endpoints corrupts ranges.
+
+## Process learnings
+- [2026-07-10] Never run `npm run build` in a worktree while `next dev` is running there — both write `.next`, corrupting the dev server's chunk manifest (500s, then 404s after rm -rf .next until restart). Rule: `tsc --noEmit` during development; one production build at the end after code freeze. Multiple concurrent builds also race (ENOENT on 500.html rename).
+
+## npm audit (out of scope, flagged 2026-07-10)
+31 vulnerabilities (1 critical, 19 high) at install time — dependency-level, not addressed in this run.

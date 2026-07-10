@@ -5,6 +5,7 @@
  */
 
 import type { ParsedData } from './csvParser';
+import { buildRowsFromItems } from './tabularRows';
 
 /**
  * Parse a JSON string into structured data (headers + rows).
@@ -23,46 +24,18 @@ export function parseJSON(text: string): ParsedData {
     throw new Error('Invalid JSON: ' + (trimmed.length > 80 ? 'parse error' : 'could not parse input'));
   }
 
-  let items: Record<string, unknown>[];
-
   if (Array.isArray(parsed)) {
     if (parsed.length === 0) {
       return { headers: [], rows: [] };
     }
-    items = parsed;
-  } else if (parsed !== null && typeof parsed === 'object') {
-    items = [parsed as Record<string, unknown>];
-  } else {
-    throw new Error('JSON must be an array of objects or a single object');
+    return buildRowsFromItems(parsed);
   }
 
-  // Extract headers from the union of all keys
-  const headerSet = new Set<string>();
-  for (const item of items) {
-    if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
-      for (const key of Object.keys(item)) {
-        headerSet.add(key);
-      }
-    }
+  if (parsed !== null && typeof parsed === 'object') {
+    return buildRowsFromItems([parsed]);
   }
 
-  const headers = Array.from(headerSet);
-  const rows: Record<string, string>[] = items.map((item) => {
-    const row: Record<string, string> = {};
-    for (const h of headers) {
-      const val = (item as Record<string, unknown>)[h];
-      if (val === null || val === undefined) {
-        row[h] = '';
-      } else if (typeof val === 'object') {
-        row[h] = JSON.stringify(val);
-      } else {
-        row[h] = String(val);
-      }
-    }
-    return row;
-  });
-
-  return { headers, rows };
+  throw new Error('JSON must be an array of objects or a single object');
 }
 
 /**

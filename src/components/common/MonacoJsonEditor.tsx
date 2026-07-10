@@ -132,7 +132,8 @@ export default function MonacoJsonEditor({ value, onChange }: MonacoJsonEditorPr
   );
 
   return (
-    <div className="flex-1 min-h-0">
+    <div className="flex-1 min-h-0 relative">
+      <div className="absolute inset-0">
       <Editor
         height="100%"
         language="json"
@@ -173,6 +174,7 @@ export default function MonacoJsonEditor({ value, onChange }: MonacoJsonEditorPr
           formatOnPaste: true,
         }}
       />
+      </div>
     </div>
   );
 }

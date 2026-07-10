@@ -6,6 +6,7 @@ import JsonEditor from './JsonEditor';
 import CompareStatusBar, { CompareStats } from './CompareStatusBar';
 import { useFileIO } from '@/hooks/useFileIO';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { parseIgnoredKeys, stripIgnoredKeys, sortArraysForComparison } from '../utils/compareOptions';
 import {
   ArrowsRightLeftIcon,
   GitCompareIcon,
@@ -19,6 +20,102 @@ import {
 const DEFAULT_LEFT = { name: "John", age: 30, address: { city: "New York", zip: 10001 } };
 const DEFAULT_RIGHT = { name: "John", age: 31, address: { city: "Boston", zip: "02108" } };
 
+const IDENTIFIER_START = /[A-Za-z_$]/;
+const IDENTIFIER_PART = /[A-Za-z0-9_$]/;
+const WHITESPACE = /\s/;
+
+const readDoubleQuotedString = (input: string, start: number): { text: string; nextIndex: number } => {
+  let i = start + 1;
+  let text = '"';
+  while (i < input.length) {
+    const char = input[i];
+    text += char;
+    i++;
+    if (char === '\\' && i < input.length) {
+      text += input[i];
+      i++;
+      continue;
+    }
+    if (char === '"') break;
+  }
+  return { text, nextIndex: i };
+};
+
+const readSingleQuotedStringAsDouble = (input: string, start: number): { text: string; nextIndex: number } => {
+  let i = start + 1;
+  let text = '"';
+  while (i < input.length) {
+    const char = input[i];
+    if (char === '\\' && i + 1 < input.length) {
+      const next = input[i + 1];
+      text += next === "'" ? "'" : char + next;
+      i += 2;
+      continue;
+    }
+    if (char === "'") {
+      i++;
+      break;
+    }
+    text += char === '"' ? '\\"' : char;
+    i++;
+  }
+  return { text: text + '"', nextIndex: i };
+};
+
+// Single left-to-right pass; only fixes trailing commas, single-quoted strings, and unquoted
+// keys — the three most common hand-edited-JSON mistakes. Runs after newline/control-char
+// normalization, so no raw newlines remain to complicate the scan.
+const repairLenientJsonSyntax = (json: string): string => {
+  let result = '';
+  let i = 0;
+
+  while (i < json.length) {
+    const char = json[i];
+
+    if (char === '"') {
+      const { text, nextIndex } = readDoubleQuotedString(json, i);
+      result += text;
+      i = nextIndex;
+      continue;
+    }
+
+    if (char === "'") {
+      const { text, nextIndex } = readSingleQuotedStringAsDouble(json, i);
+      result += text;
+      i = nextIndex;
+      continue;
+    }
+
+    if (IDENTIFIER_START.test(char)) {
+      let j = i + 1;
+      while (j < json.length && IDENTIFIER_PART.test(json[j])) j++;
+      const word = json.slice(i, j);
+      let k = j;
+      while (k < json.length && WHITESPACE.test(json[k])) k++;
+      result += json[k] === ':' ? `"${word}"` : word;
+      i = j;
+      continue;
+    }
+
+    if (char === ',') {
+      let k = i + 1;
+      while (k < json.length && WHITESPACE.test(json[k])) k++;
+      if (json[k] === '}' || json[k] === ']') {
+        i++;
+        continue;
+      }
+      result += char;
+      i++;
+      continue;
+    }
+
+    result += char;
+    i++;
+  }
+
+  return result;
+};
+
 const JsonComparer: React.FC = () => {
   const [leftJson, setLeftJson] = useLocalStorage<string>('reactToolBox_jsonCompare_left', JSON.stringify(DEFAULT_LEFT, null, 2));
   const [rightJson, setRightJson] = useLocalStorage<string>('reactToolBox_jsonCompare_right', JSON.stringify(DEFAULT_RIGHT, null, 2));
@@ -28,6 +125,9 @@ const JsonComparer: React.FC = () => {
   const [fixedLeftJson, setFixedLeftJson] = useState<string>('');
   const [fixedRightJson, setFixedRightJson] = useState<string>('');
   const [stats, setStats] = useState<CompareStats | null>(null);
+  const [ignoreArrayOrder, setIgnoreArrayOrder] = useState<boolean>(false);
+  const [ignoreKeysEnabled, setIgnoreKeysEnabled] = useState<boolean>(false);
+  const [ignoreKeysInput, setIgnoreKeysInput] = useState<string>('');
   const [editorsPct, setEditorsPct] = useState<number>(0.4);
   const containerRef = useRef<HTMLElement>(null);
   const { downloadFile } = useFileIO();
@@ -141,7 +241,7 @@ const JsonComparer: React.FC = () => {
       }
     });
 
-    return result;
+    return repairLenientJsonSyntax(result);
   };
 
   // Calculate comparison statistics
@@ -212,11 +312,27 @@ const JsonComparer: React.FC = () => {
     // Calculate statistics
     const leftParsed = JSON.parse(processedLeftJson);
     const rightParsed = JSON.parse(processedRightJson);
-    const newStats = calculateStats(leftParsed, rightParsed);
+
+    const ignoredKeys = ignoreKeysEnabled ? parseIgnoredKeys(ignoreKeysInput) : new Set<string>();
+    const hasIgnoreOptions = ignoredKeys.size > 0 || ignoreArrayOrder;
+
+    let leftForCompare: unknown = leftParsed;
+    let rightForCompare: unknown = rightParsed;
+
+    if (ignoredKeys.size > 0) {
+      leftForCompare = stripIgnoredKeys(leftForCompare, ignoredKeys);
+      rightForCompare = stripIgnoredKeys(rightForCompare, ignoredKeys);
+    }
+    if (ignoreArrayOrder) {
+      leftForCompare = sortArraysForComparison(leftForCompare);
+      rightForCompare = sortArraysForComparison(rightForCompare);
+    }
+
+    const newStats = calculateStats(leftForCompare, rightForCompare);
     setStats(newStats);
 
-    setFixedLeftJson(processedLeftJson);
-    setFixedRightJson(processedRightJson);
+    setFixedLeftJson(hasIgnoreOptions ? JSON.stringify(leftForCompare, null, 2) : processedLeftJson);
+    setFixedRightJson(hasIgnoreOptions ? JSON.stringify(rightForCompare, null, 2) : processedRightJson);
     setError('');
     setShowDiff(true);
   };
@@ -272,7 +388,7 @@ const JsonComparer: React.FC = () => {
   return (
     <div className="h-full min-h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Main Content */}
-      <main ref={containerRef} className="flex-1 min-h-0 p-6 overflow-hidden flex flex-col">
+      <main ref={containerRef} className="flex-1 min-h-0 p-6 overflow-y-auto lg:overflow-hidden flex flex-col">
         {/* Error Banner */}
         {error && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 flex items-center gap-3">
@@ -283,13 +399,15 @@ const JsonComparer: React.FC = () => {
 
         {/* JSON Editors */}
         <div
-          className={`flex flex-col lg:flex-row gap-4 mb-4 relative min-h-[180px] ${showDiff ? 'flex-shrink-0' : 'flex-1 min-h-0'}`}
+          className={`flex flex-col lg:flex-row gap-4 mb-4 relative ${
+            showDiff ? 'min-h-[180px] flex-shrink-0' : 'flex-1 min-h-[480px] lg:min-h-[180px]'
+          }`}
           style={showDiff ? { flexBasis: `${editorsPct * 100}%` } : undefined}
         >
           {/* Left JSON Panel */}
           <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             <PanelHeader title="Left JSON" onFormat={() => fixAndFormatJson('left')} />
-            <div className="flex-1 p-4">
+            <div className="flex-1 min-h-0 p-4 flex flex-col">
               <JsonEditor
                 value={leftJson}
                 onChange={setLeftJson}
@@ -312,7 +430,7 @@ const JsonComparer: React.FC = () => {
           {/* Right JSON Panel */}
           <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
             <PanelHeader title="Right JSON" onFormat={() => fixAndFormatJson('right')} />
-            <div className="flex-1 p-4">
+            <div className="flex-1 min-h-0 p-4 flex flex-col">
               <JsonEditor
                 value={rightJson}
                 onChange={setRightJson}
@@ -332,6 +450,44 @@ const JsonComparer: React.FC = () => {
             <div className="w-10 h-0.5 rounded-full bg-gray-400 dark:bg-slate-500 group-hover:bg-white" />
           </div>
         )}
+
+        {/* Compare Options */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-3 flex-shrink-0">
+          <label
+            className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 dark:text-slate-300"
+            title="Sorts each array's elements by their JSON content before comparing, so reordered arrays with the same elements show as unchanged. Elements are matched by exact content, not similarity — an element that differs in any field still shows as its own change."
+          >
+            <input
+              type="checkbox"
+              checked={ignoreArrayOrder}
+              onChange={(e) => setIgnoreArrayOrder(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 border-gray-300 dark:border-slate-600 rounded focus:ring-indigo-500"
+            />
+            Ignore Array Order
+          </label>
+
+          <label
+            className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 dark:text-slate-300"
+            title="Excludes these key names from comparison at any depth (e.g. updatedAt, id). Matches by key name only, not full path."
+          >
+            <input
+              type="checkbox"
+              checked={ignoreKeysEnabled}
+              onChange={(e) => setIgnoreKeysEnabled(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 border-gray-300 dark:border-slate-600 rounded focus:ring-indigo-500"
+            />
+            Ignore Keys
+          </label>
+          {ignoreKeysEnabled && (
+            <input
+              type="text"
+              value={ignoreKeysInput}
+              onChange={(e) => setIgnoreKeysInput(e.target.value)}
+              placeholder="e.g. updatedAt, id, requestId"
+              className="flex-1 min-w-[200px] max-w-xs px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          )}
+        </div>
 
         {/* Compare Button */}
         <div className={`flex justify-center flex-shrink-0 ${showDiff ? 'mb-3' : 'mb-6'}`}>

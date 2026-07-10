@@ -79,19 +79,26 @@ export class ColorService {
   }
 
   /**
-   * Get formatted color string
+   * Get formatted color string.
+   * When alpha is below 1, RGB/HSL output as rgba()/hsla() per CSS Color 4 convention.
    */
   getFormattedColor(
     format: 'hex' | 'rgb' | 'hsl' | 'hsv',
-    colorState: ColorState
+    colorState: ColorState,
+    alpha: number = 1
   ): string {
+    const hasAlpha = alpha < 1;
     switch (format) {
       case 'hex':
         return colorState.hex;
       case 'rgb':
-        return `rgb(${colorState.rgb.r}, ${colorState.rgb.g}, ${colorState.rgb.b})`;
+        return hasAlpha
+          ? `rgba(${colorState.rgb.r}, ${colorState.rgb.g}, ${colorState.rgb.b}, ${alpha.toFixed(2)})`
+          : `rgb(${colorState.rgb.r}, ${colorState.rgb.g}, ${colorState.rgb.b})`;
       case 'hsl':
-        return `hsl(${colorState.hsl.h}, ${colorState.hsl.s}%, ${colorState.hsl.l}%)`;
+        return hasAlpha
+          ? `hsla(${colorState.hsl.h}, ${colorState.hsl.s}%, ${colorState.hsl.l}%, ${alpha.toFixed(2)})`
+          : `hsl(${colorState.hsl.h}, ${colorState.hsl.s}%, ${colorState.hsl.l}%)`;
       case 'hsv':
         return `hsv(${colorState.hsv.h}, ${colorState.hsv.s}%, ${colorState.hsv.v}%)`;
       default:

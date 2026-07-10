@@ -63,14 +63,14 @@ export default function StatusBar({ jsonInput, parsedJson, error, canUndo, canRe
 
     return (
         <div
-            className="flex items-center justify-between px-4 py-2 border-t text-sm"
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 py-2 border-t text-sm"
             style={{
                 background: 'var(--jv-bg-secondary)',
                 borderColor: 'var(--jv-border)',
                 fontFamily: 'var(--jv-font-sans)',
             }}
         >
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
                 {/* Size */}
                 <div className="flex items-center gap-2" style={{ color: 'var(--jv-text-muted)' }}>
                     <DatabaseIcon size={14} />

@@ -15,10 +15,12 @@ interface ColorFormatInputsProps {
   rgb: RGB;
   hsl: HSL;
   hsv: HSV;
+  alpha: number;
   onHexChange: (hex: string) => void;
   onRgbChange: (color: 'r' | 'g' | 'b', value: number) => void;
   onHslChange: (param: 'h' | 's' | 'l', value: number) => void;
   onHsvChange: (param: 'h' | 's' | 'v', value: number) => void;
+  onAlphaChange: (value: number) => void;
 }
 
 export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
@@ -28,10 +30,12 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
   rgb,
   hsl,
   hsv,
+  alpha,
   onHexChange,
   onRgbChange,
   onHslChange,
   onHsvChange,
+  onAlphaChange,
 }) => {
   return (
     <div className="border dark:border-slate-700 rounded overflow-hidden">
@@ -121,6 +125,18 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
                 onChange={(e) => onRgbChange('b', parseInt(e.target.value))}
               />
             </div>
+            <div className="flex-1">
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">A</label>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
+                value={alpha}
+                onChange={(e) => onAlphaChange(parseFloat(e.target.value))}
+              />
+            </div>
           </div>
         )}
 
@@ -157,6 +173,18 @@ export const ColorFormatInputs: React.FC<ColorFormatInputsProps> = ({
                 className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
                 value={hsl.l}
                 onChange={(e) => onHslChange('l', parseInt(e.target.value))}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block mb-2 text-sm font-medium dark:text-gray-300">A</label>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                className="w-full p-2 border dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-gray-100"
+                value={alpha}
+                onChange={(e) => onAlphaChange(parseFloat(e.target.value))}
               />
             </div>
           </div>

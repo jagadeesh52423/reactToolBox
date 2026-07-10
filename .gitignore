@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.probes/
+.probes-b/
+.probes-json/
+.claude/superpowers/

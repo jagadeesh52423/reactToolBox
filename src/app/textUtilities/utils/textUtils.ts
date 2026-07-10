@@ -14,20 +14,31 @@ export function toTitleCase(text: string): string {
   );
 }
 
-export function toCamelCase(text: string): string {
+// Splits on whitespace, hyphens and underscores, and on lower-to-upper transitions
+// (so `_` gets the same word-boundary treatment as `-` and space, unlike a `\b` regex).
+function splitIntoWords(text: string): string[] {
   return text
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
-      index === 0 ? word.toLowerCase() : word.toUpperCase()
-    )
-    .replace(/\s+/g, '')
-    .replace(/[-_]/g, '');
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[\s_-]+/)
+    .filter(Boolean);
+}
+
+export function toCamelCase(text: string): string {
+  return splitIntoWords(text)
+    .map((word, index) => {
+      const lower = word.toLowerCase();
+      return index === 0 ? lower : lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join('');
 }
 
 export function toPascalCase(text: string): string {
-  return text
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word) => word.toUpperCase())
-    .replace(/\s+/g, '')
-    .replace(/[-_]/g, '');
+  return splitIntoWords(text)
+    .map((word) => {
+      const lower = word.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join('');
 }
 
 export function toSnakeCase(text: string): string {
@@ -118,14 +129,40 @@ export function decodeURL(text: string): string {
   }
 }
 
+// Regex helpers
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Counting functions
 export function countCharacters(text: string): number {
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    // Count user-perceived characters (graphemes), not UTF-16 code units,
+    // so astral-plane emoji count as 1 instead of 2.
+    return Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)).length;
+  }
   return text.length;
 }
 
 export function countWords(text: string): number {
-  if (!text.trim()) return 0;
-  return text.trim().split(/\s+/).length;
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    // Locale-aware word segmentation handles non-space-delimited scripts (CJK, Thai)
+    // correctly, unlike a plain whitespace split.
+    const segments = new Intl.Segmenter(undefined, { granularity: 'word' }).segment(trimmed);
+    let wordCount = 0;
+    for (const segment of segments) {
+      if (segment.isWordLike) wordCount++;
+    }
+    // Emoji/symbol-only text has no isWordLike segments (ICU doesn't treat them as
+    // words), so fall back to whitespace tokens rather than reporting 0 words for
+    // visibly non-empty text.
+    if (wordCount > 0) return wordCount;
+  }
+
+  return trimmed.split(/\s+/).length;
 }
 
 export function countLines(text: string): number {

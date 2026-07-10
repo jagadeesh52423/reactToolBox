@@ -209,6 +209,18 @@ export default function CommandPalette({
               >
                 ~
               </button>
+              <button
+                onClick={() => onSearchOptionsChange({ isKeysOnly: !searchOptions.isKeysOnly })}
+                className="px-2 py-0.5 rounded text-xs font-mono border transition-all"
+                style={{
+                  background: searchOptions.isKeysOnly ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
+                  borderColor: searchOptions.isKeysOnly ? 'var(--jv-accent)' : 'var(--jv-border)',
+                  color: searchOptions.isKeysOnly ? 'var(--jv-accent)' : 'var(--jv-text-muted)',
+                }}
+                title="Keys Only"
+              >
+                {'{k}'}
+              </button>
             </div>
           )}
         </div>

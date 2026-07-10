@@ -308,14 +308,17 @@ function parseStatement(
     return;
   }
 
-  // Parse each segment as a node definition
-  const parsedNodes: Array<{ id: string; label: string; shape: NodeShape }> = [];
+  // Parse each segment as a node definition. Keep a slot (even if null) for
+  // every segment so parsedNodes stays index-aligned with segments/arrowMatches —
+  // dropping failed segments here would shift later indices and fabricate edges
+  // between unrelated neighbours.
+  const parsedNodes: Array<{ id: string; label: string; shape: NodeShape } | null> = [];
   for (const seg of segments) {
     const nodeDef = parseNodeDefinition(seg);
     if (nodeDef) {
-      parsedNodes.push(nodeDef);
       ensureNode(nodeMap, nodeDef.id, nodeDef.label, nodeDef.shape);
     }
+    parsedNodes.push(nodeDef);
   }
 
   // Create edges between consecutive node pairs

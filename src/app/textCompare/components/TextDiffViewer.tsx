@@ -1,7 +1,7 @@
 'use client';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTextCompare } from '../hooks/useTextCompare';
-import { DiffType } from '../models/DiffModels';
+import { DiffType, DiffViewMode } from '../models/DiffModels';
 import { useFileIO } from '@/hooks/useFileIO';
 import { TextInputPanel } from './TextInputPanel';
 import { CompareControls } from './CompareControls';
@@ -56,6 +56,8 @@ const TextDiffViewer: React.FC = () => {
     swapTexts,
     compareService,
   } = useTextCompare(DEFAULT_TEXT_LEFT, DEFAULT_TEXT_RIGHT);
+
+  const [viewMode, setViewMode] = useState<DiffViewMode>('side-by-side');
 
   const { downloadFile } = useFileIO();
 
@@ -135,7 +137,12 @@ const TextDiffViewer: React.FC = () => {
 
           {/* Diff Result */}
           {showDiff && diffResult && (
-            <DiffResultDisplay diffResult={diffResult} compareService={compareService} />
+            <DiffResultDisplay
+              diffResult={diffResult}
+              compareService={compareService}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
           )}
         </div>
       </main>

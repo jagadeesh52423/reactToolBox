@@ -14,7 +14,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`h-full flex flex-col border border-gray-200/50 dark:border-slate-700/50 rounded-lg bg-white dark:bg-slate-900 overflow-hidden ${className}`}>
+    <div className={`flex-1 min-h-0 flex flex-col border border-gray-200/50 dark:border-slate-700/50 rounded-lg bg-white dark:bg-slate-900 overflow-hidden ${className}`}>
       <MonacoJsonEditor value={value} onChange={onChange} />
     </div>
   );

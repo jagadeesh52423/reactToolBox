@@ -39,7 +39,7 @@
 
 /* Dark theme (class-based) */
 .dark {
-  --background: #0a0a0a;
+  --background: #111827;
   --foreground: #ededed;
 
   /* JSON Visualizer Theme - Dark */

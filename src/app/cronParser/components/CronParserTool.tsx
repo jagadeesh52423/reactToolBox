@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { getLocalTimezone } from '@/lib/timezones';
 import CronInputPanel from './CronInputPanel';
 import CronResultsPanel from './CronResultsPanel';
 import {
@@ -19,6 +20,12 @@ export default function CronParserTool() {
     const urlExpr = searchParams.get('expr');
 
     const [storedExpr, setStoredExpr] = useLocalStorage<string>('reactToolBox_cronParser_expr', '*/5 * * * *');
+    // getLocalTimezone() reflects the browser's locale and differs from the SSR/build
+    // machine's timezone in production, so it must never be an eager default (it would
+    // reintroduce the hydration mismatch this batch of tools fixes). Both this and
+    // `timezone` below start at '' and only resolve to a real zone post-mount.
+    const [storedTz, setStoredTz] = useLocalStorage<string>('reactToolBox_cronParser_tz', '');
+    const [timezone, setTimezoneRaw] = useState<string>('');
 
     const initialExpr = urlExpr || '*/5 * * * *';
     const [expression, setExpressionRaw] = useState(initialExpr);
@@ -36,11 +43,22 @@ export default function CronParserTool() {
         }
     }, [storedExpr, urlExpr]);
 
-    // Wrap setter to also persist to localStorage
+    // Resolve the effective timezone client-only, after storedTz has had a chance to
+    // restore from localStorage (this effect re-fires when storedTz updates).
+    useEffect(() => {
+        setTimezoneRaw(storedTz || getLocalTimezone());
+    }, [storedTz]);
+
+    // Wrap setters to also persist to localStorage
     const setExpression = useCallback((value: string) => {
         setExpressionRaw(value);
         setStoredExpr(value);
     }, [setStoredExpr]);
+
+    const setTimezone = useCallback((value: string) => {
+        setTimezoneRaw(value);
+        setStoredTz(value);
+    }, [setStoredTz]);
     const [fieldCount, setFieldCount] = useState<CronFieldCount>(() => detectFieldCount(initialExpr));
     const [builderValues, setBuilderValues] = useState(() => {
         return expressionToBuilder(initialExpr) || {
@@ -57,8 +75,8 @@ export default function CronParserTool() {
     const parseResult = useMemo(() => parseCronExpression(expression), [expression]);
     const nextRuns = useMemo(() => {
         if (!parseResult.isValid) return [];
-        return getNextRuns(expression, 10);
-    }, [expression, parseResult.isValid]);
+        return getNextRuns(expression, 10, undefined, timezone);
+    }, [expression, parseResult.isValid, timezone]);
 
     const handleExpressionChange = useCallback((value: string) => {
         setExpression(value);
@@ -117,6 +135,8 @@ export default function CronParserTool() {
                             nextRuns={nextRuns}
                             expression={expression}
                             fieldCount={parseResult.fieldCount}
+                            timezone={timezone}
+                            onTimezoneChange={setTimezone}
                         />
                     </div>
                 </div>

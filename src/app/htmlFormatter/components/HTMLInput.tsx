@@ -112,7 +112,7 @@ export const HTMLInput: React.FC<HTMLInputProps> = ({
             <button
               onClick={() => setShowFormatOptions(!showFormatOptions)}
               disabled={disabled}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-white bg-orange-100/50 dark:bg-orange-600/20 hover:bg-orange-200/50 dark:hover:bg-orange-600/40 border border-orange-300/50 dark:border-orange-500/30 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-white bg-blue-100/50 dark:bg-blue-600/20 hover:bg-blue-200/50 dark:hover:bg-blue-600/40 border border-blue-300/50 dark:border-blue-500/30 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               title="Format HTML"
             >
               <SparklesIcon size={16} />

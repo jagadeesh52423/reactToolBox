@@ -12,6 +12,8 @@ import {
   ConversionResult,
 } from '../utils/timestampUtils';
 
+const MAX_COMPARISON_TIMEZONES = 8;
+
 /**
  * TimestampConverterTool
  *
@@ -24,20 +26,34 @@ export default function TimestampConverterTool() {
   const urlTs = searchParams.get('ts');
 
   const [storedInput, setStoredInput] = useLocalStorage<string>('reactToolBox_timestamp_input', '');
-  const [storedTz, setStoredTz] = useLocalStorage<string>('reactToolBox_timestamp_tz', getLocalTimezone());
+  // getLocalTimezone() reflects the browser's locale and differs from the SSR/build
+  // machine's timezone in production, so it must never be an eager default (it would
+  // reintroduce the hydration mismatch this batch of tools fixes). Both this and
+  // `timezone` below start at '' and only resolve to a real zone post-mount.
+  const [storedTz, setStoredTz] = useLocalStorage<string>('reactToolBox_timestamp_tz', '');
 
   const [input, setInputRaw] = useState<string>(urlTs || '');
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [timezone, setTimezoneRaw] = useState<string>(getLocalTimezone());
+  // Starts null so the SSR-rendered markup and the first client render match exactly;
+  // the live value is only populated after mount (see the effect below), which is what
+  // avoids the "Current Time" hydration mismatch.
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [timezone, setTimezoneRaw] = useState<string>('');
 
-  // Restore from localStorage when no URL param is present (after hydration)
+  const [multiTimezones, setMultiTimezones] = useLocalStorage<string[]>('reactToolBox_timestamp_multiTz', []);
+  const [customFormat, setCustomFormat] = useLocalStorage<string>(
+    'reactToolBox_timestamp_customFormat',
+    'YYYY-MM-DD HH:mm:ss'
+  );
+
+  // Restore from localStorage when no URL param is present (after hydration).
+  // The timezone resolution re-fires whenever storedTz changes, so it correctly
+  // settles on the restored value even though it first runs before storedTz's own
+  // localStorage restore has landed (see the identical pattern in CronParserTool).
   useEffect(() => {
     if (!urlTs && storedInput) {
       setInputRaw(storedInput);
     }
-    if (storedTz && storedTz !== getLocalTimezone()) {
-      setTimezoneRaw(storedTz);
-    }
+    setTimezoneRaw(storedTz || getLocalTimezone());
   }, [storedInput, storedTz, urlTs]);
 
   // Wrap setters to also persist to localStorage
@@ -52,8 +68,10 @@ export default function TimestampConverterTool() {
   }, [setStoredTz]);
   const [error, setError] = useState<string | null>(null);
 
-  // Live-updating clock
+  // Live-updating clock. Runs client-only (post-mount) so the "Current Time" panel
+  // never renders a volatile value during SSR.
   useEffect(() => {
+    setCurrentTime(new Date());
     const id = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
@@ -74,10 +92,12 @@ export default function TimestampConverterTool() {
     }
   }, [input, parsedDate]);
 
-  // Compute conversions from parsedDate
+  // Compute conversions from parsedDate. Falls back to UTC during the brief window
+  // (only reachable via a preloaded ?ts= URL param) before the post-mount effect
+  // above resolves `timezone` from '' to a real zone.
   const conversions = useMemo<ConversionResult[]>(() => {
     if (!parsedDate) return [];
-    return computeConversions(parsedDate, timezone);
+    return computeConversions(parsedDate, timezone || 'UTC');
   }, [parsedDate, timezone, currentTime]); // eslint-disable-line react-hooks/exhaustive-deps
   // currentTime dependency refreshes relative time every second
 
@@ -92,6 +112,19 @@ export default function TimestampConverterTool() {
       setInput(d.toISOString());
     }
   }, []);
+
+  const handleAddTimezone = useCallback((tz: string) => {
+    const trimmed = tz.trim();
+    if (!trimmed) return;
+    setMultiTimezones((prev) => {
+      if (prev.includes(trimmed) || prev.length >= MAX_COMPARISON_TIMEZONES) return prev;
+      return [...prev, trimmed];
+    });
+  }, [setMultiTimezones]);
+
+  const handleRemoveTimezone = useCallback((tz: string) => {
+    setMultiTimezones((prev) => prev.filter((entry) => entry !== tz));
+  }, [setMultiTimezones]);
 
   return (
     <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -111,7 +144,16 @@ export default function TimestampConverterTool() {
             />
 
             {/* Right Panel - Results */}
-            <ResultsPanel conversions={conversions} />
+            <ResultsPanel
+              conversions={conversions}
+              parsedDate={parsedDate}
+              timezone={timezone}
+              multiTimezones={multiTimezones}
+              onAddTimezone={handleAddTimezone}
+              onRemoveTimezone={handleRemoveTimezone}
+              customFormat={customFormat}
+              onCustomFormatChange={setCustomFormat}
+            />
           </div>
         </div>
       </main>

@@ -38,6 +38,7 @@ export const useColorPicker = (initialColor: string = '#3498db') => {
     }
   }, [persistedHex, hasHydrated, initialColor, colorService]);
   const [colorHistory, setColorHistory] = useState<string[]>([]);
+  const [alpha, setAlpha] = useState<number>(1);
   const [activeFormatTab, setActiveFormatTab] = useState<ColorFormat>(ColorFormat.HEX);
   const [activePickerTab, setActivePickerTab] = useState<PickerTab>(PickerTab.INPUTS);
   const [selectedPalette, setSelectedPalette] = useState<PaletteName>('material');
@@ -132,6 +133,15 @@ export const useColorPicker = (initialColor: string = '#3498db') => {
   );
 
   /**
+   * Update alpha (opacity) channel
+   */
+  const updateAlpha = useCallback((value: number) => {
+    if (value >= 0 && value <= 1) {
+      setAlpha(value);
+    }
+  }, []);
+
+  /**
    * Set HSV object
    */
   const setHsv = useCallback(
@@ -193,7 +203,7 @@ export const useColorPicker = (initialColor: string = '#3498db') => {
    */
   const copyToClipboard = useCallback(
     async (format: ColorFormat) => {
-      const textToCopy = colorService.getFormattedColor(format, colorState);
+      const textToCopy = colorService.getFormattedColor(format, colorState, alpha);
 
       try {
         await navigator.clipboard.writeText(textToCopy);
@@ -202,7 +212,7 @@ export const useColorPicker = (initialColor: string = '#3498db') => {
         showNotification('Failed to copy to clipboard', 'error');
       }
     },
-    [colorService, colorState]
+    [colorService, colorState, alpha]
   );
 
   /**
@@ -233,12 +243,14 @@ export const useColorPicker = (initialColor: string = '#3498db') => {
     rgb: colorState.rgb,
     hsl: colorState.hsl,
     hsv: colorState.hsv,
+    alpha,
 
     // Update functions
     updateHex,
     updateRgb,
     updateHsl,
     updateHsv,
+    updateAlpha,
     setRgb,
     setHsl,
     setHsv,

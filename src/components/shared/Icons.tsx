@@ -862,3 +862,144 @@ export function NullTypeIcon({ className = '', size = 14 }: IconProps) {
         </svg>
     );
 }
+
+// Markdown toolbar icons
+export function BoldIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+        </svg>
+    );
+}
+
+export function ItalicIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <line x1="19" y1="4" x2="10" y2="4" />
+            <line x1="14" y1="20" x2="5" y2="20" />
+            <line x1="15" y1="4" x2="9" y2="20" />
+        </svg>
+    );
+}
+
+export function HeadingIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M6 4v16" />
+            <path d="M18 4v16" />
+            <path d="M6 12h12" />
+        </svg>
+    );
+}
+
+export function InlineCodeIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+        </svg>
+    );
+}
+
+export function CodeBlockIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <polyline points="9 9 6.5 12 9 15" />
+            <polyline points="15 9 17.5 12 15 15" />
+        </svg>
+    );
+}
+
+export function ListIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+    );
+}
+
+export function QuoteIcon({ className = '', size = 16 }: IconProps) {
+    return (
+        <svg
+            className={className}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M7 7h4v6a4 4 0 0 1-4 4H5" />
+            <path d="M15 7h4v6a4 4 0 0 1-4 4h-2" />
+        </svg>
+    );
+}

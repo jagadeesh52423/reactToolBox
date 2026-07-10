@@ -10,6 +10,7 @@ import { ColorFormat } from '../models/ColorModels';
 
 interface ColorPreviewProps {
   hex: string;
+  alpha: number;
   onSaveToHistory: () => void;
   onRandomColor: () => void;
   onEyedropper: () => void;
@@ -19,6 +20,7 @@ interface ColorPreviewProps {
 
 export const ColorPreview: React.FC<ColorPreviewProps> = ({
   hex,
+  alpha,
   onSaveToHistory,
   onRandomColor,
   onEyedropper,
@@ -28,9 +30,14 @@ export const ColorPreview: React.FC<ColorPreviewProps> = ({
   return (
     <div className="flex flex-col gap-4">
       <div
-        className="w-full h-40 rounded-lg shadow-inner border"
-        style={{ backgroundColor: hex }}
-      ></div>
+        className="w-full h-40 rounded-lg shadow-inner border overflow-hidden"
+        style={{
+          backgroundImage: 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%)',
+          backgroundSize: '16px 16px',
+        }}
+      >
+        <div className="w-full h-full" style={{ backgroundColor: hex, opacity: alpha }}></div>
+      </div>
 
       <div className="flex flex-wrap justify-between gap-2">
         <div className="flex gap-2">

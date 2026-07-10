@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
 
 /**
  * Markdown Parser Utility
@@ -13,23 +14,21 @@ marked.setOptions({
     breaks: true,
 });
 
-/**
- * Strip script tags from HTML as a basic sanitization precaution.
- */
-function stripScriptTags(html: string): string {
-    return html.replace(
-        /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-        ''
-    );
-}
+// Allow task-list checkboxes (GFM) in addition to DOMPurify's default allowlist.
+const SANITIZE_CONFIG = {
+    ADD_TAGS: ['input'],
+    ADD_ATTR: ['type', 'checked', 'disabled'],
+};
 
 /**
- * Parse markdown string into sanitized HTML.
+ * Parse markdown string into sanitized HTML via an allowlist-based sanitizer,
+ * which strips script tags, event handlers, javascript: URIs, and other
+ * dangerous constructs regardless of how they're encoded.
  */
 export function parseMarkdown(markdown: string): string {
     try {
         const rawHtml = marked.parse(markdown) as string;
-        return stripScriptTags(rawHtml);
+        return DOMPurify.sanitize(rawHtml, SANITIZE_CONFIG);
     } catch {
         return '<p class="text-red-500">Error parsing markdown.</p>';
     }

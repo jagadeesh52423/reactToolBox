@@ -49,9 +49,15 @@ const FIELD_RANGES: Record<string, FieldRange> = {
   hour: { min: 0, max: 23 },
   dayOfMonth: { min: 1, max: 31 },
   month: { min: 1, max: 12 },
-  dayOfWeek: { min: 0, max: 6 },
+  // POSIX cron allows 0-7 for day-of-week; both 0 and 7 mean Sunday.
+  dayOfWeek: { min: 0, max: 7 },
   year: { min: 1970, max: 2099 },
 };
+
+/** POSIX cron treats day-of-week 7 as an alias for 0 (Sunday). */
+function normalizeDayOfWeek(value: number): number {
+  return value === 7 ? 0 : value;
+}
 
 export type CronFieldCount = 5 | 6 | 7;
 
@@ -254,6 +260,36 @@ export function parseCronExpression(expression: string): CronParseResult {
 }
 
 /**
+ * Describes a single comma-separated cron field token (plain value, range, or step)
+ * using the given display names. `normalize` maps a parsed value before indexing into
+ * `names` (used for the day-of-week 0/7-are-both-Sunday alias).
+ */
+function describeFieldToken(token: string, names: string[], normalize: (value: number) => number = (value) => value): string {
+  const nameFor = (numStr: string) => names[normalize(parseInt(numStr, 10))] || numStr;
+
+  const rangeStep = token.match(/^(\d+)-(\d+)\/(\d+)$/);
+  if (rangeStep) {
+    return `${nameFor(rangeStep[1])}-${nameFor(rangeStep[2])} every ${rangeStep[3]}`;
+  }
+
+  const range = token.match(/^(\d+)-(\d+)$/);
+  if (range) {
+    return `${nameFor(range[1])}-${nameFor(range[2])}`;
+  }
+
+  const singleStep = token.match(/^(\d+)\/(\d+)$/);
+  if (singleStep) {
+    return `${nameFor(singleStep[1])} every ${singleStep[2]}`;
+  }
+
+  if (/^\d+$/.test(token)) {
+    return nameFor(token);
+  }
+
+  return token;
+}
+
+/**
  * Generates a human-readable description of a cron expression.
  */
 function generateDescription(fields: CronFields, fieldCount: CronFieldCount): string {
@@ -292,10 +328,7 @@ function generateDescription(fields: CronFields, fieldCount: CronFieldCount): st
       const step = fields.month.split('/')[1];
       parts.push(`every ${step} months`);
     } else {
-      const months = fields.month.split(',').map(m => {
-        const num = parseInt(m, 10);
-        return SHORT_MONTH_NAMES[num] || m;
-      }).join(', ');
+      const months = fields.month.split(',').map(token => describeFieldToken(token.trim(), SHORT_MONTH_NAMES)).join(', ');
       parts.push(`in ${months}`);
     }
   }
@@ -306,10 +339,10 @@ function generateDescription(fields: CronFields, fieldCount: CronFieldCount): st
       const step = fields.dayOfWeek.split('/')[1];
       parts.push(`every ${step} days of the week`);
     } else {
-      const days = fields.dayOfWeek.split(',').map(d => {
-        const num = parseInt(d, 10);
-        return SHORT_DAY_NAMES[num] || d;
-      }).join(', ');
+      const dayDescriptions = fields.dayOfWeek.split(',').map(token =>
+        describeFieldToken(token.trim(), SHORT_DAY_NAMES, normalizeDayOfWeek)
+      );
+      const days = Array.from(new Set(dayDescriptions)).join(', ');
       parts.push(`on ${days}`);
     }
   }
@@ -382,12 +415,152 @@ function formatTime(h: number, m: number): string {
   return `${h - 12}:${minuteStr} PM`;
 }
 
+/** Wall-clock calendar/time fields for an instant, used for timezone-aware schedule computation. */
+interface ZonedParts {
+  year: number;
+  month: number; // 1-12
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  weekday: number; // 0=Sunday..6=Saturday
+}
+
+const SHORT_WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+/**
+ * Whether `timezone` is a timezone Intl.DateTimeFormat accepts. Intl throws a
+ * RangeError for anything else (including partial input typed into a free-text
+ * timezone field), so every entry point that takes a user-supplied timezone
+ * must check this before constructing a formatter.
+ */
+function isValidTimezone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reads a date's wall-clock fields, either in the browser's local timezone
+ * (default, when `timezone` is omitted) or in an explicit IANA timezone via
+ * Intl.DateTimeFormat.
+ */
+function getZonedParts(date: Date, timezone?: string): ZonedParts {
+  if (!timezone) {
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      second: date.getSeconds(),
+      weekday: date.getDay(),
+    };
+  }
+
+  const formatted = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    weekday: 'short',
+    hour12: false,
+  }).formatToParts(date);
+
+  const map: Record<string, string> = {};
+  for (const part of formatted) {
+    map[part.type] = part.value;
+  }
+
+  // Some environments render midnight as "24" under hour12: false.
+  let hour = parseInt(map.hour, 10);
+  if (hour === 24) hour = 0;
+
+  return {
+    year: parseInt(map.year, 10),
+    month: parseInt(map.month, 10),
+    day: parseInt(map.day, 10),
+    hour,
+    minute: parseInt(map.minute, 10),
+    second: parseInt(map.second, 10),
+    weekday: SHORT_WEEKDAY_INDEX[map.weekday] ?? 0,
+  };
+}
+
+/**
+ * Normalizes possibly-overflowed calendar/time fields (e.g. month 13, day 32)
+ * by routing them through Date.UTC, which carries overflow into the next unit.
+ * This is pure calendar arithmetic — UTC is only used as scratch space, no
+ * actual timezone semantics are involved.
+ */
+function normalizeParts(year: number, month: number, day: number, hour: number, minute: number, second: number): ZonedParts {
+  const normalized = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return {
+    year: normalized.getUTCFullYear(),
+    month: normalized.getUTCMonth() + 1,
+    day: normalized.getUTCDate(),
+    hour: normalized.getUTCHours(),
+    minute: normalized.getUTCMinutes(),
+    second: normalized.getUTCSeconds(),
+    weekday: normalized.getUTCDay(),
+  };
+}
+
+const addSecondsToParts = (parts: ZonedParts, n: number) =>
+  normalizeParts(parts.year, parts.month, parts.day, parts.hour, parts.minute, parts.second + n);
+const addMinutesToParts = (parts: ZonedParts, n: number) =>
+  normalizeParts(parts.year, parts.month, parts.day, parts.hour, parts.minute + n, 0);
+const addHoursToParts = (parts: ZonedParts, n: number) =>
+  normalizeParts(parts.year, parts.month, parts.day, parts.hour + n, 0, 0);
+const addDaysToParts = (parts: ZonedParts, n: number) =>
+  normalizeParts(parts.year, parts.month, parts.day + n, 0, 0, 0);
+const addMonthsToParts = (parts: ZonedParts, n: number) =>
+  normalizeParts(parts.year, parts.month + n, 1, 0, 0, 0);
+const addYearsToParts = (parts: ZonedParts, n: number) =>
+  normalizeParts(parts.year + n, 1, 1, 0, 0, 0);
+
+/**
+ * Converts wall-clock parts in a given IANA timezone back to the equivalent UTC
+ * instant, via fixed-point iteration against Intl's own tz projection. Two passes
+ * converge even across a DST transition (the same approach tz libraries use).
+ */
+function zonedPartsToUtc(parts: ZonedParts, timezone?: string): Date {
+  const naiveUtcMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  if (!timezone) return new Date(naiveUtcMs);
+
+  let instant = naiveUtcMs;
+  for (let i = 0; i < 2; i++) {
+    const observed = getZonedParts(new Date(instant), timezone);
+    const observedAsUtcMs = Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute, observed.second);
+    instant -= observedAsUtcMs - naiveUtcMs;
+  }
+  return new Date(instant);
+}
+
 /**
  * Calculates the next N run times for a given cron expression.
  * Supports 5, 6, and 7 field expressions.
  * Uses skip-ahead optimization. Caps search at 366 days.
+ *
+ * When `timezone` is omitted, runs are computed against the browser's local
+ * timezone (unchanged legacy behavior). When provided, the cron fields are
+ * matched against that IANA timezone's wall clock instead.
  */
-export function getNextRuns(expression: string, count: number = 10, from?: Date): Date[] {
+export function getNextRuns(expression: string, count: number = 10, from?: Date, timezone?: string): Date[] {
+  if (!timezone) return getNextRunsLocal(expression, count, from);
+  if (!isValidTimezone(timezone)) return [];
+  return getNextRunsInTimezone(expression, count, from, timezone);
+}
+
+function getNextRunsLocal(expression: string, count: number, from?: Date): Date[] {
   const parseResult = parseCronExpression(expression);
   if (!parseResult.isValid || !parseResult.fields) return [];
 
@@ -397,7 +570,9 @@ export function getNextRuns(expression: string, count: number = 10, from?: Date)
   const hourVals = expandField(fields.hour, FIELD_RANGES.hour)!;
   const dayOfMonthVals = expandField(fields.dayOfMonth, FIELD_RANGES.dayOfMonth)!;
   const monthVals = expandField(fields.month, FIELD_RANGES.month)!;
-  const dayOfWeekVals = expandField(fields.dayOfWeek, FIELD_RANGES.dayOfWeek)!;
+  const dayOfWeekVals = Array.from(
+    new Set(expandField(fields.dayOfWeek, FIELD_RANGES.dayOfWeek)!.map(normalizeDayOfWeek))
+  );
   const yearVals = fieldCount === 7 ? expandField(fields.year, FIELD_RANGES.year) : null;
 
   const hasSeconds = fieldCount >= 6 && !(secondVals.length === 1 && secondVals[0] === 0);
@@ -475,25 +650,94 @@ export function getNextRuns(expression: string, count: number = 10, from?: Date)
   return results;
 }
 
+function getNextRunsInTimezone(expression: string, count: number, from: Date | undefined, timezone: string): Date[] {
+  const parseResult = parseCronExpression(expression);
+  if (!parseResult.isValid || !parseResult.fields) return [];
+
+  const { fields, fieldCount } = parseResult;
+  const secondVals = expandField(fields.second, FIELD_RANGES.second)!;
+  const minuteVals = expandField(fields.minute, FIELD_RANGES.minute)!;
+  const hourVals = expandField(fields.hour, FIELD_RANGES.hour)!;
+  const dayOfMonthVals = expandField(fields.dayOfMonth, FIELD_RANGES.dayOfMonth)!;
+  const monthVals = expandField(fields.month, FIELD_RANGES.month)!;
+  const dayOfWeekVals = Array.from(
+    new Set(expandField(fields.dayOfWeek, FIELD_RANGES.dayOfWeek)!.map(normalizeDayOfWeek))
+  );
+  const yearVals = fieldCount === 7 ? expandField(fields.year, FIELD_RANGES.year) : null;
+
+  const hasSeconds = fieldCount >= 6 && !(secondVals.length === 1 && secondVals[0] === 0);
+
+  const results: Date[] = [];
+  const startInstant = from ? new Date(from) : new Date();
+
+  let parts = getZonedParts(startInstant, timezone);
+  parts = hasSeconds ? addSecondsToParts(parts, 1) : addMinutesToParts(parts, 1);
+
+  const maxInstantMs = zonedPartsToUtc(parts, timezone).getTime() + 366 * 86_400_000;
+
+  while (results.length < count) {
+    const instantMs = zonedPartsToUtc(parts, timezone).getTime();
+    if (instantMs > maxInstantMs) break;
+
+    const { year: cYear, month: cMonth, day: cDayOfMonth, weekday: cDayOfWeek, hour: cHour, minute: cMinute, second: cSecond } = parts;
+
+    if (yearVals && !yearVals.includes(cYear)) {
+      parts = addYearsToParts(parts, 1);
+      continue;
+    }
+
+    if (!monthVals.includes(cMonth)) {
+      parts = addMonthsToParts(parts, 1);
+      continue;
+    }
+
+    if (!dayOfMonthVals.includes(cDayOfMonth) || !dayOfWeekVals.includes(cDayOfWeek)) {
+      parts = addDaysToParts(parts, 1);
+      continue;
+    }
+
+    if (!hourVals.includes(cHour)) {
+      parts = addHoursToParts(parts, 1);
+      continue;
+    }
+
+    if (!minuteVals.includes(cMinute)) {
+      parts = addMinutesToParts(parts, 1);
+      continue;
+    }
+
+    if (hasSeconds && !secondVals.includes(cSecond)) {
+      parts = addSecondsToParts(parts, 1);
+      continue;
+    }
+
+    results.push(zonedPartsToUtc(parts, timezone));
+    parts = hasSeconds ? addSecondsToParts(parts, 1) : addMinutesToParts(parts, 1);
+  }
+
+  return results;
+}
+
 /**
  * Formats a Date as a human-readable string for display.
  * Includes seconds if the expression uses seconds.
+ *
+ * When `timezone` is provided, the displayed wall-clock time is projected into
+ * that IANA timezone instead of the browser's local zone.
  */
-export function formatRunDate(date: Date, showSeconds: boolean = false): string {
-  const dayName = DAY_NAMES[date.getDay()];
-  const monthName = MONTH_NAMES[date.getMonth() + 1];
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const timeStr = formatTime(hours, minutes);
+export function formatRunDate(date: Date, showSeconds: boolean = false, timezone?: string): string {
+  if (timezone && !isValidTimezone(timezone)) return `Invalid timezone: ${timezone}`;
+  const parts = getZonedParts(date, timezone);
+  const dayName = DAY_NAMES[parts.weekday];
+  const monthName = MONTH_NAMES[parts.month];
+  const timeStr = formatTime(parts.hour, parts.minute);
 
   if (showSeconds) {
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-    return `${dayName}, ${monthName} ${day}, ${year} at ${timeStr}:${seconds}`;
+    const seconds = parts.second.toString().padStart(2, '0');
+    return `${dayName}, ${monthName} ${parts.day}, ${parts.year} at ${timeStr}:${seconds}`;
   }
 
-  return `${dayName}, ${monthName} ${day}, ${year} at ${timeStr}`;
+  return `${dayName}, ${monthName} ${parts.day}, ${parts.year} at ${timeStr}`;
 }
 
 /**
