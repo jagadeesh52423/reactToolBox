@@ -23,6 +23,8 @@ export const DiffLineDisplay: React.FC<DiffLineDisplayProps> = ({ line, wordDiff
         return 'bg-red-100 dark:bg-red-900/30';
       case DiffType.CHANGED:
         return 'bg-yellow-100 dark:bg-yellow-900/30';
+      case DiffType.MOVED:
+        return 'bg-indigo-100 dark:bg-indigo-900/30';
       case DiffType.PLACEHOLDER:
         return 'bg-gray-50 dark:bg-slate-800';
       default:
@@ -38,6 +40,8 @@ export const DiffLineDisplay: React.FC<DiffLineDisplayProps> = ({ line, wordDiff
         return 'text-red-800 dark:text-red-300';
       case DiffType.CHANGED:
         return 'text-yellow-800 dark:text-yellow-300';
+      case DiffType.MOVED:
+        return 'text-indigo-800 dark:text-indigo-300';
       default:
         return 'text-gray-800 dark:text-slate-200';
     }
@@ -54,6 +58,11 @@ export const DiffLineDisplay: React.FC<DiffLineDisplayProps> = ({ line, wordDiff
         </div>
       )}
       <div className="flex-grow">
+        {line.type === DiffType.MOVED && line.movedCounterpartLineNumber !== undefined && (
+          <span className="mr-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 align-middle">
+            moved ↔ line {line.movedCounterpartLineNumber}
+          </span>
+        )}
         {searchMatches && searchMatches.length > 0 ? (
           // Search highlighting takes precedence over word-diff highlighting for this
           // row — layering both would need nested-span math disproportionate to a

@@ -1,6 +1,7 @@
 import { ITextDiffAlgorithm } from '../algorithms/ITextDiffAlgorithm';
 import { LineDiffAlgorithm } from '../algorithms/LineDiffAlgorithm';
 import { WordDiffProcessor } from '../algorithms/WordDiffProcessor';
+import { detectMovedLines } from '../algorithms/movedBlocks';
 import { DiffResult, DiffStatistics, DiffOptions, DiffGranularity, WordDiffResult, DiffType } from '../models/DiffModels';
 
 /**
@@ -21,7 +22,8 @@ export class TextCompareService {
    * Compares two texts and returns diff result
    */
   public compareTexts(leftText: string, rightText: string, options?: DiffOptions): DiffResult {
-    return this.diffAlgorithm.computeDiff(leftText, rightText, options);
+    const result = this.diffAlgorithm.computeDiff(leftText, rightText, options);
+    return options?.detectMoved ? detectMovedLines(result) : result;
   }
 
   /**
@@ -42,8 +44,10 @@ export class TextCompareService {
     const removed = diffResult.left.filter((line) => line.type === DiffType.REMOVED).length;
     const modified = diffResult.left.filter((line) => line.type === DiffType.CHANGED).length;
     const unchanged = diffResult.left.filter((line) => line.type === DiffType.UNCHANGED).length;
+    // Counted from the left side only: each moved pair writes exactly one MOVED entry
+    // per side (see detectMovedLines), so left- and right-side counts are always equal.
+    const moved = diffResult.left.filter((line) => line.type === DiffType.MOVED).length;
 
-    const totalChanges = added + removed + modified;
     const totalLines = Math.max(leftLines.length, rightLines.length);
     const similarity = totalLines > 0 ? ((unchanged / totalLines) * 100) : 100;
 
@@ -57,6 +61,7 @@ export class TextCompareService {
         removed,
         modified,
         unchanged,
+        moved,
       },
       similarity: Math.round(similarity * 10) / 10, // Round to 1 decimal place
     };

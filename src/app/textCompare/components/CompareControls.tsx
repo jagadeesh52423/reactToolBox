@@ -95,6 +95,18 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
           </span>
         </label>
 
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={options.detectMoved ?? true}
+            onChange={(e) => onOptionsChange({ detectMoved: e.target.checked })}
+            className="w-4 h-4 text-indigo-600 border-gray-300 dark:border-slate-600 rounded focus:ring-indigo-500"
+          />
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300" title="Mark a removed line and an identical added line elsewhere as moved instead of separate changes">
+            Detect Moved Lines
+          </span>
+        </label>
+
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Granularity</span>
           <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded overflow-hidden">

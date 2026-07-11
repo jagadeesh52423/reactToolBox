@@ -12,11 +12,35 @@ function getUnifiedRows(diffResult: DiffResult): UnifiedDiffRow[] {
   return buildUnifiedDiffRows(diffResult, NO_WORD_DIFF_COMPARER);
 }
 
-const DIFF_FENCE_PREFIX: Record<UnifiedDiffRow['type'], string> = {
-  [DiffType.UNCHANGED]: ' ',
-  [DiffType.REMOVED]: '-',
-  [DiffType.ADDED]: '+',
+type UnifiedSide = 'context' | 'removed' | 'added';
+
+/**
+ * Every export format (fenced diff, HTML, patch) ultimately needs a binary -/+/context
+ * decision per row, but MOVED is a single row `type` covering BOTH the old-side and
+ * new-side occurrence of a moved line — same ambiguity REMOVED/ADDED never had. Resolved
+ * the same way the live UnifiedDiffDisplay resolves it: oldLineNumber is only ever set
+ * on the old-side occurrence, newLineNumber only on the new-side one.
+ */
+function unifiedRowSide(row: UnifiedDiffRow): UnifiedSide {
+  if (row.type === DiffType.UNCHANGED) return 'context';
+  if (row.type === DiffType.REMOVED) return 'removed';
+  if (row.type === DiffType.ADDED) return 'added';
+  return row.oldLineNumber !== undefined ? 'removed' : 'added';
+}
+
+const SIDE_DIFF_PREFIX: Record<UnifiedSide, string> = {
+  context: ' ',
+  removed: '-',
+  added: '+',
 };
+
+/** Human-readable-report-only annotation (never added to the raw unified patch, which
+ * must stay byte-exact `git apply`-compatible). */
+function movedAnnotation(row: UnifiedDiffRow): string {
+  return row.type === DiffType.MOVED && row.movedCounterpartLineNumber !== undefined
+    ? ` (moved ↔ line ${row.movedCounterpartLineNumber})`
+    : '';
+}
 
 /**
  * A Markdown fence must be at least one backtick longer than any backtick run inside
@@ -38,7 +62,9 @@ function pickMarkdownFence(lines: string[]): string {
  * block (GitHub-flavored Markdown renders +/- lines with color automatically).
  */
 export function buildMarkdownReport(diffResult: DiffResult, statistics: DiffStatistics, now: Date = new Date()): string {
-  const diffLines = getUnifiedRows(diffResult).map((row) => `${DIFF_FENCE_PREFIX[row.type]}${row.text}`);
+  const diffLines = getUnifiedRows(diffResult).map(
+    (row) => `${SIDE_DIFF_PREFIX[unifiedRowSide(row)]}${row.text}${movedAnnotation(row)}`
+  );
   const fence = pickMarkdownFence(diffLines);
 
   const lines = [
@@ -46,7 +72,7 @@ export function buildMarkdownReport(diffResult: DiffResult, statistics: DiffStat
     '',
     `- **Date:** ${now.toISOString()}`,
     `- **Similarity:** ${statistics.similarity.toFixed(1)}%`,
-    `- **Added:** ${statistics.changes.added} · **Removed:** ${statistics.changes.removed} · **Modified:** ${statistics.changes.modified}`,
+    `- **Added:** ${statistics.changes.added} · **Removed:** ${statistics.changes.removed} · **Modified:** ${statistics.changes.modified} · **Moved:** ${statistics.changes.moved}`,
   ];
   if (diffResult.notice) {
     lines.push('', `> Note: ${diffResult.notice}`);
@@ -65,10 +91,10 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-const HTML_ROW_CLASS: Record<UnifiedDiffRow['type'], string> = {
-  [DiffType.UNCHANGED]: 'ctx',
-  [DiffType.REMOVED]: 'del',
-  [DiffType.ADDED]: 'add',
+const SIDE_HTML_CLASS: Record<UnifiedSide, string> = {
+  context: 'ctx',
+  removed: 'del',
+  added: 'add',
 };
 
 /**
@@ -77,7 +103,10 @@ const HTML_ROW_CLASS: Record<UnifiedDiffRow['type'], string> = {
  */
 export function buildHtmlReport(diffResult: DiffResult, statistics: DiffStatistics, now: Date = new Date()): string {
   const bodyLines = getUnifiedRows(diffResult)
-    .map((row) => `<div class="line ${HTML_ROW_CLASS[row.type]}">${escapeHtml(`${DIFF_FENCE_PREFIX[row.type]}${row.text}`)}</div>`)
+    .map((row) => {
+      const classes = `line ${SIDE_HTML_CLASS[unifiedRowSide(row)]}${row.type === DiffType.MOVED ? ' moved' : ''}`;
+      return `<div class="${classes}">${escapeHtml(`${SIDE_DIFF_PREFIX[unifiedRowSide(row)]}${row.text}${movedAnnotation(row)}`)}</div>`;
+    })
     .join('\n');
   const notice = diffResult.notice ? `<p class="notice">Note: ${escapeHtml(diffResult.notice)}</p>` : '';
 
@@ -96,11 +125,12 @@ export function buildHtmlReport(diffResult: DiffResult, statistics: DiffStatisti
   .line.add { background: #dcfce7; color: #166534; }
   .line.del { background: #fee2e2; color: #991b1b; }
   .line.ctx { color: #475569; }
+  .line.moved { background: #e0e7ff; color: #3730a3; }
 </style>
 </head>
 <body>
   <h1>Text Compare Report</h1>
-  <p class="meta">Date: ${now.toISOString()} | Similarity: ${statistics.similarity.toFixed(1)}% | Added: ${statistics.changes.added} | Removed: ${statistics.changes.removed} | Modified: ${statistics.changes.modified}</p>
+  <p class="meta">Date: ${now.toISOString()} | Similarity: ${statistics.similarity.toFixed(1)}% | Added: ${statistics.changes.added} | Removed: ${statistics.changes.removed} | Modified: ${statistics.changes.modified} | Moved: ${statistics.changes.moved}</p>
   ${notice}
   <div class="diff">
 ${bodyLines}
@@ -138,7 +168,7 @@ function buildPatchHunks(rows: UnifiedDiffRow[], contextLines: number): PatchHun
   const total = rows.length;
   const included = new Array<boolean>(total).fill(false);
   for (let index = 0; index < total; index++) {
-    if (rows[index].type === DiffType.UNCHANGED) continue;
+    if (unifiedRowSide(rows[index]) === 'context') continue;
     const start = Math.max(0, index - contextLines);
     const end = Math.min(total - 1, index + contextLines);
     for (let j = start; j <= end; j++) included[j] = true;
@@ -172,18 +202,17 @@ function buildPatchHunks(rows: UnifiedDiffRow[], contextLines: number): PatchHun
 
       for (let k = start; k <= end; k++) {
         const row = rows[k];
-        if (row.type === DiffType.UNCHANGED) {
-          lines.push({ type: 'context', text: row.text });
+        const side = unifiedRowSide(row);
+        lines.push({ type: side, text: row.text });
+        if (side === 'context') {
           oldCount++;
           newCount++;
           oldCursor++;
           newCursor++;
-        } else if (row.type === DiffType.REMOVED) {
-          lines.push({ type: 'removed', text: row.text });
+        } else if (side === 'removed') {
           oldCount++;
           oldCursor++;
         } else {
-          lines.push({ type: 'added', text: row.text });
           newCount++;
           newCursor++;
         }
@@ -204,11 +233,11 @@ function buildPatchHunks(rows: UnifiedDiffRow[], contextLines: number): PatchHun
       continue;
     }
 
-    const row = rows[index];
-    if (row.type === DiffType.UNCHANGED) {
+    const side = unifiedRowSide(rows[index]);
+    if (side === 'context') {
       oldCursor++;
       newCursor++;
-    } else if (row.type === DiffType.REMOVED) {
+    } else if (side === 'removed') {
       oldCursor++;
     } else {
       newCursor++;

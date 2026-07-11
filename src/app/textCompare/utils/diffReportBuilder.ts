@@ -8,21 +8,23 @@ export function buildDiffReport(diffResult: DiffResult, statistics: DiffStatisti
   const leftLines = diffResult.left
     .filter((l) => l.type !== DiffType.PLACEHOLDER)
     .map((l) => {
-      const prefix = l.type === DiffType.REMOVED ? '-' : l.type === DiffType.CHANGED ? '~' : ' ';
-      return `${prefix} ${l.text}`;
+      const prefix = l.type === DiffType.REMOVED || l.type === DiffType.MOVED ? '-' : l.type === DiffType.CHANGED ? '~' : ' ';
+      const movedNote = l.type === DiffType.MOVED ? ` (moved to line ${l.movedCounterpartLineNumber})` : '';
+      return `${prefix} ${l.text}${movedNote}`;
     });
   const rightLines = diffResult.right
     .filter((l) => l.type !== DiffType.PLACEHOLDER)
     .map((l) => {
-      const prefix = l.type === DiffType.ADDED ? '+' : l.type === DiffType.CHANGED ? '~' : ' ';
-      return `${prefix} ${l.text}`;
+      const prefix = l.type === DiffType.ADDED || l.type === DiffType.MOVED ? '+' : l.type === DiffType.CHANGED ? '~' : ' ';
+      const movedNote = l.type === DiffType.MOVED ? ` (moved from line ${l.movedCounterpartLineNumber})` : '';
+      return `${prefix} ${l.text}${movedNote}`;
     });
 
   return [
     '=== Text Compare Report ===',
     `Date: ${now.toISOString()}`,
     `Similarity: ${statistics.similarity.toFixed(1)}%`,
-    `Added: ${statistics.changes.added}, Removed: ${statistics.changes.removed}, Modified: ${statistics.changes.modified}`,
+    `Added: ${statistics.changes.added}, Removed: ${statistics.changes.removed}, Modified: ${statistics.changes.modified}, Moved: ${statistics.changes.moved}`,
     '',
     '--- Original ---',
     ...leftLines,

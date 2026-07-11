@@ -35,6 +35,13 @@ const ROW_STYLES: Record<UnifiedDiffRow['type'], { bg: string; text: string; mar
     text: 'text-gray-800 dark:text-slate-200',
     marker: ' ',
   },
+  [DiffType.MOVED]: {
+    bg: 'bg-indigo-100 dark:bg-indigo-900/30',
+    text: 'text-indigo-800 dark:text-indigo-300',
+    // Marker is picked per-row (below) since a MOVED row still represents either an
+    // old-side removal or a new-side addition — oldLineNumber/newLineNumber tell which.
+    marker: '±',
+  },
 };
 
 const isUnchangedRow = (row: UnifiedDiffRow): boolean => row.type === DiffType.UNCHANGED;
@@ -111,6 +118,11 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
 
           const row = entry.row;
           const style = ROW_STYLES[row.type];
+          // A MOVED row is still either an old-side removal or a new-side addition —
+          // oldLineNumber is only ever set on the former, newLineNumber only on the
+          // latter (same convention REMOVED/ADDED already use), so that alone picks
+          // the correct -/+ marker without needing a separate "which side" flag.
+          const marker = row.type === DiffType.MOVED ? (row.oldLineNumber !== undefined ? '-' : '+') : style.marker;
           const rowMatches = matchesByRowId.get(row.key) ?? [];
           const activeRange = activeMatch && activeMatch.rowId === row.key ? activeMatch : null;
 
@@ -130,7 +142,7 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
               <div className="w-9 flex-shrink-0 text-gray-500 dark:text-slate-500 text-xs mr-2 text-right pr-2 border-r border-gray-300 dark:border-slate-600">
                 {row.newLineNumber ?? ''}
               </div>
-              <div className="w-4 flex-shrink-0 font-bold select-none">{style.marker}</div>
+              <div className="w-4 flex-shrink-0 font-bold select-none">{marker}</div>
               {hunkText !== undefined && (
                 <button
                   type="button"
@@ -143,6 +155,11 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
                 </button>
               )}
               <div className="flex-grow">
+                {row.type === DiffType.MOVED && row.movedCounterpartLineNumber !== undefined && (
+                  <span className="mr-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 align-middle">
+                    moved ↔ line {row.movedCounterpartLineNumber}
+                  </span>
+                )}
                 {rowMatches.length > 0 ? (
                   buildHighlightSegments(row.text, rowMatches, activeRange).map((segment, index) => (
                     <span

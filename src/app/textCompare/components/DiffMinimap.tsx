@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { scrollToPairIndex } from '../utils/hunks';
 
-export type MinimapRowType = 'unchanged' | 'added' | 'removed' | 'changed';
+export type MinimapRowType = 'unchanged' | 'added' | 'removed' | 'changed' | 'moved';
 
 interface DiffMinimapProps {
   rowTypes: MinimapRowType[];
@@ -16,16 +16,18 @@ const COLOR_BY_TYPE: Record<Exclude<MinimapRowType, 'unchanged'>, string> = {
   changed: 'bg-yellow-400 dark:bg-yellow-500',
   removed: 'bg-red-500 dark:bg-red-500',
   added: 'bg-green-500 dark:bg-green-500',
+  moved: 'bg-indigo-500 dark:bg-indigo-500',
 };
 
 const JUMP_LABEL_BY_TYPE: Record<Exclude<MinimapRowType, 'unchanged'>, string> = {
   changed: 'Jump to changed lines',
   removed: 'Jump to removed lines',
   added: 'Jump to added lines',
+  moved: 'Jump to moved lines',
 };
 
 // Priority for picking a bucket's single "dominant" color when it mixes change types.
-const DOMINANCE_ORDER: Exclude<MinimapRowType, 'unchanged'>[] = ['changed', 'removed', 'added'];
+const DOMINANCE_ORDER: Exclude<MinimapRowType, 'unchanged'>[] = ['changed', 'moved', 'removed', 'added'];
 
 interface Bucket {
   startIndex: number;
@@ -45,10 +47,10 @@ function buildBuckets(rowTypes: MinimapRowType[]): Bucket[] {
     const start = Math.floor(bucketIndex * bucketSize);
     const end = Math.min(total, Math.max(start + 1, Math.floor((bucketIndex + 1) * bucketSize)));
 
-    const counts: Record<MinimapRowType, number> = { unchanged: 0, added: 0, removed: 0, changed: 0 };
+    const counts: Record<MinimapRowType, number> = { unchanged: 0, added: 0, removed: 0, changed: 0, moved: 0 };
     for (let rowIndex = start; rowIndex < end; rowIndex++) counts[rowTypes[rowIndex]]++;
 
-    const changeCount = counts.added + counts.removed + counts.changed;
+    const changeCount = counts.added + counts.removed + counts.changed + counts.moved;
     const dominant = DOMINANCE_ORDER.find((type) => counts[type] > 0) ?? 'unchanged';
 
     buckets.push({ startIndex: start, dominant, density: changeCount / (end - start) });

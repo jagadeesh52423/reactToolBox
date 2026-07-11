@@ -34,6 +34,8 @@ export const useTextCompare = (defaultLeftText: string = '', defaultRightText: s
     ignoreCase: false,
     contextLines: 3,
     granularity: 'word',
+    // ON by default per design's recommendation (it's the enhancement) — user-toggleable.
+    detectMoved: true,
   });
 
   // Create service instance once

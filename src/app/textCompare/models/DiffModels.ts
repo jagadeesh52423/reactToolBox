@@ -7,6 +7,9 @@ export enum DiffType {
   CHANGED = 'changed',
   UNCHANGED = 'unchanged',
   PLACEHOLDER = 'placeholder',
+  /** A REMOVED/ADDED line that a post-process pass matched against an identical line
+   * on the other side — relocated content rather than an independent add+remove. */
+  MOVED = 'moved',
 }
 
 /**
@@ -16,6 +19,8 @@ export interface DiffLine {
   text: string;
   type: DiffType;
   lineNumber: number;
+  /** Set only when type is MOVED: the matching line's number on the other side. */
+  movedCounterpartLineNumber?: number;
 }
 
 /**
@@ -57,6 +62,8 @@ export interface DiffStatistics {
     removed: number;
     modified: number;
     unchanged: number;
+    /** Lines matched as relocated content (see DiffType.MOVED) — 0 unless detectMoved was on. */
+    moved: number;
   };
   similarity: number; // Percentage 0-100
 }
@@ -84,6 +91,8 @@ export interface DiffOptions {
   ignorePattern?: string;
   /** Display-only: force all unchanged lines to fold regardless of contextLines. */
   diffOnly?: boolean;
+  /** Post-process pass: reclassify content-identical REMOVED/ADDED line pairs as MOVED. */
+  detectMoved?: boolean;
 }
 
 /**

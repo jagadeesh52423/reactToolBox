@@ -2,13 +2,15 @@ import { DiffGranularity, DiffResult, DiffType, WordDiff } from '../models/DiffM
 
 export interface UnifiedDiffRow {
   key: string;
-  type: DiffType.UNCHANGED | DiffType.ADDED | DiffType.REMOVED;
+  type: DiffType.UNCHANGED | DiffType.ADDED | DiffType.REMOVED | DiffType.MOVED;
   text: string;
   oldLineNumber?: number;
   newLineNumber?: number;
   wordDiff?: WordDiff[];
   /** Index into the source DiffResult's left/right pairs this row was built from — lets hunk nav/copy (C1/C7) address a unified row by the same pair index used in the side-by-side view. */
   pairIndex: number;
+  /** Set only when type is MOVED — the matching line's number on the other side. */
+  movedCounterpartLineNumber?: number;
 }
 
 interface WordDiffComparer {
@@ -76,6 +78,24 @@ export function buildUnifiedDiffRows(
         type: DiffType.ADDED,
         text: rightLine.text,
         newLineNumber: rightLine.lineNumber,
+        pairIndex: index,
+      });
+    } else if (leftLine.type === DiffType.MOVED) {
+      rows.push({
+        key: `moved-from-${index}`,
+        type: DiffType.MOVED,
+        text: leftLine.text,
+        oldLineNumber: leftLine.lineNumber,
+        movedCounterpartLineNumber: leftLine.movedCounterpartLineNumber,
+        pairIndex: index,
+      });
+    } else if (rightLine.type === DiffType.MOVED) {
+      rows.push({
+        key: `moved-to-${index}`,
+        type: DiffType.MOVED,
+        text: rightLine.text,
+        newLineNumber: rightLine.lineNumber,
+        movedCounterpartLineNumber: rightLine.movedCounterpartLineNumber,
         pairIndex: index,
       });
     }

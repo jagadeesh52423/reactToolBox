@@ -52,10 +52,10 @@ export function buildHunkText(hunk: Hunk, pairs: PairLike[]): string {
   for (const pairIndex of hunk.pairIndices) {
     const pair = pairs[pairIndex];
     if (!pair) continue;
-    if (pair.left.type === DiffType.REMOVED || pair.left.type === DiffType.CHANGED) {
+    if (pair.left.type === DiffType.REMOVED || pair.left.type === DiffType.CHANGED || pair.left.type === DiffType.MOVED) {
       lines.push(`- ${pair.left.text}`);
     }
-    if (pair.right.type === DiffType.ADDED || pair.right.type === DiffType.CHANGED) {
+    if (pair.right.type === DiffType.ADDED || pair.right.type === DiffType.CHANGED || pair.right.type === DiffType.MOVED) {
       lines.push(`+ ${pair.right.text}`);
     }
   }

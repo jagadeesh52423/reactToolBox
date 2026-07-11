@@ -36,6 +36,10 @@
 - BLOCKER: tz input VALUE hydration mismatch (getLocalTimezone at first render) at CronParserTool.tsx:23/CronResultsPanel.tsx:83 and TimestampConverterTool.tsx:36/InputPanel.tsx:133 — masked in dev, real in prod. Fix: init '' + set in post-mount effect.
 - Reviewer's Finding 2 (local cron path not byte-identical) is a misattribution: those cronUtils changes are previously-approved Tasks #8/#18 work in the same file, not #29 scope. No action.
 
+## textCompare C6 moved-block detection (#42) — APPROVED (reviewer-c6)
+- New DiffType.MOVED traced through EVERY consumer, no missed case: collapse (never folds MOVED), search/diffOnly (isChange includes it), hunks/minimap (change hunk + indigo marker), stats (separate moved bucket, tile only >0), per-hunk copy, exports. Duplicate matching correct (FIFO per-text queue, deterministic, never double-counts); blank lines excluded; matching on preprocessed line.text inherits ignore options for free; content preserved; alignment invariant guarantees no MOVED+MOVED same-index collision. Exports: .diff stays byte-exact (unifiedRowSide maps moved-from→'-'/moved-to→'+', hunk counts match, git apply valid, coder validated with real `patch`); md/html annotate through escapeHtml (no XSS). Toggle off reverts cleanly. Open/Closed, minimal.
+- Non-blocking: HTML moved-row class order-dependent (cosmetic); no unit tests for movedBlocks (optional, logic provably correct).
+
 ## textCompare Batch C-2 (#41) export + share — APPROVED (reviewer-c2, after 2 revision rounds)
 - C4 export: unified-patch line math verified across all edge cases; HTML export fully escaped (no XSS in downloaded file); markdown fence guard (longest-backtick-run+1). C5 share: native CompressionStream gzip + base64url in URL HASH (privacy), size caps, SSR/support guarded. 
 - Two revision rounds on C5: (1) gunzip Promise.all fixes orphaned-rejection on corrupt hash; (2) share-hydration guard reworked from boolean→payload-keyed sync mutex, `cancelled` guard dropped — resolves stale-reload clobber, same-tab-second-link (prod), and Strict-Mode-no-hydrate (dev). Coder caught the original CompressionStream unhandled-rejection during self-verification.

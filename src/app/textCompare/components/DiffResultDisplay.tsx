@@ -80,6 +80,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
       pairs.map((pair) => {
         if (isUnchangedPair(pair)) return 'unchanged';
         if (pair.left.type === DiffType.CHANGED) return 'changed';
+        if (pair.left.type === DiffType.MOVED || pair.right.type === DiffType.MOVED) return 'moved';
         if (pair.left.type === DiffType.REMOVED) return 'removed';
         if (pair.right.type === DiffType.ADDED) return 'added';
         return 'unchanged';
@@ -444,6 +445,10 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-yellow-300 dark:bg-yellow-600 border border-yellow-400 dark:border-yellow-500 rounded"></div>
             <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Word-level changes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/40 border border-indigo-300 dark:border-indigo-700 rounded"></div>
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Moved</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-orange-200 dark:bg-orange-700/60 border border-orange-300 dark:border-orange-600 rounded"></div>
