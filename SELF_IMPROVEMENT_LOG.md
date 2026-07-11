@@ -31,6 +31,7 @@
 - [2026-07-10] Never run `npm run build` in a worktree while `next dev` is running there — both write `.next`, corrupting the dev server's chunk manifest (500s, then 404s after rm -rf .next until restart). Rule: `tsc --noEmit` during development; one production build at the end after code freeze. Multiple concurrent builds also race (ENOENT on 500.html rename).
 
 ## Deferred follow-ups (flagged, not done)
+- textCompare ignore-pattern + search regexes (opt-in) can still ReDoS-freeze on a catastrophic pattern against a single very long line (e.g. a pasted minified file — one long line defeats the per-line bound). Mitigated by 200-char pattern cap + fail-open, but not fully safe. Real fix = regexTester-style Web Worker + timeout; deferred as over-build for an opt-in nice-to-have. Reconsider if users report freezes diffing minified files.
 - Shared `useFileIO.uploadFile` (used by 5 tools) has no file-size cap; textCompare's drop path got a 5MB cap but the upload-button path (and the other 4 consumers) don't. Adding a maxSize param to the shared hook would close it for all — separate small task, wider blast radius.
 - jsonVisualizer JsonInputPanel passes an `error` prop MonacoJsonEditor ignores (pre-existing, harmless).
 

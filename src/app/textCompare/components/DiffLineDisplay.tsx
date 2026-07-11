@@ -1,17 +1,20 @@
 'use client';
 import React from 'react';
 import { DiffLine, DiffType, WordDiff } from '../models/DiffModels';
+import { buildHighlightSegments } from '../hooks/useDiffSearch';
 
 interface DiffLineDisplayProps {
   line: DiffLine;
   wordDiff?: WordDiff[];
+  searchMatches?: { start: number; end: number }[];
+  activeMatchRange?: { start: number; end: number } | null;
 }
 
 /**
  * Component for displaying a single diff line
  * Follows Single Responsibility Principle
  */
-export const DiffLineDisplay: React.FC<DiffLineDisplayProps> = ({ line, wordDiff }) => {
+export const DiffLineDisplay: React.FC<DiffLineDisplayProps> = ({ line, wordDiff, searchMatches, activeMatchRange }) => {
   const getBackgroundColor = (type: DiffType): string => {
     switch (type) {
       case DiffType.ADDED:
@@ -51,7 +54,26 @@ export const DiffLineDisplay: React.FC<DiffLineDisplayProps> = ({ line, wordDiff
         </div>
       )}
       <div className="flex-grow">
-        {wordDiff ? (
+        {searchMatches && searchMatches.length > 0 ? (
+          // Search highlighting takes precedence over word-diff highlighting for this
+          // row — layering both would need nested-span math disproportionate to a
+          // nice-to-have search feature; the row's type background color still applies.
+          buildHighlightSegments(line.text, searchMatches, activeMatchRange ?? null).map((segment, index) => (
+            <span
+              key={index}
+              data-active-match={segment.isActive || undefined}
+              className={
+                segment.isActive
+                  ? 'bg-orange-400 dark:bg-orange-500 text-orange-950 dark:text-white font-semibold rounded ring-2 ring-orange-600 dark:ring-orange-300'
+                  : segment.isMatch
+                    ? 'bg-orange-200 dark:bg-orange-700/60 text-orange-950 dark:text-orange-50 rounded'
+                    : ''
+              }
+            >
+              {segment.text}
+            </span>
+          ))
+        ) : wordDiff ? (
           // Render word-level diff
           wordDiff.map((word, index) => (
             <span

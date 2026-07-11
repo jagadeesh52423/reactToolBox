@@ -1,14 +1,16 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { DiffOptions, DiffResult, DiffType } from '../models/DiffModels';
-import { TextCompareService } from '../services/TextCompareService';
-import { buildUnifiedDiffRows, UnifiedDiffRow } from '../utils/unifiedDiffRows';
+import { DiffOptions, DiffType } from '../models/DiffModels';
+import { UnifiedDiffRow } from '../utils/unifiedDiffRows';
 import { collapseUnchangedRuns } from '../utils/collapseRows';
+import { buildHighlightSegments, SearchMatch } from '../hooks/useDiffSearch';
 
 interface UnifiedDiffDisplayProps {
-  diffResult: DiffResult;
-  compareService: TextCompareService;
+  rows: UnifiedDiffRow[];
   options: DiffOptions;
+  matchesByRowId: Map<string, SearchMatch[]>;
+  activeMatch: SearchMatch | null;
+  forceExpandFolds: boolean;
 }
 
 const ROW_STYLES: Record<UnifiedDiffRow['type'], { bg: string; text: string; marker: string }> = {
@@ -35,22 +37,35 @@ const isUnchangedRow = (row: UnifiedDiffRow): boolean => row.type === DiffType.U
  * Single-column unified diff view: additions/removals/unchanged lines interleaved
  * in document order, with separate old/new line-number gutters (GitHub-style).
  */
-export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({ diffResult, compareService, options }) => {
+export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
+  rows,
+  options,
+  matchesByRowId,
+  activeMatch,
+  forceExpandFolds,
+}) => {
   const [expandedFoldIds, setExpandedFoldIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setExpandedFoldIds(new Set());
-  }, [diffResult]);
+  }, [rows]);
 
-  const rows = useMemo(
-    () => buildUnifiedDiffRows(diffResult, compareService, options.granularity),
-    [diffResult, compareService, options.granularity]
-  );
+  const effectiveContextLines = options.diffOnly ? 0 : options.contextLines ?? 3;
 
   const collapsed = useMemo(
-    () => collapseUnchangedRuns(rows, isUnchangedRow, options.contextLines ?? 3, expandedFoldIds),
-    [rows, options.contextLines, expandedFoldIds]
+    () => collapseUnchangedRuns(rows, isUnchangedRow, effectiveContextLines, expandedFoldIds),
+    [rows, effectiveContextLines, expandedFoldIds]
   );
+
+  // While a search is active, folds would hide matches from the user with no way to
+  // reach them — force everything open for the duration of the search. The size
+  // check makes this idempotent once fully expanded, so including expandedFoldIds
+  // in the deps doesn't loop.
+  useEffect(() => {
+    if (forceExpandFolds && collapsed.foldIds.length > expandedFoldIds.size) {
+      setExpandedFoldIds(new Set(collapsed.foldIds));
+    }
+  }, [forceExpandFolds, collapsed.foldIds, expandedFoldIds]);
 
   const expandAll = () => setExpandedFoldIds(new Set(collapsed.foldIds));
 
@@ -83,6 +98,8 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({ diffResu
 
           const row = entry.row;
           const style = ROW_STYLES[row.type];
+          const rowMatches = matchesByRowId.get(row.key) ?? [];
+          const activeRange = activeMatch && activeMatch.rowId === row.key ? activeMatch : null;
           return (
             <div
               key={row.key}
@@ -96,7 +113,23 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({ diffResu
               </div>
               <div className="w-4 flex-shrink-0 font-bold select-none">{style.marker}</div>
               <div className="flex-grow">
-                {row.wordDiff ? (
+                {rowMatches.length > 0 ? (
+                  buildHighlightSegments(row.text, rowMatches, activeRange).map((segment, index) => (
+                    <span
+                      key={index}
+                      data-active-match={segment.isActive || undefined}
+                      className={
+                        segment.isActive
+                          ? 'bg-orange-400 dark:bg-orange-500 text-orange-950 dark:text-white font-semibold rounded ring-2 ring-orange-600 dark:ring-orange-300'
+                          : segment.isMatch
+                            ? 'bg-orange-200 dark:bg-orange-700/60 text-orange-950 dark:text-orange-50 rounded'
+                            : ''
+                      }
+                    >
+                      {segment.text}
+                    </span>
+                  ))
+                ) : row.wordDiff ? (
                   row.wordDiff.map((word, wordIndex) => (
                     <span
                       key={wordIndex}

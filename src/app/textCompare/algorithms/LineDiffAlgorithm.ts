@@ -1,5 +1,7 @@
 import { ITextDiffAlgorithm } from './ITextDiffAlgorithm';
 import { DiffResult, DiffLine, DiffType, DiffOptions } from '../models/DiffModels';
+import { compileIgnorePattern } from '../utils/ignorePattern';
+import { applyWhitespaceMode } from '../utils/whitespaceMode';
 
 type LineDiffOp =
   | { type: 'equal'; leftIndex: number; rightIndex: number }
@@ -244,19 +246,26 @@ export class LineDiffAlgorithm implements ITextDiffAlgorithm {
   }
 
   /**
-   * Preprocesses lines based on options
+   * Preprocesses lines based on options: strips text matching `ignorePattern` (when
+   * it compiles), then normalizes whitespace, then case — in that order, so a
+   * pattern that removes text (e.g. a timestamp) leaves whitespace for the
+   * whitespace mode to clean up.
    */
   private preprocessLines(text: string, options?: DiffOptions): string[] {
     // Normalize CRLF/CR line endings to LF before splitting so content that is
     // byte-identical apart from line-ending style diffs as unchanged.
     const lines = text.replace(/\r\n?/g, '\n').split('\n');
+    const { regex: ignoreRegex } = compileIgnorePattern(options?.ignorePattern, options?.ignoreCase);
 
     return lines.map((line) => {
       let processed = line;
 
-      if (options?.ignoreWhitespace) {
-        processed = processed.trim();
+      if (ignoreRegex) {
+        ignoreRegex.lastIndex = 0;
+        processed = processed.replace(ignoreRegex, '');
       }
+
+      processed = applyWhitespaceMode(processed, options?.whitespaceMode ?? 'none');
 
       if (options?.ignoreCase) {
         processed = processed.toLowerCase();
@@ -267,16 +276,14 @@ export class LineDiffAlgorithm implements ITextDiffAlgorithm {
   }
 
   /**
-   * Checks if two lines are equal based on options
+   * Checks if two lines are equal based on options. Inputs are always the
+   * already-preprocessed lines from preprocessLines (ignorePattern/whitespace/case
+   * already applied), so this re-application is a defensive no-op, not double-work
+   * that changes the result.
    */
   private linesEqual(line1: string, line2: string, options?: DiffOptions): boolean {
-    let l1 = line1;
-    let l2 = line2;
-
-    if (options?.ignoreWhitespace) {
-      l1 = l1.trim();
-      l2 = l2.trim();
-    }
+    let l1 = applyWhitespaceMode(line1, options?.whitespaceMode ?? 'none');
+    let l2 = applyWhitespaceMode(line2, options?.whitespaceMode ?? 'none');
 
     if (options?.ignoreCase) {
       l1 = l1.toLowerCase();

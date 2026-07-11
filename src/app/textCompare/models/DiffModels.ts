@@ -67,13 +67,23 @@ export interface DiffStatistics {
 export type DiffGranularity = 'word' | 'char';
 
 /**
+ * Whitespace normalization applied to each line before comparison.
+ * 'leadingAndTrailing' is the old boolean `ignoreWhitespace`'s behavior (trim()).
+ */
+export type WhitespaceMode = 'none' | 'leading' | 'trailing' | 'leadingAndTrailing' | 'all';
+
+/**
  * Model for diff options
  */
 export interface DiffOptions {
-  ignoreWhitespace?: boolean;
+  whitespaceMode?: WhitespaceMode;
   ignoreCase?: boolean;
   contextLines?: number;
   granularity?: DiffGranularity;
+  /** Regex applied per-line to strip matched text before comparison (e.g. timestamps, IDs). */
+  ignorePattern?: string;
+  /** Display-only: force all unchanged lines to fold regardless of contextLines. */
+  diffOnly?: boolean;
 }
 
 /**

@@ -5,7 +5,9 @@ import { DiffLineDisplay } from './DiffLineDisplay';
 import { UnifiedDiffDisplay } from './UnifiedDiffDisplay';
 import { TextCompareService } from '../services/TextCompareService';
 import { collapseUnchangedRuns } from '../utils/collapseRows';
-import { CopyIcon, CheckIcon } from '@/components/shared/Icons';
+import { buildUnifiedDiffRows } from '../utils/unifiedDiffRows';
+import { useDiffSearch, SearchableRow } from '../hooks/useDiffSearch';
+import { CopyIcon, CheckIcon, SearchIcon, XIcon } from '@/components/shared/Icons';
 
 interface DiffResultDisplayProps {
   diffResult: DiffResult;
@@ -58,10 +60,52 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
     [diffResult]
   );
 
-  const collapsed = useMemo(
-    () => collapseUnchangedRuns(pairs, isUnchangedPair, options.contextLines ?? 3, expandedFoldIds),
-    [pairs, options.contextLines, expandedFoldIds]
+  // Computed once here (not inside UnifiedDiffDisplay) so both the unified renderer
+  // and the search index share the same row list regardless of which view is active.
+  const unifiedRows = useMemo(
+    () => buildUnifiedDiffRows(diffResult, compareService, options.granularity),
+    [diffResult, compareService, options.granularity]
   );
+
+  const searchableRows = useMemo<SearchableRow[]>(() => {
+    if (viewMode === 'unified') {
+      return unifiedRows.map((row) => ({ id: row.key, text: row.text, isChange: row.type !== DiffType.UNCHANGED }));
+    }
+    const rows: SearchableRow[] = [];
+    for (const pair of pairs) {
+      if (pair.left.type !== DiffType.PLACEHOLDER) {
+        rows.push({ id: `left-${pair.index}`, text: pair.left.text, isChange: pair.left.type !== DiffType.UNCHANGED });
+      }
+      if (pair.right.type !== DiffType.PLACEHOLDER) {
+        rows.push({ id: `right-${pair.index}`, text: pair.right.text, isChange: pair.right.type !== DiffType.UNCHANGED });
+      }
+    }
+    return rows;
+  }, [viewMode, unifiedRows, pairs]);
+
+  const search = useDiffSearch(searchableRows);
+
+  const effectiveContextLines = options.diffOnly ? 0 : options.contextLines ?? 3;
+
+  const collapsed = useMemo(
+    () => collapseUnchangedRuns(pairs, isUnchangedPair, effectiveContextLines, expandedFoldIds),
+    [pairs, effectiveContextLines, expandedFoldIds]
+  );
+
+  // While a search is active, folds would hide matches with no way to reach them —
+  // force everything open for the duration of the search (side-by-side view).
+  useEffect(() => {
+    if (search.isActive && collapsed.foldIds.length > expandedFoldIds.size) {
+      setExpandedFoldIds(new Set(collapsed.foldIds));
+    }
+  }, [search.isActive, collapsed.foldIds, expandedFoldIds]);
+
+  // Keep the active match scrolled into view as the user steps through results.
+  useEffect(() => {
+    if (!search.currentMatch) return;
+    const el = document.querySelector('[data-active-match="true"]');
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [search.currentMatch, viewMode]);
 
   const expandFold = useCallback((foldId: string) => {
     setExpandedFoldIds((prev) => new Set(prev).add(foldId));
@@ -139,6 +183,72 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
         </div>
       </div>
 
+      {/* Find bar */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-2">
+        <SearchIcon size={16} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
+        <input
+          type="text"
+          value={search.query}
+          onChange={(e) => search.setQuery(e.target.value)}
+          placeholder="Search within the diff..."
+          className="flex-1 min-w-[160px] px-2 py-1 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+        />
+        {search.query && (
+          <button
+            onClick={() => search.setQuery('')}
+            title="Clear search"
+            aria-label="Clear search"
+            className="p-1 rounded text-gray-400 dark:text-slate-500 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            <XIcon size={14} />
+          </button>
+        )}
+        <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={search.isRegex}
+            onChange={(e) => search.setIsRegex(e.target.checked)}
+            className="w-3.5 h-3.5 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
+          />
+          Regex
+        </label>
+        <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={search.scopeToChanges}
+            onChange={(e) => search.setScopeToChanges(e.target.checked)}
+            className="w-3.5 h-3.5 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
+          />
+          Changes only
+        </label>
+        {search.isActive && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={search.goToPrevious}
+              disabled={search.matchCount === 0}
+              title="Previous match"
+              aria-label="Previous match"
+              className="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ↑
+            </button>
+            <button
+              onClick={search.goToNext}
+              disabled={search.matchCount === 0}
+              title="Next match"
+              aria-label="Next match"
+              className="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ↓
+            </button>
+            <span className="text-xs text-gray-600 dark:text-slate-300 tabular-nums">
+              {search.matchCount > 0 ? `${search.currentIndex + 1} / ${search.matchCount}` : '0 matches'}
+            </span>
+          </div>
+        )}
+        {search.error && <span className="text-xs text-red-600 dark:text-red-400">{search.error}</span>}
+      </div>
+
       {diffResult.notice && (
         <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm">
           {diffResult.notice}
@@ -146,7 +256,13 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
       )}
 
       {viewMode === 'unified' ? (
-        <UnifiedDiffDisplay diffResult={diffResult} compareService={compareService} options={options} />
+        <UnifiedDiffDisplay
+          rows={unifiedRows}
+          options={options}
+          matchesByRowId={search.matchesByRowId}
+          activeMatch={search.currentMatch}
+          forceExpandFolds={search.isActive}
+        />
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
           {/* Left Side */}
@@ -164,11 +280,22 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
                 ) : (
                   (() => {
                     const { left, right, index } = entry.row;
+                    const rowId = `left-${index}`;
+                    const rowMatches = search.matchesByRowId.get(rowId) ?? [];
+                    const activeRange = search.currentMatch && search.currentMatch.rowId === rowId ? search.currentMatch : null;
                     const wordDiff =
-                      left.type === DiffType.CHANGED && right?.text
+                      rowMatches.length === 0 && left.type === DiffType.CHANGED && right?.text
                         ? compareService.compareWords(left.text, right.text, options.granularity).left
                         : undefined;
-                    return <DiffLineDisplay key={`left-${index}`} line={left} wordDiff={wordDiff} />;
+                    return (
+                      <DiffLineDisplay
+                        key={rowId}
+                        line={left}
+                        wordDiff={wordDiff}
+                        searchMatches={rowMatches}
+                        activeMatchRange={activeRange}
+                      />
+                    );
                   })()
                 )
               )}
@@ -190,11 +317,22 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
                 ) : (
                   (() => {
                     const { left, right, index } = entry.row;
+                    const rowId = `right-${index}`;
+                    const rowMatches = search.matchesByRowId.get(rowId) ?? [];
+                    const activeRange = search.currentMatch && search.currentMatch.rowId === rowId ? search.currentMatch : null;
                     const wordDiff =
-                      right.type === DiffType.CHANGED && left?.text
+                      rowMatches.length === 0 && right.type === DiffType.CHANGED && left?.text
                         ? compareService.compareWords(left.text, right.text, options.granularity).right
                         : undefined;
-                    return <DiffLineDisplay key={`right-${index}`} line={right} wordDiff={wordDiff} />;
+                    return (
+                      <DiffLineDisplay
+                        key={rowId}
+                        line={right}
+                        wordDiff={wordDiff}
+                        searchMatches={rowMatches}
+                        activeMatchRange={activeRange}
+                      />
+                    );
                   })()
                 )
               )}
@@ -221,6 +359,10 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-yellow-300 dark:bg-yellow-600 border border-yellow-400 dark:border-yellow-500 rounded"></div>
             <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Word-level changes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-orange-200 dark:bg-orange-700/60 border border-orange-300 dark:border-orange-600 rounded"></div>
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Search match</span>
           </div>
         </div>
       </div>

@@ -195,10 +195,13 @@ const service = new TextCompareService(new CharacterDiffAlgorithm());
 ```typescript
 // models/DiffModels.ts
 export interface DiffOptions {
-  ignoreWhitespace?: boolean;
+  whitespaceMode?: WhitespaceMode; // 'none' | 'leading' | 'trailing' | 'leadingAndTrailing' | 'all'
   ignoreCase?: boolean;
-  contextLines?: number;        // NEW: Show N lines of context
-  ignoreLineEndings?: boolean;  // NEW: Normalize line endings
+  contextLines?: number;           // Unchanged-line runs beyond this fold into a collapsible section
+  granularity?: DiffGranularity;   // 'word' | 'char' inline highlight granularity
+  ignorePattern?: string;          // Regex stripped from each line before comparison
+  diffOnly?: boolean;              // Display-only: force contextLines to 0
+  ignoreLineEndings?: boolean;     // NEW: Normalize line endings
 }
 ```
 

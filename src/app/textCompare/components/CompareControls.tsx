@@ -1,6 +1,15 @@
 'use client';
-import React from 'react';
-import { DiffOptions } from '../models/DiffModels';
+import React, { useMemo } from 'react';
+import { DiffOptions, WhitespaceMode } from '../models/DiffModels';
+import { compileIgnorePattern } from '../utils/ignorePattern';
+
+const WHITESPACE_MODE_LABELS: Record<WhitespaceMode, string> = {
+  none: 'Exact (no whitespace normalization)',
+  leading: 'Ignore leading whitespace',
+  trailing: 'Ignore trailing whitespace',
+  leadingAndTrailing: 'Ignore leading + trailing whitespace',
+  all: 'Ignore all whitespace differences',
+};
 
 interface CompareControlsProps {
   onCompare: () => void;
@@ -25,18 +34,28 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
   disabled = false,
   isAutoDiffPaused = false,
 }) => {
+  const ignorePatternValidation = useMemo(
+    () => compileIgnorePattern(options.ignorePattern, options.ignoreCase),
+    [options.ignorePattern, options.ignoreCase]
+  );
+
   return (
     <div className="flex flex-col gap-4 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-600 rounded-lg p-4">
       {/* Options */}
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={options.ignoreWhitespace || false}
-            onChange={(e) => onOptionsChange({ ignoreWhitespace: e.target.checked })}
-            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Ignore Whitespace</span>
+        <label className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Whitespace</span>
+          <select
+            value={options.whitespaceMode ?? 'none'}
+            onChange={(e) => onOptionsChange({ whitespaceMode: e.target.value as WhitespaceMode })}
+            className="px-2 py-1 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          >
+            {(Object.keys(WHITESPACE_MODE_LABELS) as WhitespaceMode[]).map((mode) => (
+              <option key={mode} value={mode}>
+                {WHITESPACE_MODE_LABELS[mode]}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer">
@@ -57,9 +76,22 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
             max={50}
             value={options.contextLines ?? 3}
             onChange={(e) => onOptionsChange({ contextLines: Math.max(0, Number(e.target.value) || 0) })}
-            className="w-16 px-2 py-1 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            disabled={options.diffOnly}
+            className="w-16 px-2 py-1 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
             title="Unchanged lines beyond this count fold into a collapsible section"
           />
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={options.diffOnly || false}
+            onChange={(e) => onOptionsChange({ diffOnly: e.target.checked })}
+            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300" title="Fold every unchanged line, ignoring Context Lines">
+            Changes Only
+          </span>
         </label>
 
         <div className="flex items-center gap-2">
@@ -91,6 +123,26 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      <div>
+        <label className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">Ignore Pattern (regex)</span>
+          <input
+            type="text"
+            value={options.ignorePattern ?? ''}
+            onChange={(e) => onOptionsChange({ ignorePattern: e.target.value })}
+            placeholder="e.g. \d{4}-\d{2}-\d{2} to strip dates before comparing"
+            className={`flex-1 min-w-[200px] px-2 py-1 text-sm rounded border bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 font-mono ${
+              ignorePatternValidation.error
+                ? 'border-red-400 dark:border-red-600 focus:ring-red-500/50'
+                : 'border-gray-300 dark:border-slate-600 focus:ring-blue-500/50'
+            }`}
+          />
+        </label>
+        {ignorePatternValidation.error && (
+          <div className="mt-1 text-xs text-red-600 dark:text-red-400">{ignorePatternValidation.error}</div>
+        )}
       </div>
 
       {isAutoDiffPaused && (

@@ -18,7 +18,7 @@ export const useTextCompare = (defaultLeftText: string = '', defaultRightText: s
   const [showDiff, setShowDiff] = useState<boolean>(false);
   const [isAutoDiffPaused, setIsAutoDiffPaused] = useState<boolean>(false);
   const [options, setOptions] = useState<DiffOptions>({
-    ignoreWhitespace: false,
+    whitespaceMode: 'none',
     ignoreCase: false,
     contextLines: 3,
     granularity: 'word',
