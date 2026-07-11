@@ -90,8 +90,8 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
   const seenPairIndices = new Set<number>();
 
   return (
-    <div className="border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
-      <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center justify-between">
+    <div className="flex-1 min-h-0 flex flex-col border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
+      <div className="flex-none bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center justify-between">
         <span>Unified Diff</span>
         {collapsed.foldIds.length > expandedFoldIds.size && (
           <button
@@ -102,7 +102,7 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
           </button>
         )}
       </div>
-      <div className="overflow-auto">
+      <div className="flex-1 min-h-0 overflow-auto">
         {collapsed.entries.map((entry) => {
           if (entry.kind === 'fold') {
             return (

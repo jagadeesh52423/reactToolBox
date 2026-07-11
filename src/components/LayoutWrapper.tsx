@@ -37,7 +37,7 @@ const LayoutWrapper: React.FC<LayoutWrapperProps> = ({ children }) => {
   return (
     <>
       {!isHomePage ? (
-        <div className="flex flex-col lg:flex-row h-full w-full">
+        <div className="flex flex-col lg:flex-row h-[var(--tool-content-height)] w-full overflow-hidden">
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -81,7 +81,7 @@ const LayoutWrapper: React.FC<LayoutWrapperProps> = ({ children }) => {
             <aside
               className={`
                 h-full bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
-                transition-all duration-300 ease-in-out overflow-hidden
+                transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden
                 ${isSidebarCollapsed ? 'w-0' : 'w-56'}
               `}
             >

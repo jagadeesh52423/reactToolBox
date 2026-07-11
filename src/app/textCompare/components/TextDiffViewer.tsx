@@ -117,27 +117,13 @@ const TextDiffViewer: React.FC = () => {
     }
   }, [statistics, diffResult]);
 
-  return (
-    <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <main className="flex-1 p-6 overflow-auto min-h-0">
-        <div className="flex flex-col gap-4">
-          {/* Input Panels */}
-          <div className="flex flex-col lg:flex-row gap-4">
-            <TextInputPanel
-              title="Original Text"
-              value={leftText}
-              onChange={setLeftText}
-              placeholder="Enter original text here..."
-            />
-            <TextInputPanel
-              title="Modified Text"
-              value={rightText}
-              onChange={setRightText}
-              placeholder="Enter modified text here..."
-            />
-          </div>
+  const diffIsShown = showDiff && !!diffResult && !!statistics;
 
-          {/* Input toolbar: auto-diff-paused affordance (left) + swap/reset (right) */}
+  return (
+    <div className="h-[var(--tool-content-height)] flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <main className="flex-1 flex flex-col min-h-0 p-4 gap-3">
+        {/* Input region: header row (auto-diff-paused affordance + swap/reset) + panels */}
+        <div className={`flex flex-col gap-2 min-h-0 ${diffIsShown ? 'flex-none' : 'flex-1'}`}>
           <div className="flex flex-wrap items-center gap-2">
             {isAutoDiffPaused && (
               <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-1.5">
@@ -172,23 +158,42 @@ const TextDiffViewer: React.FC = () => {
             </div>
           </div>
 
-          {/* Diff Result (toolbar, stats, output) */}
-          {showDiff && diffResult && statistics && (
-            <DiffResultDisplay
-              diffResult={diffResult}
-              compareService={compareService}
-              statistics={statistics}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              options={options}
-              onOptionsChange={updateOptions}
-              onCopyDiff={handleCopyDiff}
-              onShare={handleShare}
-              shareStatus={shareStatus}
-              onExport={handleExport}
+          <div
+            className={`flex flex-col lg:flex-row gap-4 min-h-0 ${
+              diffIsShown ? 'h-[clamp(120px,20vh,150px)]' : 'flex-1'
+            }`}
+          >
+            <TextInputPanel
+              title="Original Text"
+              value={leftText}
+              onChange={setLeftText}
+              placeholder="Enter original text here..."
             />
-          )}
+            <TextInputPanel
+              title="Modified Text"
+              value={rightText}
+              onChange={setRightText}
+              placeholder="Enter modified text here..."
+            />
+          </div>
         </div>
+
+        {/* Diff Result (toolbar, stats, output) — fills remaining space, scrolls internally */}
+        {showDiff && diffResult && statistics && (
+          <DiffResultDisplay
+            diffResult={diffResult}
+            compareService={compareService}
+            statistics={statistics}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            options={options}
+            onOptionsChange={updateOptions}
+            onCopyDiff={handleCopyDiff}
+            onShare={handleShare}
+            shareStatus={shareStatus}
+            onExport={handleExport}
+          />
+        )}
       </main>
     </div>
   );

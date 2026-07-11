@@ -90,9 +90,9 @@ export const TextInputPanel: React.FC<TextInputPanelProps> = ({
   );
 
   return (
-    <div className="w-full">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-200">{title}</h2>
+    <div className="w-full h-full flex flex-col min-h-0">
+      <div className="flex-none mb-1.5 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-200">{title}</h2>
         <div className="flex items-center gap-1">
           <button
             onClick={handleUploadClick}
@@ -123,7 +123,7 @@ export const TextInputPanel: React.FC<TextInputPanelProps> = ({
         </div>
       </div>
       {dropError && (
-        <div className="mb-2 px-2 py-1 rounded text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+        <div className="flex-none mb-1.5 px-2 py-1 rounded text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
           {dropError}
         </div>
       )}
@@ -131,7 +131,7 @@ export const TextInputPanel: React.FC<TextInputPanelProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`h-60 border rounded-lg overflow-hidden bg-white dark:bg-slate-900 transition-colors ${
+        className={`flex-1 min-h-0 border rounded-lg overflow-hidden bg-white dark:bg-slate-900 transition-colors ${
           isDragOver
             ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
             : 'border-gray-300 dark:border-slate-700'
@@ -143,7 +143,7 @@ export const TextInputPanel: React.FC<TextInputPanelProps> = ({
           placeholder={placeholder}
         />
       </div>
-      <div className="text-sm text-gray-600 dark:text-slate-400 mt-1">
+      <div className="flex-none text-xs text-gray-600 dark:text-slate-400 mt-1">
         {value.split('\n').length} lines, {value.length} characters
       </div>
     </div>
