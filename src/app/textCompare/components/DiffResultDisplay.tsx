@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DiffLine, DiffOptions, DiffResult, DiffStatistics, DiffType, DiffViewMode } from '../models/DiffModels';
 import { DiffLineDisplay } from './DiffLineDisplay';
 import { UnifiedDiffDisplay } from './UnifiedDiffDisplay';
@@ -146,6 +146,37 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
   }, [viewMode, unifiedRows, pairs]);
 
   const search = useDiffSearch(searchableRows);
+
+  // Side-by-side panes render the same aligned `collapsed.entries` list, so a 1:1
+  // scrollTop/scrollLeft mirror keeps matching rows aligned. Gate the mirrored write
+  // on value equality rather than a timing-based "isSyncing" flag: a rAF-cleared
+  // boolean guard drops updates when the source pane fires several native scroll
+  // events (e.g. one wheel gesture) before the first mirror's rAF clears the flag.
+  // Comparing values instead is race-free — an echo scroll from our own mirror write
+  // is a no-op (target already matches source), while every real scroll delta still
+  // applies even if fired back-to-back. This also covers programmatic scrolls (search
+  // scrollIntoView, minimap jump) since those fire native 'scroll' events too.
+  const leftPaneRef = useRef<HTMLDivElement>(null);
+  const rightPaneRef = useRef<HTMLDivElement>(null);
+
+  const mirrorScroll = useCallback((source: HTMLDivElement, target: HTMLDivElement) => {
+    if (target.scrollTop !== source.scrollTop) target.scrollTop = source.scrollTop;
+    if (target.scrollLeft !== source.scrollLeft) target.scrollLeft = source.scrollLeft;
+  }, []);
+
+  const handleLeftPaneScroll = useCallback(() => {
+    const source = leftPaneRef.current;
+    const target = rightPaneRef.current;
+    if (!source || !target) return;
+    mirrorScroll(source, target);
+  }, [mirrorScroll]);
+
+  const handleRightPaneScroll = useCallback(() => {
+    const source = rightPaneRef.current;
+    const target = leftPaneRef.current;
+    if (!source || !target) return;
+    mirrorScroll(source, target);
+  }, [mirrorScroll]);
 
   const effectiveContextLines = options.diffOnly ? 0 : options.contextLines ?? 3;
 
@@ -409,7 +440,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
                   </svg>
                   Original Text
                 </div>
-                <div className="flex-1 min-h-0 overflow-auto">
+                <div ref={leftPaneRef} onScroll={handleLeftPaneScroll} className="flex-1 min-h-0 overflow-auto">
                   {collapsed.entries.map((entry) =>
                     entry.kind === 'fold' ? (
                       renderFoldRow(entry.id, entry.hiddenCount)
@@ -459,7 +490,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
                   </svg>
                   Modified Text
                 </div>
-                <div className="flex-1 min-h-0 overflow-auto">
+                <div ref={rightPaneRef} onScroll={handleRightPaneScroll} className="flex-1 min-h-0 overflow-auto">
                   {collapsed.entries.map((entry) =>
                     entry.kind === 'fold' ? (
                       renderFoldRow(entry.id, entry.hiddenCount)
