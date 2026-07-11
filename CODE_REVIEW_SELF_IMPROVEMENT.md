@@ -36,6 +36,11 @@
 - BLOCKER: tz input VALUE hydration mismatch (getLocalTimezone at first render) at CronParserTool.tsx:23/CronResultsPanel.tsx:83 and TimestampConverterTool.tsx:36/InputPanel.tsx:133 — masked in dev, real in prod. Fix: init '' + set in post-mount effect.
 - Reviewer's Finding 2 (local cron path not byte-identical) is a misattribution: those cronUtils changes are previously-approved Tasks #8/#18 work in the same file, not #29 scope. No action.
 
+## textCompare Batch C-2 (#41) export + share — APPROVED (reviewer-c2, after 2 revision rounds)
+- C4 export: unified-patch line math verified across all edge cases; HTML export fully escaped (no XSS in downloaded file); markdown fence guard (longest-backtick-run+1). C5 share: native CompressionStream gzip + base64url in URL HASH (privacy), size caps, SSR/support guarded. 
+- Two revision rounds on C5: (1) gunzip Promise.all fixes orphaned-rejection on corrupt hash; (2) share-hydration guard reworked from boolean→payload-keyed sync mutex, `cancelled` guard dropped — resolves stale-reload clobber, same-tab-second-link (prod), and Strict-Mode-no-hydrate (dev). Coder caught the original CompressionStream unhandled-rejection during self-verification.
+- Note: same-document hash-only navigation can't re-fire mount hydration (inherent to mount-hydrate; full navigation works).
+
 ## #40 diff-match-patch engine swap + C2 minimap — APPROVED (reviewer-dmp)
 - WordDiffProcessor rewritten on dmp: char = diff_main+cleanupSemantic (conformant by construction — IS diffchecker's engine); word = whitespace-only tokensToChars encoding + diff + expand + cleanupSemantic (trace-verified, content invariant holds). Span mapping = dmp's diff_text1/text2, public interface stable, emoji guard before mode branch, SSR-safe (pure JS, instance field). C2: data-hunk-anchor unconditional on every unified row, click-path index space consistent.
 - Non-blocking: N1 tokensToChars >65535-token collision (unreachable, logged as follow-up); by-construction char probe is trivially circular (char IS raw dmp) — doc wording corrected to be precise. C8 hand-rolled cleanup fully removed (superseded).

@@ -7,8 +7,21 @@ import { TextInputPanel } from './TextInputPanel';
 import { CompareControls } from './CompareControls';
 import { DiffStatisticsDisplay } from './DiffStatisticsDisplay';
 import { DiffResultDisplay } from './DiffResultDisplay';
-import { DownloadIcon } from '@/components/shared/Icons';
+import { ExportMenu, ExportFormat } from './ExportMenu';
+import { LinkIcon, ClipboardCheckIcon } from '@/components/shared/Icons';
 import { buildDiffReport } from '../utils/diffReportBuilder';
+import { buildMarkdownReport, buildHtmlReport, buildUnifiedPatch } from '../utils/exporters';
+import { encodeShareState, buildShareUrl } from '../utils/shareLink';
+
+type ShareStatus = 'idle' | 'copied' | 'too-large' | 'unsupported' | 'error';
+
+const SHARE_FEEDBACK_MS = 2500;
+
+const SHARE_ERROR_MESSAGES: Partial<Record<ShareStatus, string>> = {
+  'too-large': 'Input too large to share.',
+  unsupported: "Sharing isn't supported in this browser.",
+  error: 'Could not copy the link — copy it from the address bar instead.',
+};
 
 const DEFAULT_TEXT_LEFT = `This is a sample text.
 It has multiple lines.
@@ -60,13 +73,48 @@ const TextDiffViewer: React.FC = () => {
   } = useTextCompare(DEFAULT_TEXT_LEFT, DEFAULT_TEXT_RIGHT);
 
   const [viewMode, setViewMode] = useState<DiffViewMode>('side-by-side');
+  const [shareStatus, setShareStatus] = useState<ShareStatus>('idle');
 
   const { downloadFile } = useFileIO();
 
-  const handleDownloadDiff = useCallback(() => {
-    if (!statistics || !diffResult) return;
-    downloadFile(buildDiffReport(diffResult, statistics), 'text-compare-report.txt');
-  }, [statistics, diffResult, downloadFile]);
+  const handleExport = useCallback(
+    (format: ExportFormat) => {
+      if (!statistics || !diffResult) return;
+      switch (format) {
+        case 'txt':
+          downloadFile(buildDiffReport(diffResult, statistics), 'text-compare-report.txt');
+          break;
+        case 'md':
+          downloadFile(buildMarkdownReport(diffResult, statistics), 'text-compare-report.md', 'text/markdown');
+          break;
+        case 'html':
+          downloadFile(buildHtmlReport(diffResult, statistics), 'text-compare-report.html', 'text/html');
+          break;
+        case 'diff':
+          downloadFile(buildUnifiedPatch(diffResult, options.contextLines ?? 3), 'text-compare.diff', 'text/x-patch');
+          break;
+      }
+    },
+    [statistics, diffResult, options.contextLines, downloadFile]
+  );
+
+  const handleShare = useCallback(async () => {
+    const result = await encodeShareState({ leftText, rightText, options });
+    if (!result.ok) {
+      setShareStatus(result.reason);
+      setTimeout(() => setShareStatus('idle'), SHARE_FEEDBACK_MS);
+      return;
+    }
+
+    window.location.hash = result.hash;
+    try {
+      await navigator.clipboard?.writeText(buildShareUrl(result.hash));
+      setShareStatus('copied');
+    } catch {
+      setShareStatus('error');
+    }
+    setTimeout(() => setShareStatus('idle'), SHARE_FEEDBACK_MS);
+  }, [leftText, rightText, options]);
 
   const handleCopyDiff = useCallback(async (): Promise<boolean> => {
     if (!statistics || !diffResult) return false;
@@ -114,14 +162,22 @@ const TextDiffViewer: React.FC = () => {
           {showDiff && statistics && (
             <div className="relative">
               <DiffStatisticsDisplay statistics={statistics} />
-              <button
-                onClick={handleDownloadDiff}
-                className="absolute top-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
-                title="Download diff report"
-              >
-                <DownloadIcon size={16} />
-                <span>Export</span>
-              </button>
+              <div className="absolute top-2 right-2 flex items-center gap-2">
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+                  title="Copy a shareable link to this diff"
+                >
+                  {shareStatus === 'copied' ? <ClipboardCheckIcon size={16} /> : <LinkIcon size={16} />}
+                  <span>{shareStatus === 'copied' ? 'Link Copied!' : 'Share'}</span>
+                </button>
+                <ExportMenu onExport={handleExport} />
+              </div>
+              {SHARE_ERROR_MESSAGES[shareStatus] && (
+                <div className="absolute top-11 right-2 text-xs text-red-600 dark:text-red-400 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-700 rounded px-2 py-1 shadow-sm z-10">
+                  {SHARE_ERROR_MESSAGES[shareStatus]}
+                </div>
+              )}
             </div>
           )}
 
