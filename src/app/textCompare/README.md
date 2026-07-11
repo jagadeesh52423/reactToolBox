@@ -66,7 +66,7 @@ textCompare/
 ├── components/              # UI Components
 │   ├── TextDiffViewer.tsx (refactored main - 99 lines vs 157)
 │   ├── TextInputPanel.tsx
-│   ├── CompareControls.tsx
+│   ├── OptionsPopover.tsx
 │   ├── DiffStatisticsDisplay.tsx
 │   ├── DiffResultDisplay.tsx
 │   └── DiffLineDisplay.tsx

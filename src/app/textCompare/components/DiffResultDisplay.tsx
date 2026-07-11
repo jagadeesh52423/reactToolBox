@@ -1,24 +1,40 @@
 'use client';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DiffLine, DiffOptions, DiffResult, DiffType, DiffViewMode } from '../models/DiffModels';
+import { DiffLine, DiffOptions, DiffResult, DiffStatistics, DiffType, DiffViewMode } from '../models/DiffModels';
 import { DiffLineDisplay } from './DiffLineDisplay';
 import { UnifiedDiffDisplay } from './UnifiedDiffDisplay';
 import { DiffMinimap, MinimapRowType } from './DiffMinimap';
+import { DiffStatisticsDisplay } from './DiffStatisticsDisplay';
+import { OptionsPopover } from './OptionsPopover';
+import { ExportMenu, ExportFormat } from './ExportMenu';
 import { TextCompareService } from '../services/TextCompareService';
 import { collapseUnchangedRuns } from '../utils/collapseRows';
 import { buildUnifiedDiffRows } from '../utils/unifiedDiffRows';
 import { useDiffSearch, SearchableRow } from '../hooks/useDiffSearch';
 import { useHunkNav } from '../hooks/useHunkNav';
 import { groupHunks, buildHunkText, hunkAnchorId } from '../utils/hunks';
-import { CopyIcon, CheckIcon, SearchIcon, XIcon } from '@/components/shared/Icons';
+import { CopyIcon, CheckIcon, SearchIcon, XIcon, LinkIcon, ClipboardCheckIcon } from '@/components/shared/Icons';
+
+export type ShareStatus = 'idle' | 'copied' | 'too-large' | 'unsupported' | 'error';
+
+export const SHARE_ERROR_MESSAGES: Partial<Record<ShareStatus, string>> = {
+  'too-large': 'Input too large to share.',
+  unsupported: "Sharing isn't supported in this browser.",
+  error: 'Could not copy the link — copy it from the address bar instead.',
+};
 
 interface DiffResultDisplayProps {
   diffResult: DiffResult;
   compareService: TextCompareService;
+  statistics: DiffStatistics;
   viewMode: DiffViewMode;
   onViewModeChange: (mode: DiffViewMode) => void;
   options: DiffOptions;
+  onOptionsChange: (options: Partial<DiffOptions>) => void;
   onCopyDiff: () => Promise<boolean>;
+  onShare: () => void;
+  shareStatus: ShareStatus;
+  onExport: (format: ExportFormat) => void;
 }
 
 interface PairedLine {
@@ -39,10 +55,15 @@ const COPY_FEEDBACK_MS = 2000;
 export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
   diffResult,
   compareService,
+  statistics,
   viewMode,
   onViewModeChange,
   options,
+  onOptionsChange,
   onCopyDiff,
+  onShare,
+  shareStatus,
+  onExport,
 }) => {
   const [expandedFoldIds, setExpandedFoldIds] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
@@ -175,7 +196,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
 
   return (
     <div className="mt-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">Differences</h2>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -244,7 +265,53 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
               Unified
             </button>
           </div>
+          <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded overflow-hidden">
+            <button
+              onClick={() => onOptionsChange({ granularity: 'word' })}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                (options.granularity ?? 'word') === 'word'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+              }`}
+              title="Highlight changes by word"
+              aria-label="Word-level granularity"
+            >
+              Word
+            </button>
+            <button
+              onClick={() => onOptionsChange({ granularity: 'char' })}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                options.granularity === 'char'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+              }`}
+              title="Highlight changes by character"
+              aria-label="Character-level granularity"
+            >
+              Char
+            </button>
+          </div>
+          <OptionsPopover options={options} onOptionsChange={onOptionsChange} />
+          <button
+            onClick={onShare}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+            title="Copy a shareable link to this diff"
+          >
+            {shareStatus === 'copied' ? <ClipboardCheckIcon size={16} /> : <LinkIcon size={16} />}
+            <span>{shareStatus === 'copied' ? 'Link Copied!' : 'Share'}</span>
+          </button>
+          <ExportMenu onExport={onExport} />
         </div>
+      </div>
+
+      {SHARE_ERROR_MESSAGES[shareStatus] && (
+        <div className="mb-3 text-xs text-red-600 dark:text-red-400 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-700 rounded px-2 py-1 inline-block">
+          {SHARE_ERROR_MESSAGES[shareStatus]}
+        </div>
+      )}
+
+      <div className="mb-4">
+        <DiffStatisticsDisplay statistics={statistics} />
       </div>
 
       {/* Find bar */}

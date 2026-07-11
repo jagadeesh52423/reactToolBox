@@ -4,24 +4,14 @@ import { useTextCompare } from '../hooks/useTextCompare';
 import { DiffViewMode } from '../models/DiffModels';
 import { useFileIO } from '@/hooks/useFileIO';
 import { TextInputPanel } from './TextInputPanel';
-import { CompareControls } from './CompareControls';
-import { DiffStatisticsDisplay } from './DiffStatisticsDisplay';
-import { DiffResultDisplay } from './DiffResultDisplay';
-import { ExportMenu, ExportFormat } from './ExportMenu';
-import { LinkIcon, ClipboardCheckIcon } from '@/components/shared/Icons';
+import { DiffResultDisplay, ShareStatus } from './DiffResultDisplay';
+import { ExportFormat } from './ExportMenu';
+import { ArrowsRightLeftIcon, RefreshIcon } from '@/components/shared/Icons';
 import { buildDiffReport } from '../utils/diffReportBuilder';
 import { buildMarkdownReport, buildHtmlReport, buildUnifiedPatch } from '../utils/exporters';
 import { encodeShareState, buildShareUrl } from '../utils/shareLink';
 
-type ShareStatus = 'idle' | 'copied' | 'too-large' | 'unsupported' | 'error';
-
 const SHARE_FEEDBACK_MS = 2500;
-
-const SHARE_ERROR_MESSAGES: Partial<Record<ShareStatus, string>> = {
-  'too-large': 'Input too large to share.',
-  unsupported: "Sharing isn't supported in this browser.",
-  error: 'Could not copy the link — copy it from the address bar instead.',
-};
 
 const DEFAULT_TEXT_LEFT = `This is a sample text.
 It has multiple lines.
@@ -147,49 +137,55 @@ const TextDiffViewer: React.FC = () => {
             />
           </div>
 
-          {/* Controls */}
-          <CompareControls
-            onCompare={computeDiff}
-            onSwap={swapTexts}
-            onReset={resetTexts}
-            options={options}
-            onOptionsChange={updateOptions}
-            disabled={!leftText && !rightText}
-            isAutoDiffPaused={isAutoDiffPaused}
-          />
-
-          {/* Statistics */}
-          {showDiff && statistics && (
-            <div className="relative">
-              <DiffStatisticsDisplay statistics={statistics} />
-              <div className="absolute top-2 right-2 flex items-center gap-2">
+          {/* Input toolbar: auto-diff-paused affordance (left) + swap/reset (right) */}
+          <div className="flex flex-wrap items-center gap-2">
+            {isAutoDiffPaused && (
+              <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-1.5">
+                <span>Input is large — live diffing is paused.</span>
                 <button
-                  onClick={handleShare}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
-                  title="Copy a shareable link to this diff"
+                  onClick={computeDiff}
+                  className="px-2 py-1 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
                 >
-                  {shareStatus === 'copied' ? <ClipboardCheckIcon size={16} /> : <LinkIcon size={16} />}
-                  <span>{shareStatus === 'copied' ? 'Link Copied!' : 'Share'}</span>
+                  Compare
                 </button>
-                <ExportMenu onExport={handleExport} />
               </div>
-              {SHARE_ERROR_MESSAGES[shareStatus] && (
-                <div className="absolute top-11 right-2 text-xs text-red-600 dark:text-red-400 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-700 rounded px-2 py-1 shadow-sm z-10">
-                  {SHARE_ERROR_MESSAGES[shareStatus]}
-                </div>
-              )}
+            )}
+            <div className="flex items-center gap-1 ml-auto">
+              <button
+                onClick={swapTexts}
+                disabled={!leftText && !rightText}
+                title="Swap original and modified text"
+                aria-label="Swap texts"
+                className="p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ArrowsRightLeftIcon size={16} />
+              </button>
+              <button
+                onClick={resetTexts}
+                disabled={!leftText && !rightText}
+                title="Reset both texts"
+                aria-label="Reset texts"
+                className="p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <RefreshIcon size={16} />
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* Diff Result */}
-          {showDiff && diffResult && (
+          {/* Diff Result (toolbar, stats, output) */}
+          {showDiff && diffResult && statistics && (
             <DiffResultDisplay
               diffResult={diffResult}
               compareService={compareService}
+              statistics={statistics}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               options={options}
+              onOptionsChange={updateOptions}
               onCopyDiff={handleCopyDiff}
+              onShare={handleShare}
+              shareStatus={shareStatus}
+              onExport={handleExport}
             />
           )}
         </div>
