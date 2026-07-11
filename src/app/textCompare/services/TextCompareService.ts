@@ -1,7 +1,7 @@
 import { ITextDiffAlgorithm } from '../algorithms/ITextDiffAlgorithm';
 import { LineDiffAlgorithm } from '../algorithms/LineDiffAlgorithm';
 import { WordDiffProcessor } from '../algorithms/WordDiffProcessor';
-import { DiffResult, DiffStatistics, DiffOptions, WordDiffResult, DiffType } from '../models/DiffModels';
+import { DiffResult, DiffStatistics, DiffOptions, DiffGranularity, WordDiffResult, DiffType } from '../models/DiffModels';
 
 /**
  * Service class for text comparison operations
@@ -25,10 +25,10 @@ export class TextCompareService {
   }
 
   /**
-   * Computes word-level diff for a pair of lines
+   * Computes inline diff for a pair of lines at the given granularity (default word)
    */
-  public compareWords(leftLine: string, rightLine: string): WordDiffResult {
-    return this.wordDiffProcessor.computeWordDiff(leftLine, rightLine);
+  public compareWords(leftLine: string, rightLine: string, granularity?: DiffGranularity): WordDiffResult {
+    return this.wordDiffProcessor.computeWordDiff(leftLine, rightLine, granularity);
   }
 
   /**

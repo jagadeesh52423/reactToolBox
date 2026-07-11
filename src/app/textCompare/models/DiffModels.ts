@@ -62,12 +62,18 @@ export interface DiffStatistics {
 }
 
 /**
+ * Inline (within-line) diff granularity: whole words/punctuation, or individual characters.
+ */
+export type DiffGranularity = 'word' | 'char';
+
+/**
  * Model for diff options
  */
 export interface DiffOptions {
   ignoreWhitespace?: boolean;
   ignoreCase?: boolean;
   contextLines?: number;
+  granularity?: DiffGranularity;
 }
 
 /**

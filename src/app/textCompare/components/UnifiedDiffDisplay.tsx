@@ -1,12 +1,14 @@
 'use client';
-import React from 'react';
-import { DiffResult, DiffType } from '../models/DiffModels';
+import React, { useEffect, useMemo, useState } from 'react';
+import { DiffOptions, DiffResult, DiffType } from '../models/DiffModels';
 import { TextCompareService } from '../services/TextCompareService';
 import { buildUnifiedDiffRows, UnifiedDiffRow } from '../utils/unifiedDiffRows';
+import { collapseUnchangedRuns } from '../utils/collapseRows';
 
 interface UnifiedDiffDisplayProps {
   diffResult: DiffResult;
   compareService: TextCompareService;
+  options: DiffOptions;
 }
 
 const ROW_STYLES: Record<UnifiedDiffRow['type'], { bg: string; text: string; marker: string }> = {
@@ -27,20 +29,59 @@ const ROW_STYLES: Record<UnifiedDiffRow['type'], { bg: string; text: string; mar
   },
 };
 
+const isUnchangedRow = (row: UnifiedDiffRow): boolean => row.type === DiffType.UNCHANGED;
+
 /**
  * Single-column unified diff view: additions/removals/unchanged lines interleaved
  * in document order, with separate old/new line-number gutters (GitHub-style).
  */
-export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({ diffResult, compareService }) => {
-  const rows = buildUnifiedDiffRows(diffResult, compareService);
+export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({ diffResult, compareService, options }) => {
+  const [expandedFoldIds, setExpandedFoldIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setExpandedFoldIds(new Set());
+  }, [diffResult]);
+
+  const rows = useMemo(
+    () => buildUnifiedDiffRows(diffResult, compareService, options.granularity),
+    [diffResult, compareService, options.granularity]
+  );
+
+  const collapsed = useMemo(
+    () => collapseUnchangedRuns(rows, isUnchangedRow, options.contextLines ?? 3, expandedFoldIds),
+    [rows, options.contextLines, expandedFoldIds]
+  );
+
+  const expandAll = () => setExpandedFoldIds(new Set(collapsed.foldIds));
 
   return (
     <div className="border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
-      <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100">
-        Unified Diff
+      <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center justify-between">
+        <span>Unified Diff</span>
+        {collapsed.foldIds.length > expandedFoldIds.size && (
+          <button
+            onClick={expandAll}
+            className="px-2 py-1 text-xs font-medium rounded text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            Expand All
+          </button>
+        )}
       </div>
       <div className="overflow-auto">
-        {rows.map((row) => {
+        {collapsed.entries.map((entry) => {
+          if (entry.kind === 'fold') {
+            return (
+              <button
+                key={entry.id}
+                onClick={() => setExpandedFoldIds((prev) => new Set(prev).add(entry.id))}
+                className="w-full text-left px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-b dark:border-slate-700 transition-colors"
+              >
+                ⋯ {entry.hiddenCount} unchanged line{entry.hiddenCount === 1 ? '' : 's'} — click to expand
+              </button>
+            );
+          }
+
+          const row = entry.row;
           const style = ROW_STYLES[row.type];
           return (
             <div

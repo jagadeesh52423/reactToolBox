@@ -399,8 +399,8 @@ const JsonComparer: React.FC = () => {
 
         {/* JSON Editors */}
         <div
-          className={`flex flex-col lg:flex-row gap-4 mb-4 relative ${
-            showDiff ? 'min-h-[180px] flex-shrink-0' : 'flex-1 min-h-[480px] lg:min-h-[180px]'
+          className={`flex flex-col lg:flex-row gap-4 mb-4 relative min-h-[480px] lg:min-h-[180px] ${
+            showDiff ? 'flex-shrink-0' : 'flex-1'
           }`}
           style={showDiff ? { flexBasis: `${editorsPct * 100}%` } : undefined}
         >

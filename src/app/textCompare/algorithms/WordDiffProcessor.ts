@@ -1,17 +1,16 @@
-import { WordDiff, WordDiffResult } from '../models/DiffModels';
+import { DiffGranularity, WordDiff, WordDiffResult } from '../models/DiffModels';
 
 /**
- * Processor for computing word-level differences using LCS algorithm
+ * Processor for computing word- or character-level differences using LCS algorithm
  * Separated as a dedicated class for single responsibility
  */
 export class WordDiffProcessor {
   /**
-   * Computes word-level diff between two lines
+   * Computes inline diff between two lines at word or character granularity
    */
-  public computeWordDiff(leftLine: string, rightLine: string): WordDiffResult {
-    // Split lines into words (including spaces and punctuation as separate tokens)
-    const leftWords = this.tokenize(leftLine);
-    const rightWords = this.tokenize(rightLine);
+  public computeWordDiff(leftLine: string, rightLine: string, granularity: DiffGranularity = 'word'): WordDiffResult {
+    const leftWords = this.tokenize(leftLine, granularity);
+    const rightWords = this.tokenize(rightLine, granularity);
 
     // Compute LCS table
     const lcs = this.computeLCS(leftWords, rightWords);
@@ -21,10 +20,18 @@ export class WordDiffProcessor {
   }
 
   /**
-   * Tokenizes a line into words, spaces, and punctuation
+   * Tokenizes a line into words+punctuation ('word' mode) or individual characters
+   * ('char' mode)
    */
-  private tokenize(line: string): string[] {
-    return line.split(/(\s+|[^\w\s])/).filter((word) => word.length > 0);
+  private tokenize(line: string, granularity: DiffGranularity): string[] {
+    if (granularity === 'char') {
+      // Code-point iteration, not split('') — split('') breaks surrogate pairs
+      // (astral-plane emoji) and combining marks into lone, unrenderable units.
+      return Array.from(line);
+    }
+    // u flag: without it, [^\w\s] matches per UTF-16 code unit, splitting astral-plane
+    // emoji into two lone surrogate halves (tofu glyphs) instead of one token.
+    return line.split(/(\s+|[^\w\s])/u).filter((word) => word.length > 0);
   }
 
   /**

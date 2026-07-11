@@ -1274,14 +1274,14 @@ const MermaidEditor: React.FC = () => {
       </div>
 
       {/* Main Content - Three Column Layout */}
-      <main className="flex-1 p-6 overflow-hidden min-h-0">
+      <main className="flex-1 p-6 overflow-y-auto lg:overflow-hidden min-h-0">
         <div className="h-full">
           <div className={`grid gap-6 h-full ${
             isEditorVisible ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1 lg:grid-cols-12'
           }`}>
             {/* Left Panel - Editor (Collapsible) */}
             {isEditorVisible && (
-              <div className="lg:col-span-4 flex flex-col h-full min-h-0">
+              <div className="lg:col-span-4 flex flex-col h-full min-h-[420px] lg:min-h-0">
                 <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                   <PanelHeader title="Mermaid Code">
                     <div className="flex items-center gap-1 pr-2 border-r border-gray-300/50 dark:border-slate-600/50">
@@ -1330,7 +1330,7 @@ const MermaidEditor: React.FC = () => {
               isEditorVisible
                 ? (svgContent ? 'lg:col-span-5' : 'lg:col-span-8')
                 : (svgContent ? 'lg:col-span-9' : 'lg:col-span-12')
-            } min-h-0`}>
+            } min-h-[420px] lg:min-h-0`}>
               <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                 <PanelHeader title="Diagram Preview">
                   {!isEditorVisible && (
@@ -1382,7 +1382,7 @@ const MermaidEditor: React.FC = () => {
 
             {/* Right Panel - Node & Edge Styles (Tabbed) */}
             {svgContent && (
-              <div className="lg:col-span-3 min-h-0">
+              <div className="lg:col-span-3 min-h-[350px] lg:min-h-0">
                 <div className="flex flex-col h-full bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
                   {/* Tabbed Header */}
                   <div className="flex items-center border-b border-gray-200/50 dark:border-slate-700/50 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-slate-800/50 dark:to-slate-800/30">

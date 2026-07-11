@@ -1,13 +1,14 @@
 'use client';
 import React, { useCallback, useState } from 'react';
 import { useTextCompare } from '../hooks/useTextCompare';
-import { DiffType, DiffViewMode } from '../models/DiffModels';
+import { DiffViewMode } from '../models/DiffModels';
 import { useFileIO } from '@/hooks/useFileIO';
 import { TextInputPanel } from './TextInputPanel';
 import { CompareControls } from './CompareControls';
 import { DiffStatisticsDisplay } from './DiffStatisticsDisplay';
 import { DiffResultDisplay } from './DiffResultDisplay';
 import { DownloadIcon } from '@/components/shared/Icons';
+import { buildDiffReport } from '../utils/diffReportBuilder';
 
 const DEFAULT_TEXT_LEFT = `This is a sample text.
 It has multiple lines.
@@ -48,6 +49,7 @@ const TextDiffViewer: React.FC = () => {
     statistics,
     showDiff,
     options,
+    isAutoDiffPaused,
     setLeftText,
     setRightText,
     computeDiff,
@@ -63,32 +65,19 @@ const TextDiffViewer: React.FC = () => {
 
   const handleDownloadDiff = useCallback(() => {
     if (!statistics || !diffResult) return;
-    const leftLines = diffResult.left
-      .filter((l) => l.type !== DiffType.PLACEHOLDER)
-      .map((l) => {
-        const prefix = l.type === DiffType.REMOVED ? '-' : l.type === DiffType.CHANGED ? '~' : ' ';
-        return `${prefix} ${l.text}`;
-      });
-    const rightLines = diffResult.right
-      .filter((l) => l.type !== DiffType.PLACEHOLDER)
-      .map((l) => {
-        const prefix = l.type === DiffType.ADDED ? '+' : l.type === DiffType.CHANGED ? '~' : ' ';
-        return `${prefix} ${l.text}`;
-      });
-    const report = [
-      '=== Text Compare Report ===',
-      `Date: ${new Date().toISOString()}`,
-      `Similarity: ${statistics.similarity.toFixed(1)}%`,
-      `Added: ${statistics.changes.added}, Removed: ${statistics.changes.removed}, Modified: ${statistics.changes.modified}`,
-      '',
-      '--- Original ---',
-      ...leftLines,
-      '',
-      '--- Modified ---',
-      ...rightLines,
-    ].join('\n');
-    downloadFile(report, 'text-compare-report.txt');
+    downloadFile(buildDiffReport(diffResult, statistics), 'text-compare-report.txt');
   }, [statistics, diffResult, downloadFile]);
+
+  const handleCopyDiff = useCallback(async (): Promise<boolean> => {
+    if (!statistics || !diffResult) return false;
+    if (!navigator.clipboard) return false;
+    try {
+      await navigator.clipboard.writeText(buildDiffReport(diffResult, statistics));
+      return true;
+    } catch {
+      return false;
+    }
+  }, [statistics, diffResult]);
 
   return (
     <div className="h-[var(--tool-content-height)] flex flex-col bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -118,6 +107,7 @@ const TextDiffViewer: React.FC = () => {
             options={options}
             onOptionsChange={updateOptions}
             disabled={!leftText && !rightText}
+            isAutoDiffPaused={isAutoDiffPaused}
           />
 
           {/* Statistics */}
@@ -142,6 +132,8 @@ const TextDiffViewer: React.FC = () => {
               compareService={compareService}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
+              options={options}
+              onCopyDiff={handleCopyDiff}
             />
           )}
         </div>

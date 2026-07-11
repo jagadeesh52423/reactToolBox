@@ -1,4 +1,4 @@
-import { DiffResult, DiffType, WordDiff } from '../models/DiffModels';
+import { DiffGranularity, DiffResult, DiffType, WordDiff } from '../models/DiffModels';
 
 export interface UnifiedDiffRow {
   key: string;
@@ -10,7 +10,7 @@ export interface UnifiedDiffRow {
 }
 
 interface WordDiffComparer {
-  compareWords(leftLine: string, rightLine: string): { left: WordDiff[]; right: WordDiff[] };
+  compareWords(leftLine: string, rightLine: string, granularity?: DiffGranularity): { left: WordDiff[]; right: WordDiff[] };
 }
 
 /**
@@ -19,7 +19,11 @@ interface WordDiffComparer {
  * list of unified-diff rows. A CHANGED pair becomes two rows (old-as-removed,
  * new-as-added) so word-level highlighting still applies to each.
  */
-export function buildUnifiedDiffRows(diffResult: DiffResult, compareService: WordDiffComparer): UnifiedDiffRow[] {
+export function buildUnifiedDiffRows(
+  diffResult: DiffResult,
+  compareService: WordDiffComparer,
+  granularity?: DiffGranularity
+): UnifiedDiffRow[] {
   const rows: UnifiedDiffRow[] = [];
   const { left, right } = diffResult;
   const length = Math.max(left.length, right.length);
@@ -38,7 +42,7 @@ export function buildUnifiedDiffRows(diffResult: DiffResult, compareService: Wor
         newLineNumber: rightLine.lineNumber,
       });
     } else if (leftLine.type === DiffType.CHANGED && rightLine.type === DiffType.CHANGED) {
-      const wordDiff = compareService.compareWords(leftLine.text, rightLine.text);
+      const wordDiff = compareService.compareWords(leftLine.text, rightLine.text, granularity);
       rows.push({
         key: `changed-old-${index}`,
         type: DiffType.REMOVED,

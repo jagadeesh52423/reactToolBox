@@ -20,6 +20,15 @@ export function useFileIO() {
     []
   );
 
+  const readFile = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }, []);
+
   const uploadFile = useCallback(
     (accept: string = '*'): Promise<string> => {
       return new Promise((resolve, reject) => {
@@ -32,16 +41,13 @@ export function useFileIO() {
             reject(new Error('No file selected'));
             return;
           }
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsText(file);
+          readFile(file).then(resolve).catch(reject);
         };
         input.click();
       });
     },
-    []
+    [readFile]
   );
 
-  return { downloadFile, uploadFile, inputRef };
+  return { downloadFile, uploadFile, readFile, inputRef };
 }

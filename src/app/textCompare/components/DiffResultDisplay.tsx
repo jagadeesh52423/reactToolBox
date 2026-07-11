@@ -1,16 +1,31 @@
 'use client';
-import React from 'react';
-import { DiffResult, DiffType, DiffViewMode } from '../models/DiffModels';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { DiffLine, DiffOptions, DiffResult, DiffType, DiffViewMode } from '../models/DiffModels';
 import { DiffLineDisplay } from './DiffLineDisplay';
 import { UnifiedDiffDisplay } from './UnifiedDiffDisplay';
 import { TextCompareService } from '../services/TextCompareService';
+import { collapseUnchangedRuns } from '../utils/collapseRows';
+import { CopyIcon, CheckIcon } from '@/components/shared/Icons';
 
 interface DiffResultDisplayProps {
   diffResult: DiffResult;
   compareService: TextCompareService;
   viewMode: DiffViewMode;
   onViewModeChange: (mode: DiffViewMode) => void;
+  options: DiffOptions;
+  onCopyDiff: () => Promise<boolean>;
 }
+
+interface PairedLine {
+  index: number;
+  left: DiffLine;
+  right: DiffLine;
+}
+
+const isUnchangedPair = (pair: PairedLine): boolean =>
+  pair.left.type === DiffType.UNCHANGED && pair.right.type === DiffType.UNCHANGED;
+
+const COPY_FEEDBACK_MS = 2000;
 
 /**
  * Component for displaying the complete diff result
@@ -21,37 +36,106 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
   compareService,
   viewMode,
   onViewModeChange,
+  options,
+  onCopyDiff,
 }) => {
+  const [expandedFoldIds, setExpandedFoldIds] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
+
+  // A fold's identity only makes sense for the diff it was computed from — reset on
+  // every new diff result rather than carry stale expansion state across recomputes.
+  useEffect(() => {
+    setExpandedFoldIds(new Set());
+  }, [diffResult]);
+
+  const pairs = useMemo<PairedLine[]>(
+    () =>
+      diffResult.left.map((left, index) => ({
+        index,
+        left,
+        right: diffResult.right[index],
+      })),
+    [diffResult]
+  );
+
+  const collapsed = useMemo(
+    () => collapseUnchangedRuns(pairs, isUnchangedPair, options.contextLines ?? 3, expandedFoldIds),
+    [pairs, options.contextLines, expandedFoldIds]
+  );
+
+  const expandFold = useCallback((foldId: string) => {
+    setExpandedFoldIds((prev) => new Set(prev).add(foldId));
+  }, []);
+
+  const expandAll = useCallback(() => {
+    setExpandedFoldIds(new Set(collapsed.foldIds));
+  }, [collapsed.foldIds]);
+
+  const handleCopyDiff = useCallback(async () => {
+    const success = await onCopyDiff();
+    if (!success) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+  }, [onCopyDiff]);
+
+  const renderFoldRow = (foldId: string, hiddenCount: number) => (
+    <button
+      key={foldId}
+      onClick={() => expandFold(foldId)}
+      className="w-full text-left px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-b dark:border-slate-700 transition-colors"
+    >
+      ⋯ {hiddenCount} unchanged line{hiddenCount === 1 ? '' : 's'} — click to expand
+    </button>
+  );
+
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">Differences</h2>
 
-        <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2">
+          {collapsed.foldIds.length > expandedFoldIds.size && (
+            <button
+              onClick={expandAll}
+              className="px-3 py-1.5 text-xs font-medium rounded text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+            >
+              Expand All
+            </button>
+          )}
           <button
-            onClick={() => onViewModeChange('side-by-side')}
-            className={`px-3 py-1 text-xs font-medium transition-colors ${
-              viewMode === 'side-by-side'
-                ? 'bg-blue-500 text-white'
-                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
-            }`}
-            title="Side-by-side view"
-            aria-label="Side-by-side view"
+            onClick={handleCopyDiff}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+            title="Copy diff report to clipboard"
           >
-            Side-by-Side
+            {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+            <span>{copied ? 'Copied!' : 'Copy Diff'}</span>
           </button>
-          <button
-            onClick={() => onViewModeChange('unified')}
-            className={`px-3 py-1 text-xs font-medium transition-colors ${
-              viewMode === 'unified'
-                ? 'bg-blue-500 text-white'
-                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
-            }`}
-            title="Unified view"
-            aria-label="Unified view"
-          >
-            Unified
-          </button>
+          <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded overflow-hidden">
+            <button
+              onClick={() => onViewModeChange('side-by-side')}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                viewMode === 'side-by-side'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+              }`}
+              title="Side-by-side view"
+              aria-label="Side-by-side view"
+            >
+              Side-by-Side
+            </button>
+            <button
+              onClick={() => onViewModeChange('unified')}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                viewMode === 'unified'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+              }`}
+              title="Unified view"
+              aria-label="Unified view"
+            >
+              Unified
+            </button>
+          </div>
         </div>
       </div>
 
@@ -62,7 +146,7 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
       )}
 
       {viewMode === 'unified' ? (
-        <UnifiedDiffDisplay diffResult={diffResult} compareService={compareService} />
+        <UnifiedDiffDisplay diffResult={diffResult} compareService={compareService} options={options} />
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
           {/* Left Side */}
@@ -74,22 +158,20 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
               Original Text
             </div>
             <div className="overflow-auto">
-              {diffResult.left.map((line, index) => {
-                // Compute word-level diff for changed lines
-                const rightLine = diffResult.right[index];
-                const wordDiff =
-                  line.type === DiffType.CHANGED && rightLine?.text
-                    ? compareService.compareWords(line.text, rightLine.text).left
-                    : undefined;
-
-                return (
-                  <DiffLineDisplay
-                    key={`left-${index}`}
-                    line={line}
-                    wordDiff={wordDiff}
-                  />
-                );
-              })}
+              {collapsed.entries.map((entry) =>
+                entry.kind === 'fold' ? (
+                  renderFoldRow(entry.id, entry.hiddenCount)
+                ) : (
+                  (() => {
+                    const { left, right, index } = entry.row;
+                    const wordDiff =
+                      left.type === DiffType.CHANGED && right?.text
+                        ? compareService.compareWords(left.text, right.text, options.granularity).left
+                        : undefined;
+                    return <DiffLineDisplay key={`left-${index}`} line={left} wordDiff={wordDiff} />;
+                  })()
+                )
+              )}
             </div>
           </div>
 
@@ -102,22 +184,20 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
               Modified Text
             </div>
             <div className="overflow-auto">
-              {diffResult.right.map((line, index) => {
-                // Compute word-level diff for changed lines
-                const leftLine = diffResult.left[index];
-                const wordDiff =
-                  line.type === DiffType.CHANGED && leftLine?.text
-                    ? compareService.compareWords(leftLine.text, line.text).right
-                    : undefined;
-
-                return (
-                  <DiffLineDisplay
-                    key={`right-${index}`}
-                    line={line}
-                    wordDiff={wordDiff}
-                  />
-                );
-              })}
+              {collapsed.entries.map((entry) =>
+                entry.kind === 'fold' ? (
+                  renderFoldRow(entry.id, entry.hiddenCount)
+                ) : (
+                  (() => {
+                    const { left, right, index } = entry.row;
+                    const wordDiff =
+                      right.type === DiffType.CHANGED && left?.text
+                        ? compareService.compareWords(left.text, right.text, options.granularity).right
+                        : undefined;
+                    return <DiffLineDisplay key={`right-${index}`} line={right} wordDiff={wordDiff} />;
+                  })()
+                )
+              )}
             </div>
           </div>
         </div>

@@ -24,8 +24,15 @@
 4. **Silent data loss beats crashes in badness.** Converters must represent or explicitly warn about entries they can't map (csv `_value` column), never emit empty rows.
 5. **Normalize aliases after expansion, not before** (cron DOW 7→0 post-expandField) — pre-normalizing endpoints corrupts ranges.
 
+## Promoted rule — recurring bug class (found 3x, 2026-07-11)
+**Monaco/editor height-collapse at narrow widths.** A flex/grid child using `h-full` or percentage height renders to ~5px (blank) whenever an ancestor lacks a DEFINITE height and the layout is stacked (flex-col or grid-cols-1 with auto rows) at <lg. Surfaced 3 separate times: jsonCompare editor panel (#32), jsonVisualizer grid row (#34), jsonCompare showDiff/Compare-view row (#37). Root fix pattern: give the stacked container an explicit mobile height floor (`min-h-[Npx] lg:min-h-0`) and/or wrap the editor `absolute inset-0` inside a `relative flex-1` parent so height doesn't depend on percentage propagation; let the outer `main` do `overflow-y-auto lg:overflow-hidden`. RULE: any view embedding Monaco/an editor MUST be checked at <lg (390px + 606px) via iframe (resize_window doesn't change viewport in this env; force a paint before measuring — Monaco reports 5px until repaint). Prevent, don't re-find: audit ALL editor-bearing views in one sweep, not one bug at a time.
+
 ## Process learnings
 - [2026-07-10] Never run `npm run build` in a worktree while `next dev` is running there — both write `.next`, corrupting the dev server's chunk manifest (500s, then 404s after rm -rf .next until restart). Rule: `tsc --noEmit` during development; one production build at the end after code freeze. Multiple concurrent builds also race (ENOENT on 500.html rename).
+
+## Deferred follow-ups (flagged, not done)
+- Shared `useFileIO.uploadFile` (used by 5 tools) has no file-size cap; textCompare's drop path got a 5MB cap but the upload-button path (and the other 4 consumers) don't. Adding a maxSize param to the shared hook would close it for all — separate small task, wider blast radius.
+- jsonVisualizer JsonInputPanel passes an `error` prop MonacoJsonEditor ignores (pre-existing, harmless).
 
 ## npm audit (out of scope, flagged 2026-07-10)
 31 vulnerabilities (1 critical, 19 high) at install time — dependency-level, not addressed in this run.

@@ -36,6 +36,23 @@
 - BLOCKER: tz input VALUE hydration mismatch (getLocalTimezone at first render) at CronParserTool.tsx:23/CronResultsPanel.tsx:83 and TimestampConverterTool.tsx:36/InputPanel.tsx:133 — masked in dev, real in prod. Fix: init '' + set in post-mount effect.
 - Reviewer's Finding 2 (local cron path not byte-identical) is a misattribution: those cronUtils changes are previously-approved Tasks #8/#18 work in the same file, not #29 scope. No action.
 
+## textCompare Batch A (#36) — APPROVED, 0 blockers (reviewer-tcA)
+- A1 real-time debounce: no stale-closure/race (cleanup clears timer), no infinite loop, guard over-estimates MAX_LCS_CELLS (pauses at/before algo fallback), manual Compare works when paused. A2 collapse: alignment computed once on pairs, both columns map same entries; placeholders never folded; no off-by-one; contextLines=0 = diff-only. A3 word default unchanged. A4 diffReportBuilder byte-identical, shared Export+CopyDiff. A5 readFile extraction backward-compat (5 consumers verified). diffUtils.ts deletion confirmed zero refs. Strategy/Facade intact, minimal-diff.
+- 3 minor recs folded into this batch (not deferred): A3 split('')→Array.from (unicode/surrogate-pair safe); A4 clipboard try/catch (don't show "Copied!" on rejection / insecure-context); A5 drop file size-cap + read try/catch (binary/huge-file guard).
+
+## #37 — editor height-collapse sweep (jsonCompare showDiff + mermaidEditor) — APPROVED (reviewer-sweep)
+- JsonComparer: only behavioral delta is showDiff@<lg 180px→480px (intended); desktop identical in both states; flex-shrink-0/flex-1 preserved; mobile math sound (~144px/editor). MermaidEditor: 420/420/350 floors all lg:min-h-0 (desktop 12-col reverts), main overflow-y-auto lg:overflow-hidden no desktop double-scroll, Style-panel floor only when rendered. Complementary to #32 inset-0 (supplies the definite-height ancestor) and #34 (separate file). Closes the class (grep-confirmed only 3 editor call sites).
+- Non-blocking pre-existing: MermaidEditor identical-ternary-branches dead conditional (future cleanup).
+
+## #34 — jsonVisualizer mobile/tablet blank editor — APPROVED (reviewer-jv)
+- Grid-cols-1 (<lg) auto-rows collapsed stacked panels; fix: min-h-[420px] lg:min-h-0 floor on both grid items + main overflow-y-auto lg:overflow-hidden. Floor on grid items (not container), desktop behavior restored at lg, per-region scroll (no double scrollbar), only consumer is the dynamic-import client. Mirrors #32.
+- Pending: tester-a3 browser re-verify (390/606/1400px).
+
+## #32 — MonacoJsonEditor absolute-inset-0 wrap (in HEAD 5d9ccb7) — APPROVED (reviewer-monaco)
+- Fixes jsonCompare 390px blank editor (percentage h-full collapse in flex+min-h-0). Only 2 consumers (jsonCompare, jsonVisualizer); both size the editor via flex-1 (not content), so absolute-positioning it doesn't collapse the parent — safe. No toolbar/overlay clipping (toolbars are siblings outside the new relative wrapper). automaticLayout ResizeObserver prefers the definite inset-0 box.
+- Pre-existing non-blocker (not #32): JsonInputPanel passes `error` prop MonacoJsonEditor ignores. Candidate future cleanup.
+- Pending: tester-a3 browser re-verify (390px iframe + desktop regression on both consumers).
+
 # Iteration 1
 
 Reviewer: reviewer-main (opus, read-only). Verdicts relayed via lead.

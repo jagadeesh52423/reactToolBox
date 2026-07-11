@@ -84,13 +84,13 @@ export default function JsonVisualizerRefactored() {
             style={{ background: 'var(--jv-bg-primary)' }}
         >
             {/* Main Content */}
-            <main className="flex-1 p-4 overflow-hidden min-h-0">
+            <main className="flex-1 p-4 overflow-y-auto lg:overflow-hidden min-h-0">
                 <div className={`grid gap-4 h-full ${
                     isEditorVisible ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
                 }`} style={{ minHeight: 0 }}>
                     {/* Left Panel - Input */}
                     {isEditorVisible && (
-                        <div className="min-h-0">
+                        <div className="min-h-[420px] lg:min-h-0">
                             <JsonInputPanel
                                 jsonInput={jsonInput}
                                 error={error}
@@ -109,7 +109,7 @@ export default function JsonVisualizerRefactored() {
                     )}
 
                     {/* Right Panel - Viewer */}
-                    <div className="min-h-0">
+                    <div className="min-h-[420px] lg:min-h-0">
                         <JsonViewerPanel
                             ref={treeViewRef}
                             parsedJson={parsedJson}
