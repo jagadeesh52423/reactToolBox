@@ -36,6 +36,17 @@
 - BLOCKER: tz input VALUE hydration mismatch (getLocalTimezone at first render) at CronParserTool.tsx:23/CronResultsPanel.tsx:83 and TimestampConverterTool.tsx:36/InputPanel.tsx:133 — masked in dev, real in prod. Fix: init '' + set in post-mount effect.
 - Reviewer's Finding 2 (local cron path not byte-identical) is a misattribution: those cronUtils changes are previously-approved Tasks #8/#18 work in the same file, not #29 scope. No action.
 
+## #40 diff-match-patch engine swap + C2 minimap — APPROVED (reviewer-dmp)
+- WordDiffProcessor rewritten on dmp: char = diff_main+cleanupSemantic (conformant by construction — IS diffchecker's engine); word = whitespace-only tokensToChars encoding + diff + expand + cleanupSemantic (trace-verified, content invariant holds). Span mapping = dmp's diff_text1/text2, public interface stable, emoji guard before mode branch, SSR-safe (pure JS, instance field). C2: data-hunk-anchor unconditional on every unified row, click-path index space consistent.
+- Non-blocking: N1 tokensToChars >65535-token collision (unreachable, logged as follow-up); by-construction char probe is trivially circular (char IS raw dmp) — doc wording corrected to be precise. C8 hand-rolled cleanup fully removed (superseded).
+- Supersedes the earlier C8 NEEDS_REVISION below (that engine is deleted).
+
+## textCompare Batch C-1 (#39) — C1/C7/link APPROVED; C8 + C2 NEEDS_REVISION (reviewer-tcC1, superseded by #40)
+- C8 BLOCKING (conformance): fixed ≤3 threshold inverts kitten→sitting (merges common "itt" diffchecker keeps). Fix: relative rule len(gap) ≤ max(len(prevChange),len(nextChange)) + loop to fixpoint. Also gate cleanup to CHAR mode only — word mode already conforms to diffchecker without cleanup (research), and cleanup changes word-mode separator rendering.
+- C2 minor: unified-view minimap click-jump can no-op (only hunk-start rows anchored, minimap targets mid/any row). Fix: anchor every row in unified or snap to nearest hunk-start.
+- Content-preservation verified (relabel-only, join invariant). C1 focus-guard/wraparound solid, C7 patch text + single-button-per-hunk correct, JSON link fine. pairIndex addition breaks no consumer.
+- Pending: empirical diffchecker comparison (tester-a4) confirms the char rule + whether word mode needs any cleanup.
+
 ## textCompare Batch B (#38) — B1/B2/B3 APPROVED, 0 blockers (reviewer-tcB)
 - No regression from the UnifiedDiffDisplay rows-as-prop refactor: same buildUnifiedDiffRows source, A2 collapse + A3 granularity intact (diffOnly=false byte-identical). ignoreWhitespace boolean removal confirmed zero functional refs; leadingAndTrailing ≡ old trim(). Fail-open verified (compile + search never throw); zero-width-match loop guard advances lastIndex + MAX_MATCHES 5000 backstop. Fold force-expand stable (no render loop) in both views. Highlight segments non-overlapping, active unique, scroll selector safe. Facade/Strategy intact.
 - TRACKED residual (accepted, not fixed): catastrophic-backtracking regex in the OPT-IN ignorePattern/search fields against a single very long line (minified file) can freeze the main thread — per-line bound + 200-char cap + fail-open mitigate; full regexTester-style worker judged over-build for an opt-in feature. Logged in SELF_IMPROVEMENT_LOG deferred follow-ups.

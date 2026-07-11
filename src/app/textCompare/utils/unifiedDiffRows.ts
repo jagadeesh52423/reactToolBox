@@ -7,6 +7,8 @@ export interface UnifiedDiffRow {
   oldLineNumber?: number;
   newLineNumber?: number;
   wordDiff?: WordDiff[];
+  /** Index into the source DiffResult's left/right pairs this row was built from — lets hunk nav/copy (C1/C7) address a unified row by the same pair index used in the side-by-side view. */
+  pairIndex: number;
 }
 
 interface WordDiffComparer {
@@ -40,6 +42,7 @@ export function buildUnifiedDiffRows(
         text: leftLine.text,
         oldLineNumber: leftLine.lineNumber,
         newLineNumber: rightLine.lineNumber,
+        pairIndex: index,
       });
     } else if (leftLine.type === DiffType.CHANGED && rightLine.type === DiffType.CHANGED) {
       const wordDiff = compareService.compareWords(leftLine.text, rightLine.text, granularity);
@@ -49,6 +52,7 @@ export function buildUnifiedDiffRows(
         text: leftLine.text,
         oldLineNumber: leftLine.lineNumber,
         wordDiff: wordDiff.left,
+        pairIndex: index,
       });
       rows.push({
         key: `changed-new-${index}`,
@@ -56,6 +60,7 @@ export function buildUnifiedDiffRows(
         text: rightLine.text,
         newLineNumber: rightLine.lineNumber,
         wordDiff: wordDiff.right,
+        pairIndex: index,
       });
     } else if (leftLine.type === DiffType.REMOVED) {
       rows.push({
@@ -63,6 +68,7 @@ export function buildUnifiedDiffRows(
         type: DiffType.REMOVED,
         text: leftLine.text,
         oldLineNumber: leftLine.lineNumber,
+        pairIndex: index,
       });
     } else if (rightLine.type === DiffType.ADDED) {
       rows.push({
@@ -70,6 +76,7 @@ export function buildUnifiedDiffRows(
         type: DiffType.ADDED,
         text: rightLine.text,
         newLineNumber: rightLine.lineNumber,
+        pairIndex: index,
       });
     }
   }

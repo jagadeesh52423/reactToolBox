@@ -4,6 +4,8 @@ import { DiffOptions, DiffType } from '../models/DiffModels';
 import { UnifiedDiffRow } from '../utils/unifiedDiffRows';
 import { collapseUnchangedRuns } from '../utils/collapseRows';
 import { buildHighlightSegments, SearchMatch } from '../hooks/useDiffSearch';
+import { hunkAnchorId } from '../utils/hunks';
+import { CopyIcon, CheckIcon } from '@/components/shared/Icons';
 
 interface UnifiedDiffDisplayProps {
   rows: UnifiedDiffRow[];
@@ -11,6 +13,10 @@ interface UnifiedDiffDisplayProps {
   matchesByRowId: Map<string, SearchMatch[]>;
   activeMatch: SearchMatch | null;
   forceExpandFolds: boolean;
+  /** Copy text for each hunk, keyed by the pairIndex of that hunk's first row. */
+  hunkTextByStartPairIndex: Map<number, string>;
+  copiedPairIndex: number | null;
+  onCopyHunk: (pairIndex: number, text: string) => void;
 }
 
 const ROW_STYLES: Record<UnifiedDiffRow['type'], { bg: string; text: string; marker: string }> = {
@@ -43,6 +49,9 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
   matchesByRowId,
   activeMatch,
   forceExpandFolds,
+  hunkTextByStartPairIndex,
+  copiedPairIndex,
+  onCopyHunk,
 }) => {
   const [expandedFoldIds, setExpandedFoldIds] = useState<Set<string>>(new Set());
 
@@ -68,6 +77,10 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
   }, [forceExpandFolds, collapsed.foldIds, expandedFoldIds]);
 
   const expandAll = () => setExpandedFoldIds(new Set(collapsed.foldIds));
+
+  // A CHANGED pair emits two unified rows sharing one pairIndex (old-as-removed then
+  // new-as-added) — only the first one seen becomes the hunk's anchor/copy target.
+  const seenPairIndices = new Set<number>();
 
   return (
     <div className="border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
@@ -100,10 +113,16 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
           const style = ROW_STYLES[row.type];
           const rowMatches = matchesByRowId.get(row.key) ?? [];
           const activeRange = activeMatch && activeMatch.rowId === row.key ? activeMatch : null;
+
+          const isHunkStart = !seenPairIndices.has(row.pairIndex) && hunkTextByStartPairIndex.has(row.pairIndex);
+          seenPairIndices.add(row.pairIndex);
+          const hunkText = isHunkStart ? hunkTextByStartPairIndex.get(row.pairIndex) : undefined;
+
           return (
             <div
               key={row.key}
-              className={`py-1 ${style.bg} ${style.text} px-2 font-mono whitespace-pre-wrap break-all flex border-b dark:border-slate-700 last:border-b-0`}
+              data-hunk-anchor={hunkAnchorId(row.pairIndex)}
+              className={`relative group py-1 ${style.bg} ${style.text} px-2 font-mono whitespace-pre-wrap break-all flex border-b dark:border-slate-700 last:border-b-0`}
             >
               <div className="w-9 flex-shrink-0 text-gray-500 dark:text-slate-500 text-xs mr-1 text-right pr-1 border-r border-gray-300 dark:border-slate-600">
                 {row.oldLineNumber ?? ''}
@@ -112,6 +131,17 @@ export const UnifiedDiffDisplay: React.FC<UnifiedDiffDisplayProps> = ({
                 {row.newLineNumber ?? ''}
               </div>
               <div className="w-4 flex-shrink-0 font-bold select-none">{style.marker}</div>
+              {hunkText !== undefined && (
+                <button
+                  type="button"
+                  onClick={() => onCopyHunk(row.pairIndex, hunkText)}
+                  title="Copy this change"
+                  aria-label="Copy this change"
+                  className="absolute top-1 right-1 p-1 rounded bg-white/90 dark:bg-slate-800/90 text-gray-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-700 transition-opacity"
+                >
+                  {copiedPairIndex === row.pairIndex ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                </button>
+              )}
               <div className="flex-grow">
                 {rowMatches.length > 0 ? (
                   buildHighlightSegments(row.text, rowMatches, activeRange).map((segment, index) => (

@@ -13,6 +13,7 @@
     "@dagrejs/dagre": "^2.0.4",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/typography": "^0.5.19",
+    "diff-match-patch": "^1.0.5",
     "isomorphic-dompurify": "^3.18.0",
     "js-yaml": "^4.1.1",
     "marked": "^17.0.4",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/diff-match-patch": "^1.0.36",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^19",

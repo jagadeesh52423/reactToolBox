@@ -1,5 +1,6 @@
 'use client';
 import React, { useMemo } from 'react';
+import Link from 'next/link';
 import { DiffOptions, WhitespaceMode } from '../models/DiffModels';
 import { compileIgnorePattern } from '../utils/ignorePattern';
 
@@ -144,6 +145,13 @@ export const CompareControls: React.FC<CompareControlsProps> = ({
           <div className="mt-1 text-xs text-red-600 dark:text-red-400">{ignorePatternValidation.error}</div>
         )}
       </div>
+
+      <Link
+        href="/jsonCompare"
+        className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline w-fit"
+      >
+        Comparing JSON? Try the JSON Compare tool →
+      </Link>
 
       {isAutoDiffPaused && (
         <div className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">

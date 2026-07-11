@@ -3,10 +3,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DiffLine, DiffOptions, DiffResult, DiffType, DiffViewMode } from '../models/DiffModels';
 import { DiffLineDisplay } from './DiffLineDisplay';
 import { UnifiedDiffDisplay } from './UnifiedDiffDisplay';
+import { DiffMinimap, MinimapRowType } from './DiffMinimap';
 import { TextCompareService } from '../services/TextCompareService';
 import { collapseUnchangedRuns } from '../utils/collapseRows';
 import { buildUnifiedDiffRows } from '../utils/unifiedDiffRows';
 import { useDiffSearch, SearchableRow } from '../hooks/useDiffSearch';
+import { useHunkNav } from '../hooks/useHunkNav';
+import { groupHunks, buildHunkText, hunkAnchorId } from '../utils/hunks';
 import { CopyIcon, CheckIcon, SearchIcon, XIcon } from '@/components/shared/Icons';
 
 interface DiffResultDisplayProps {
@@ -59,6 +62,43 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
       })),
     [diffResult]
   );
+
+  // Hunks (C1/C2/C7): contiguous runs of non-unchanged pairs, shared by keyboard/
+  // minimap navigation and per-hunk copy so all three agree on hunk boundaries
+  // regardless of which view (side-by-side or unified) is currently displayed.
+  const hunks = useMemo(() => groupHunks(pairs), [pairs]);
+  const hunkNav = useHunkNav(hunks);
+
+  const hunkTextByStartPairIndex = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const hunk of hunks) map.set(hunk.pairIndices[0], buildHunkText(hunk, pairs));
+    return map;
+  }, [hunks, pairs]);
+
+  const minimapRowTypes = useMemo<MinimapRowType[]>(
+    () =>
+      pairs.map((pair) => {
+        if (isUnchangedPair(pair)) return 'unchanged';
+        if (pair.left.type === DiffType.CHANGED) return 'changed';
+        if (pair.left.type === DiffType.REMOVED) return 'removed';
+        if (pair.right.type === DiffType.ADDED) return 'added';
+        return 'unchanged';
+      }),
+    [pairs]
+  );
+
+  const [copiedPairIndex, setCopiedPairIndex] = useState<number | null>(null);
+
+  const handleCopyHunk = useCallback(async (pairIndex: number, text: string) => {
+    if (!navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPairIndex(pairIndex);
+      setTimeout(() => setCopiedPairIndex((current) => (current === pairIndex ? null : current)), COPY_FEEDBACK_MS);
+    } catch {
+      // Clipboard write failures are non-critical for a nice-to-have copy button.
+    }
+  }, []);
 
   // Computed once here (not inside UnifiedDiffDisplay) so both the unified renderer
   // and the search index share the same row list regardless of which view is active.
@@ -138,6 +178,29 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
         <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">Differences</h2>
 
         <div className="flex flex-wrap items-center gap-2">
+          {hunkNav.totalHunks > 0 && (
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded px-1 py-1">
+              <button
+                onClick={hunkNav.goToPrevious}
+                title="Previous change (p)"
+                aria-label="Previous change"
+                className="px-2 py-1 text-xs rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              >
+                ‹
+              </button>
+              <span className="text-xs text-gray-600 dark:text-slate-300 tabular-nums px-1">
+                {hunkNav.currentHunkNumber} of {hunkNav.totalHunks} changes
+              </span>
+              <button
+                onClick={hunkNav.goToNext}
+                title="Next change (n)"
+                aria-label="Next change"
+                className="px-2 py-1 text-xs rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              >
+                ›
+              </button>
+            </div>
+          )}
           {collapsed.foldIds.length > expandedFoldIds.size && (
             <button
               onClick={expandAll}
@@ -255,91 +318,113 @@ export const DiffResultDisplay: React.FC<DiffResultDisplayProps> = ({
         </div>
       )}
 
-      {viewMode === 'unified' ? (
-        <UnifiedDiffDisplay
-          rows={unifiedRows}
-          options={options}
-          matchesByRowId={search.matchesByRowId}
-          activeMatch={search.currentMatch}
-          forceExpandFolds={search.isActive}
-        />
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-4 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
-          {/* Left Side */}
-          <div className="w-full lg:w-1/2 border-r dark:border-slate-700">
-            <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Original Text
-            </div>
-            <div className="overflow-auto">
-              {collapsed.entries.map((entry) =>
-                entry.kind === 'fold' ? (
-                  renderFoldRow(entry.id, entry.hiddenCount)
-                ) : (
-                  (() => {
-                    const { left, right, index } = entry.row;
-                    const rowId = `left-${index}`;
-                    const rowMatches = search.matchesByRowId.get(rowId) ?? [];
-                    const activeRange = search.currentMatch && search.currentMatch.rowId === rowId ? search.currentMatch : null;
-                    const wordDiff =
-                      rowMatches.length === 0 && left.type === DiffType.CHANGED && right?.text
-                        ? compareService.compareWords(left.text, right.text, options.granularity).left
-                        : undefined;
-                    return (
-                      <DiffLineDisplay
-                        key={rowId}
-                        line={left}
-                        wordDiff={wordDiff}
-                        searchMatches={rowMatches}
-                        activeMatchRange={activeRange}
-                      />
-                    );
-                  })()
-                )
-              )}
-            </div>
-          </div>
+      <div className="flex gap-2 items-stretch">
+        <div className="flex-1 min-w-0">
+          {viewMode === 'unified' ? (
+            <UnifiedDiffDisplay
+              rows={unifiedRows}
+              options={options}
+              matchesByRowId={search.matchesByRowId}
+              activeMatch={search.currentMatch}
+              forceExpandFolds={search.isActive}
+              hunkTextByStartPairIndex={hunkTextByStartPairIndex}
+              copiedPairIndex={copiedPairIndex}
+              onCopyHunk={handleCopyHunk}
+            />
+          ) : (
+            <div className="flex flex-col lg:flex-row gap-4 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
+              {/* Left Side */}
+              <div className="w-full lg:w-1/2 border-r dark:border-slate-700">
+                <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Original Text
+                </div>
+                <div className="overflow-auto">
+                  {collapsed.entries.map((entry) =>
+                    entry.kind === 'fold' ? (
+                      renderFoldRow(entry.id, entry.hiddenCount)
+                    ) : (
+                      (() => {
+                        const { left, right, index } = entry.row;
+                        const rowId = `left-${index}`;
+                        const rowMatches = search.matchesByRowId.get(rowId) ?? [];
+                        const activeRange = search.currentMatch && search.currentMatch.rowId === rowId ? search.currentMatch : null;
+                        const wordDiff =
+                          rowMatches.length === 0 && left.type === DiffType.CHANGED && right?.text
+                            ? compareService.compareWords(left.text, right.text, options.granularity).left
+                            : undefined;
+                        const hunkText = hunkTextByStartPairIndex.get(index);
+                        return (
+                          <div key={rowId} className="relative group" data-hunk-anchor={hunkAnchorId(index)}>
+                            <DiffLineDisplay
+                              line={left}
+                              wordDiff={wordDiff}
+                              searchMatches={rowMatches}
+                              activeMatchRange={activeRange}
+                            />
+                            {hunkText !== undefined && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyHunk(index, hunkText)}
+                                title="Copy this change"
+                                aria-label="Copy this change"
+                                className="absolute top-1 right-1 p-1 rounded bg-white/90 dark:bg-slate-800/90 text-gray-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-700 transition-opacity"
+                              >
+                                {copiedPairIndex === index ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()
+                    )
+                  )}
+                </div>
+              </div>
 
-          {/* Right Side */}
-          <div className="w-full lg:w-1/2">
-            <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Modified Text
+              {/* Right Side */}
+              <div className="w-full lg:w-1/2">
+                <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 p-3 font-semibold border-b dark:border-slate-600 text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Modified Text
+                </div>
+                <div className="overflow-auto">
+                  {collapsed.entries.map((entry) =>
+                    entry.kind === 'fold' ? (
+                      renderFoldRow(entry.id, entry.hiddenCount)
+                    ) : (
+                      (() => {
+                        const { left, right, index } = entry.row;
+                        const rowId = `right-${index}`;
+                        const rowMatches = search.matchesByRowId.get(rowId) ?? [];
+                        const activeRange = search.currentMatch && search.currentMatch.rowId === rowId ? search.currentMatch : null;
+                        const wordDiff =
+                          rowMatches.length === 0 && right.type === DiffType.CHANGED && left?.text
+                            ? compareService.compareWords(left.text, right.text, options.granularity).right
+                            : undefined;
+                        return (
+                          <div key={rowId} data-hunk-anchor={hunkAnchorId(index)}>
+                            <DiffLineDisplay
+                              line={right}
+                              wordDiff={wordDiff}
+                              searchMatches={rowMatches}
+                              activeMatchRange={activeRange}
+                            />
+                          </div>
+                        );
+                      })()
+                    )
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="overflow-auto">
-              {collapsed.entries.map((entry) =>
-                entry.kind === 'fold' ? (
-                  renderFoldRow(entry.id, entry.hiddenCount)
-                ) : (
-                  (() => {
-                    const { left, right, index } = entry.row;
-                    const rowId = `right-${index}`;
-                    const rowMatches = search.matchesByRowId.get(rowId) ?? [];
-                    const activeRange = search.currentMatch && search.currentMatch.rowId === rowId ? search.currentMatch : null;
-                    const wordDiff =
-                      rowMatches.length === 0 && right.type === DiffType.CHANGED && left?.text
-                        ? compareService.compareWords(left.text, right.text, options.granularity).right
-                        : undefined;
-                    return (
-                      <DiffLineDisplay
-                        key={rowId}
-                        line={right}
-                        wordDiff={wordDiff}
-                        searchMatches={rowMatches}
-                        activeMatchRange={activeRange}
-                      />
-                    );
-                  })()
-                )
-              )}
-            </div>
-          </div>
+          )}
         </div>
-      )}
+        <DiffMinimap rowTypes={minimapRowTypes} />
+      </div>
 
       {/* Legend */}
       <div className="mt-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
